@@ -168,7 +168,12 @@ class Game(object):
 
         # Save a list of images to preload next time.
         if not os.path.isfile(preload_name):
-            json.dump(self.images.keys(), open(preload_name, "w"))
+            json.dump(
+                self.drawing.images.keys(),
+                open(preload_name, "w"),
+                indent=4,
+                separators=(',', ': ')
+            )
 
 class GameObject(object):
     """ An object in the game. It knows whether it needs to be deleted, and
