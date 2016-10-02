@@ -255,6 +255,30 @@ class Bullet(GameObject):
         self.game_services.add_new_object(explosion)
         explosion.body.position = Vec2d(self.body.position)
 
+class ShootingBullet(Bullet):
+    """ A bullet that is a gun! """
+    def __init__(self, track_type, image_name, explosion_anim_name):
+        Bullet.__init__(self, image_name, explosion_anim_name)
+        self.gun = None
+        self.gunner = None
+        self.track_type = track_type
+    def initialise(self, game_services):
+        Bullet.initialise(self, game_services)
+        self.gun = Gun(self.body, game_services, self.image_name, self.explosion_anim_name)
+        self.gunner = BurstFireGunnery(self.gun)
+        self.gunner.fire_timer = Timer(0.1)
+    def update(self, dt):
+        Bullet.update(self, dt)
+        if not self.gunner.tracking:
+            closest = self.game_services.get_physics().closest_body_of_type(
+                self.body.position,
+                self.track_type
+            )
+            if closest:
+                self.gunner.track(closest)
+        self.gun.update(dt)
+        self.gunner.update(dt)
+
 class Gun(object):
     """ Something that knows how to spray bullets. Note that this is not a
     game object, it's something game objects can use to share code. """
@@ -295,6 +319,9 @@ class Gun(object):
         """ Stop spraying bullets. """
         self.shooting = False
 
+    def create_bullet(self):
+        return Bullet(self.bullet_image_name, self.bullet_explosion_anim_name)
+
     def update(self, dt):
         """ Create bullets if shooting. Our rate of fire is governed by a timer. """
         if self.shot_timer > 0:
@@ -304,12 +331,21 @@ class Gun(object):
             shooting_at_dir = (shooting_at_world - self.body.position).normalized()
             while self.shot_timer <= 0:
                 self.shot_timer += 1.0/self.shots_per_second
-                bullet = Bullet(self.bullet_image_name, self.bullet_explosion_anim_name)
+                bullet = self.create_bullet()
                 self.game_services.add_new_object(bullet)
                 muzzle_velocity = shooting_at_dir * self.bullet_speed
                 muzzle_velocity.rotate(random.random() * self.spread)
                 bullet.body.velocity = self.body.velocity + muzzle_velocity
                 bullet.body.position = Vec2d(self.body.position) + shooting_at_dir * (self.body.size+bullet.body.size+1)
+
+class ShootingBulletGun(Gun):
+    """ A gun that fires bullets that are themselves guns!! """
+    def __init__(self, body, game_services, bullet_image_name, bullet_explosion_anim_name, track_type):
+        Gun.__init__(self, body, game_services, bullet_image_name, bullet_explosion_anim_name)
+        self.track_type = track_type
+        self.bullet_speed = 400
+    def create_bullet(self):
+        return ShootingBullet(self.track_type, self.bullet_image_name, self.bullet_explosion_anim_name)
 
 class Shooter(GameObject):
     """ An object with a health bar that can shoot bullets. """
@@ -352,6 +388,33 @@ class Shooter(GameObject):
         self.game_services.add_new_object(explosion)
         explosion.body.position = Vec2d(self.body.position)
 
+class BurstFireGunnery(object):
+    """ Shoots at something in bursts. """
+    def __init__(self, gun):
+        self.gun = gun
+        self.fire_timer = Timer(5)
+        self.burst_timer = Timer(0.5)
+        self.tracking = None
+    def track(self, body):
+        self.tracking = body
+    def update(self, dt):
+        if self.tracking:
+            if self.tracking.is_garbage():
+                self.tracking = None
+        if self.tracking:
+            if not self.gun.shooting:
+                if self.fire_timer.tick(dt):
+                    self.fire_timer.reset()
+                    self.gun.start_shooting_world(self.tracking.position)
+            else:
+                if self.burst_timer.tick(dt):
+                    self.burst_timer.reset()
+                    self.gun.stop_shooting()
+                else:
+                    # Maintain aim.
+                    self.gun.start_shooting_world(self.tracking.position)
+                    
+
 class Target(Shooter):
     """ An enemy than can fly around shooting bullets and spawning other
     enemies. """
@@ -359,16 +422,18 @@ class Target(Shooter):
     def __init__(self):
         """ Inject dependencies and setup default parameters. """
         Shooter.__init__(self, "pewpewgreen.png", "green_explosion/explosion.txt", "enemy_ship/anim.txt")
-        self.fire_timer = Timer(5)
-        self.burst_timer = Timer(0.5)
         self.spawn_timer = Timer(20)
+        self.gunner = None
 
     def initialise(self, game_services):
         """ Overidden to configure the body and the gun. """
         Shooter.initialise(self, game_services)
+        self.hp = 200
+        self.max_hp = self.hp
         self.body.size = 64
         self.gun.spread = 10
         self.gun.shots_per_second = 5
+        self.gunner = BurstFireGunnery(self.gun)
                 
     def update(self, dt):
         """ Logical update: shoot in bursts, fly towards the player and spawn
@@ -389,15 +454,9 @@ class Target(Shooter):
         else:
             self.body.velocity += (player.body.velocity - self.body.velocity)*dt
 
-        # Shoot at the player in bursts.
-        if not self.gun.shooting:
-            if self.fire_timer.tick(dt):
-                self.fire_timer.reset()
-                self.gun.start_shooting_world(player_pos)
-        else:
-            if self.burst_timer.tick(dt):
-                self.burst_timer.reset()
-                self.gun.stop_shooting()
+        # Shoot!
+        self.gunner.track(player.body)
+        self.gunner.update(dt)
 
         # Launch fighters!
         if self.spawn_timer.tick(dt):
@@ -452,6 +511,8 @@ class Player(Shooter):
         """ The player needs to know the camera so the camera can be made to
         follow us. """
         Shooter.__init__(self, "pewpew.png", "red_explosion/explosion.txt", "player_ship/anim.txt")
+        self.hp = 400
+        self.max_hp = self.hp
         self.dir = Vec2d(0, 0)
         self.camera = camera
 
@@ -461,6 +522,11 @@ class Player(Shooter):
         Shooter.initialise(self, game_services)
         game_services.get_input_handling().add_input_handler(PlayerInputHandler(self))
         self.body.size = 32
+        self.gun = ShootingBulletGun(self.body,
+                                     game_services,
+                                     self.bullet_image_name,
+                                     self.bullet_explosion_anim_name,
+                                     Target)
 
     def update(self, dt):
         """ Logical update: ajust velocity based on player input. """

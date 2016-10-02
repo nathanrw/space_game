@@ -18,6 +18,17 @@ class Physics(object):
             body.update(dt)
         self.__handle_collisions()
 
+    def closest_body_of_type(self, point, t):
+        bodies_of_type = filter(lambda x: isinstance(x.game_object, t), self.bodies)
+        best_yet = None
+        best_length_yet = None
+        for b in bodies_of_type:
+            length = (b.position - point).length
+            if not best_yet or length < best_length_yet:
+                best_yet = b
+                best_length_yet = length
+        return best_yet
+
     def __handle_collisions(self):
         bodies = filter(lambda x: x.collideable, self.bodies)
         collisions = []
