@@ -1,3 +1,5 @@
+#!/bin/python2
+
 import pygame
 import math
 import random
