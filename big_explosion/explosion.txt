@@ -1,0 +1,6 @@
+{
+  "name_base": "explosion",
+  "num_frames": 212,
+  "extension": ".png",
+  "period": 2
+}
