@@ -257,14 +257,18 @@ class Bullet(GameObject):
 
 class ShootingBullet(Bullet):
     """ A bullet that is a gun! """
-    def __init__(self, track_type, image_name, explosion_anim_name):
+    def __init__(self, track_type, image_name, explosion_anim_name,
+                 sub_bullet_image_name, sub_bullet_explosion_anim_name):
         Bullet.__init__(self, image_name, explosion_anim_name)
         self.gun = None
         self.gunner = None
         self.track_type = track_type
+        self.sub_bullet_image_name = sub_bullet_image_name
+        self.sub_bullet_explosion_anim_name = sub_bullet_explosion_anim_name
     def initialise(self, game_services):
         Bullet.initialise(self, game_services)
-        self.gun = Gun(self.body, game_services, self.image_name, self.explosion_anim_name)
+        self.gun = Gun(self.body, game_services,
+                       self.sub_bullet_image_name, self.sub_bullet_explosion_anim_name)
         self.gunner = BurstFireGunnery(self.gun)
         self.gunner.fire_timer = Timer(0.1)
     def update(self, dt):
@@ -340,12 +344,17 @@ class Gun(object):
 
 class ShootingBulletGun(Gun):
     """ A gun that fires bullets that are themselves guns!! """
-    def __init__(self, body, game_services, bullet_image_name, bullet_explosion_anim_name, track_type):
+    def __init__(self, body, game_services, bullet_image_name, bullet_explosion_anim_name,
+                 sub_bullet_image_name, sub_bullet_explosion_anim_name, track_type):
         Gun.__init__(self, body, game_services, bullet_image_name, bullet_explosion_anim_name)
         self.track_type = track_type
         self.bullet_speed = 400
+        self.shots_per_second = 0.5
+        self.sub_bullet_image_name = sub_bullet_image_name
+        self.sub_bullet_explosion_anim_name = sub_bullet_explosion_anim_name
     def create_bullet(self):
-        return ShootingBullet(self.track_type, self.bullet_image_name, self.bullet_explosion_anim_name)
+        return ShootingBullet(self.track_type, self.bullet_image_name, self.bullet_explosion_anim_name,
+                              self.sub_bullet_image_name, self.sub_bullet_explosion_anim_name)
 
 class Shooter(GameObject):
     """ An object with a health bar that can shoot bullets. """
@@ -522,11 +531,18 @@ class Player(Shooter):
         Shooter.initialise(self, game_services)
         game_services.get_input_handling().add_input_handler(PlayerInputHandler(self))
         self.body.size = 32
-        self.gun = ShootingBulletGun(self.body,
-                                     game_services,
-                                     self.bullet_image_name,
-                                     self.bullet_explosion_anim_name,
-                                     Target)
+        self.normal_gun = Gun(self.body,
+                              game_services,
+                              self.bullet_image_name,
+                              self.bullet_explosion_anim_name)
+        self.torpedo_gun = ShootingBulletGun(self.body,
+                                             game_services,
+                                             "pewpewgreen.png",
+                                             "big_explosion/explosion.txt",
+                                             self.bullet_image_name,
+                                             self.bullet_explosion_anim_name,
+                                             Target)
+        self.gun = self.normal_gun
 
     def update(self, dt):
         """ Logical update: ajust velocity based on player input. """
