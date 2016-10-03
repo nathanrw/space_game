@@ -118,7 +118,7 @@ class Game(object):
         self.player = Player(self.camera)
         self.add_new_object(self.player)
 
-        target = Target()
+        target = Carrier()
         self.add_new_object(target)
         target.body.position = Vec2d((0, 100))
 
@@ -425,21 +425,16 @@ class BurstFireGunnery(object):
                     
 
 class Target(Shooter):
-    """ An enemy than can fly around shooting bullets and spawning other
-    enemies. """
+    """ An enemy than can fly around shooting bullets. """
 
-    def __init__(self):
+    def __init__(self, anim_name):
         """ Inject dependencies and setup default parameters. """
-        Shooter.__init__(self, "pewpewgreen.png", "green_explosion/explosion.txt", "enemy_ship/anim.txt")
-        self.spawn_timer = Timer(20)
+        Shooter.__init__(self, "pewpewgreen.png", "green_explosion/explosion.txt", anim_name)
         self.gunner = None
 
     def initialise(self, game_services):
         """ Overidden to configure the body and the gun. """
         Shooter.initialise(self, game_services)
-        self.hp = 200
-        self.max_hp = self.hp
-        self.body.size = 64
         self.gun.spread = 10
         self.gun.shots_per_second = 5
         self.gunner = BurstFireGunnery(self.gun)
@@ -467,23 +462,52 @@ class Target(Shooter):
         self.gunner.track(player.body)
         self.gunner.update(dt)
 
+class Carrier(Target):
+    """ A large craft that launches fighters. """
+
+    def __init__(self):
+        """ Inject dependencies and setup default parameters. """
+        Target.__init__(self, "enemy_ship/anim.txt")
+        self.spawn_timer = Timer(20)
+
+    def initialise(self, game_services):
+        """ Overidden to configure the body and the gun. """
+        Target.initialise(self, game_services)
+        self.hp = 200
+        self.max_hp = self.hp
+        self.body.size = 64
+    
+    def update(self, dt):
+        Target.update(self, dt)
+        
         # Launch fighters!
         if self.spawn_timer.tick(dt):
             self.spawn_timer.reset()
             self.spawn()
-
+            
     def spawn(self):
         """ Spawn more enemies! """
         if self.hp > self.max_hp/2:
             for i in range(random.randrange(3, 6)):
                 direction = Vec2d(0, 1).rotated(360*random.random())
-                child = Target()
+                child = Fighter()
                 self.game_services.add_new_object(child)
                 child.body.velocity = self.body.velocity + direction * 250
                 child.body.position = Vec2d(self.body.position)
-                child.hp = self.hp/2
-                child.max_hp = child.hp
-            self.hp /= 2
+
+class Fighter(Target):
+    """ A small craft that shoots lasers. """
+
+    def __init__(self):
+        """ Inject dependencies and setup default parameters. """
+        Target.__init__(self, "enemy_fighter/anim.txt")
+
+    def initialise(self, game_services):
+        """ Overidden to configure the hp """
+        Target.initialise(self, game_services)
+        self.hp = 10
+        self.max_hp = self.hp
+        self.body.size = 20
 
 class Camera(GameObject):
     """ A camera, which drawing is done in relation to. """
@@ -537,7 +561,7 @@ class Player(Shooter):
                               self.bullet_explosion_anim_name)
         self.torpedo_gun = ShootingBulletGun(self.body,
                                              game_services,
-                                             "pewpewgreen.png",
+                                             "rocket.png",
                                              "big_explosion/explosion.txt",
                                              self.bullet_image_name,
                                              self.bullet_explosion_anim_name,
