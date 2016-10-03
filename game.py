@@ -509,7 +509,7 @@ class Fighter(Target):
     def initialise(self, game_services):
         """ Overidden to configure the hp """
         Target.initialise(self, game_services)
-        self.hp = 2dd
+        self.hp = 4
         self.body.size = 20
 
 class Camera(GameObject):
