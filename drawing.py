@@ -25,6 +25,7 @@ class Drawing(object):
         self.drawables.append(drawable)
 
     def draw(self, camera):
+        self.drawables = sorted(self.drawables, lambda x, y: cmp(x.level, y.level))
         for drawable in self.drawables:
             drawable.draw(camera)
 
@@ -64,6 +65,7 @@ class Drawable(object):
     """ Base class for something that can be drawn. """
     def __init__(self, game_object):
         self.game_object = game_object
+        self.level = 0
     def draw(self, camera):
         pass
     def update(self, dt):
@@ -115,6 +117,25 @@ class BulletDrawable(Drawable):
         rotated = pygame.transform.rotate(self.image, 90 - rotation + 180)
         pos = camera.world_to_screen(self.body.position) - Vec2d(rotated.get_rect().center)
         screen.blit(rotated, pos)
+
+class BackgroundDrawable(Drawable):
+    """ A drawable for a scrolling background. """
+    def __init__(self, camera, image):
+        Drawable.__init__(self, camera)
+        self.image = image
+        self.level = -999
+    def draw(self, camera):
+        screen = camera.surface()
+        (image_width, image_height) = self.image.get_size()
+        (screen_width, screen_height) = screen.get_size()
+        pos = self.game_object.position
+        x = int(pos.x)
+        y = int(pos.y)
+        start_i = -(x%image_width)
+        start_j = -(y%image_width)
+        for i in xrange(start_i, screen_width, image_width):
+            for j in xrange(start_j, screen_height, image_height):
+                screen.blit(self.image, (i, j))
 
 class Polygon(object):
     """ A polygon. Used to be used for bullets. """

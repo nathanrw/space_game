@@ -30,6 +30,9 @@ class Game(object):
         # The main camera.
         self.camera = None
 
+        # The enemy.
+        self.carrier = None
+
         # The physics system.
         self.physics = Physics()
 
@@ -117,10 +120,12 @@ class Game(object):
         
         self.player = Player(self.camera)
         self.add_new_object(self.player)
+        
+        self.drawing.add_drawable(BackgroundDrawable(self.camera, self.drawing.load_image("star--background-seamless-repeating9.jpg")))
 
-        target = Carrier()
-        self.add_new_object(target)
-        target.body.position = Vec2d((0, 100))
+        self.carrier = Carrier()
+        self.add_new_object(self.carrier)
+        self.carrier.body.position = Vec2d((0, 100))
 
         self.physics.add_collision_handler(BulletShooterCollisionHandler())
 
@@ -487,13 +492,12 @@ class Carrier(Target):
             
     def spawn(self):
         """ Spawn more enemies! """
-        if self.hp > self.max_hp/2:
-            for i in range(random.randrange(3, 6)):
-                direction = Vec2d(0, 1).rotated(360*random.random())
-                child = Fighter()
-                self.game_services.add_new_object(child)
-                child.body.velocity = self.body.velocity + direction * 250
-                child.body.position = Vec2d(self.body.position)
+        for i in xrange(20):
+            direction = Vec2d(0, 1).rotated(360*random.random())
+            child = Fighter()
+            self.game_services.add_new_object(child)
+            child.body.velocity = self.body.velocity + direction * 500
+            child.body.position = Vec2d(self.body.position)
 
 class Fighter(Target):
     """ A small craft that shoots lasers. """
@@ -505,8 +509,7 @@ class Fighter(Target):
     def initialise(self, game_services):
         """ Overidden to configure the hp """
         Target.initialise(self, game_services)
-        self.hp = 10
-        self.max_hp = self.hp
+        self.hp = 2dd
         self.body.size = 20
 
 class Camera(GameObject):
