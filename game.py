@@ -274,6 +274,7 @@ class ShootingBullet(Bullet):
         Bullet.initialise(self, game_services)
         self.gun = Gun(self.body, game_services,
                        self.sub_bullet_image_name, self.sub_bullet_explosion_anim_name)
+        self.gun.shots_per_second = 20
         self.gunner = BurstFireGunnery(self.gun)
         self.gunner.fire_timer = Timer(0.1)
     def update(self, dt):
@@ -373,6 +374,7 @@ class Shooter(GameObject):
         self.max_hp = 50
         self.hp = self.max_hp
         self.gun = None
+        self.guns = []
 
     def initialise(self, game_services):
         """ Create a body and some drawables. We also set up the gun. """
@@ -389,11 +391,13 @@ class Shooter(GameObject):
                        game_services,
                        self.bullet_image_name,
                        self.bullet_explosion_anim_name)
+        self.guns = [self.gun]
 
     def update(self, dt):
         """ Overidden to update the gun. """
         GameObject.update(self, dt)
-        self.gun.update(dt)
+        for g in self.guns:
+            g.update(dt)
 
     def kill(self):
         """ Spawn an explosion on death. """
@@ -510,6 +514,7 @@ class Fighter(Target):
         """ Overidden to configure the hp """
         Target.initialise(self, game_services)
         self.hp = 4
+        self.max_hp = self.hp
         self.body.size = 20
 
 class Camera(GameObject):
@@ -569,6 +574,7 @@ class Player(Shooter):
                                              self.bullet_image_name,
                                              self.bullet_explosion_anim_name,
                                              Target)
+        self.guns = [self.normal_gun, self.torpedo_gun]
         self.gun = self.normal_gun
 
     def update(self, dt):
@@ -577,6 +583,17 @@ class Player(Shooter):
         self.body.velocity -= (self.body.velocity * dt * 0.8)
         self.body.velocity += self.dir.normalized() * dt * 500 
         self.camera.target_position = Vec2d(self.body.position)
+
+    def start_shooting(self, pos):
+        for g in self.guns:
+            g.start_shooting_screen(pos)
+
+    def stop_shooting(self):
+        for g in self.guns:
+            g.stop_shooting()
+
+    def is_shooting(self):
+        return self.gun.is_shooting
 
 class BulletShooterCollisionHandler(CollisionHandler):
     """ Collision handler to apply bullet damage. """

@@ -43,20 +43,14 @@ class PlayerInputHandler(InputHandler):
             if e.key in kmap:
                 player.dir += kmap[e.key]
                 return True
-            elif e.key == pygame.K_e:
-                if player.gun == player.normal_gun:
-                    player.gun = player.torpedo_gun
-                else:
-                    player.gun = player.normal_gun
-                return True
         elif e.type == pygame.MOUSEBUTTONDOWN:
-            player.gun.start_shooting_screen(Vec2d(e.pos))
+            player.start_shooting(Vec2d(e.pos))
             return True
         elif e.type == pygame.MOUSEBUTTONUP:
-            player.gun.stop_shooting()
+            player.stop_shooting()
             return True
         elif e.type == pygame.MOUSEMOTION:
             if player.gun.shooting:
-                player.gun.start_shooting_screen(Vec2d(e.pos))
+                player.start_shooting(Vec2d(e.pos))
                 return True
         return False
