@@ -12,7 +12,7 @@ class LoadingScreen(object):
         self.total = total
         self.progress = 0
         self.screen = screen
-        self.title = title = pygame.image.load("title.bmp")
+        self.title = title = pygame.image.load("res/images/title.bmp")
         self.__draw()
 
     def increment(self):

@@ -121,7 +121,7 @@ class Game(object):
         self.player = Player(self.camera)
         self.add_new_object(self.player)
         
-        self.drawing.add_drawable(BackgroundDrawable(self.camera, self.drawing.load_image("star--background-seamless-repeating9.jpg")))
+        self.drawing.add_drawable(BackgroundDrawable(self.camera, self.drawing.load_image("res/images/star--background-seamless-repeating9.jpg")))
 
         self.carrier = Carrier()
         self.add_new_object(self.carrier)
@@ -403,7 +403,7 @@ class Shooter(GameObject):
     def kill(self):
         """ Spawn an explosion on death. """
         GameObject.kill(self)
-        explosion = Explosion("big_explosion/explosion.txt")
+        explosion = Explosion("res/anims/big_explosion/explosion.txt")
         self.game_services.add_new_object(explosion)
         explosion.body.position = Vec2d(self.body.position)
 
@@ -439,7 +439,7 @@ class Target(Shooter):
 
     def __init__(self, anim_name):
         """ Inject dependencies and setup default parameters. """
-        Shooter.__init__(self, "pewpewgreen.png", "green_explosion/explosion.txt", anim_name)
+        Shooter.__init__(self, "res/images/pewpewgreen.png", "res/anims/green_explosion/explosion.txt", anim_name)
         self.gunner = None
 
     def initialise(self, game_services):
@@ -477,7 +477,7 @@ class Carrier(Target):
 
     def __init__(self):
         """ Inject dependencies and setup default parameters. """
-        Target.__init__(self, "enemy_ship/anim.txt")
+        Target.__init__(self, "res/anims/enemy_ship/anim.txt")
         self.spawn_timer = Timer(20)
 
     def initialise(self, game_services):
@@ -509,7 +509,7 @@ class Fighter(Target):
 
     def __init__(self):
         """ Inject dependencies and setup default parameters. """
-        Target.__init__(self, "enemy_fighter/anim.txt")
+        Target.__init__(self, "res/anims/enemy_fighter/anim.txt")
 
     def initialise(self, game_services):
         """ Overidden to configure the hp """
@@ -552,7 +552,7 @@ class Player(Shooter):
     def __init__(self, camera):
         """ The player needs to know the camera so the camera can be made to
         follow us. """
-        Shooter.__init__(self, "pewpew.png", "red_explosion/explosion.txt", "player_ship/anim.txt")
+        Shooter.__init__(self, "res/images/pewpew.png", "res/anims/red_explosion/explosion.txt", "res/anims/player_ship/anim.txt")
         self.hp = 400
         self.max_hp = self.hp
         self.dir = Vec2d(0, 0)
@@ -570,8 +570,8 @@ class Player(Shooter):
                               self.bullet_explosion_anim_name)
         self.torpedo_gun = ShootingBulletGun(self.body,
                                              game_services,
-                                             "rocket.png",
-                                             "big_explosion/explosion.txt",
+                                             "res/images/rocket.png",
+                                             "res/anims/big_explosion/explosion.txt",
                                              self.bullet_image_name,
                                              self.bullet_explosion_anim_name,
                                              Target)

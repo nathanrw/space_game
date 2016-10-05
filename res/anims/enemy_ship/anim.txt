@@ -1,0 +1,6 @@
+{
+  "name_base": "enemy_ship",
+  "num_frames": 8,
+  "extension": ".png",
+  "period": 1
+}

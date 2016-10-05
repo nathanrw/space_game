@@ -1,6 +1,0 @@
-{
-  "name_base": "player_ship",
-  "num_frames": 1,
-  "extension": ".png",
-  "period": 1
-}
