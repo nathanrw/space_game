@@ -344,7 +344,7 @@ class Gun(object):
                 bullet = self.create_bullet()
                 self.game_services.add_new_object(bullet)
                 muzzle_velocity = shooting_at_dir * self.bullet_speed
-                muzzle_velocity.rotate(random.random() * self.spread)
+                muzzle_velocity.rotate(random.random() * self.spread - self.spread/2)
                 bullet.body.velocity = self.body.velocity + muzzle_velocity
                 bullet.body.position = Vec2d(self.body.position) + shooting_at_dir * (self.body.size+bullet.body.size+1)
 
@@ -412,6 +412,7 @@ class BurstFireGunnery(object):
     def __init__(self, gun):
         self.gun = gun
         self.fire_timer = Timer(5)
+        self.fire_timer.advance_to_fraction(0.8)
         self.burst_timer = Timer(0.5)
         self.tracking = None
     def track(self, body):
@@ -445,9 +446,15 @@ class Target(Shooter):
     def initialise(self, game_services):
         """ Overidden to configure the body and the gun. """
         Shooter.initialise(self, game_services)
-        self.gun.spread = 10
-        self.gun.shots_per_second = 5
         self.gunner = BurstFireGunnery(self.gun)
+
+    def towards_player(self):
+        """ Get the direction towards the player. """
+        player = self.game_services.get_player()
+        player_pos = player.body.position
+        displacement = player_pos - self.body.position
+        direction = displacement.normalized()
+        return direction
                 
     def update(self, dt):
         """ Logical update: shoot in bursts, fly towards the player and spawn
@@ -478,7 +485,8 @@ class Carrier(Target):
     def __init__(self):
         """ Inject dependencies and setup default parameters. """
         Target.__init__(self, "res/anims/enemy_ship/anim.txt")
-        self.spawn_timer = Timer(20)
+        self.spawn_timer = Timer(10)
+        self.spawn_timer.advance_to_fraction(0.8)
 
     def initialise(self, game_services):
         """ Overidden to configure the body and the gun. """
@@ -486,8 +494,11 @@ class Carrier(Target):
         self.hp = 200
         self.max_hp = self.hp
         self.body.size = 64
+        self.gun.shots_per_second = 40
+        self.gun.spead = 40
     
     def update(self, dt):
+        """ Overidden to launch fighters. """
         Target.update(self, dt)
         
         # Launch fighters!
@@ -498,10 +509,12 @@ class Carrier(Target):
     def spawn(self):
         """ Spawn more enemies! """
         for i in xrange(20):
-            direction = Vec2d(0, 1).rotated(360*random.random())
+            direction = self.towards_player()
+            spread = 30
+            direction.rotate(spread*random.random()-spread/2.0)
             child = Fighter()
             self.game_services.add_new_object(child)
-            child.body.velocity = self.body.velocity + direction * 500
+            child.body.velocity = self.body.velocity + direction * 700
             child.body.position = Vec2d(self.body.position)
 
 class Fighter(Target):

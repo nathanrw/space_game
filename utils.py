@@ -4,6 +4,8 @@ class Timer(object):
     def __init__(self, period):
         self.timer = 0
         self.period = period
+    def advance_to_fraction(self, frac):
+        self.timer += self.period * frac
     def tick(self, dt):
         self.timer += dt
         return self.expired()
