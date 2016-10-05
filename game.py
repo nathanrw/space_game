@@ -382,6 +382,7 @@ class Shooter(GameObject):
         anim = game_services.get_drawing().load_animation(self.self_anim_name)
         anim.randomise()
         self.body = Body(self)
+        self.body.mass = 100
         self.drawable = AnimBodyDrawable(self, anim, self.body)
         self.hp_drawable = HealthBarDrawable(self, self.body)
         game_services.get_physics().add_body(self.body)
