@@ -47,18 +47,11 @@ class Game(object):
         self.new_objects = []
 
         # The configuration.
-        self.config = {}
-        if (os.path.isfile("config.txt")):
-            self.config = json.load(open("config.txt", "r"))
+        self.config = Config()
+        self.config.load("config.txt")
 
         # Configure the drawing.
-        self.drawing.minimise_image_loading = self.load_config("minimise_image_loading", False)
-
-    def add_new_object(self, obj):
-        """ Add a new object. It is initialised, but not added to the game
-        right away: that gets done at a certain point in the game loop."""
-        obj.initialise(self)
-        self.new_objects.append(obj)
+        self.drawing.minimise_image_loading = self.config.get_or_default("minimise_image_loading", False)
 
     def get_camera(self):
         """ Get the camera. """
@@ -84,11 +77,20 @@ class Game(object):
         """ Remove all of the objects that have been marked for deletion."""
         self.objects = [ x for x in self.objects if not x.is_garbage ]
 
-    def load_config(self, key, default):
-        """ Read a value from the configuration, returning the default if it
-        does not exist. """
-        if key in self.config: return self.config[key]
-        else: return default
+    def load_config_file(self, filename):
+        """ Read in a configuration file. """
+        c = Config()
+        c.load(filename)
+        return c
+
+    def create_game_object(self, t, config):
+        """ Add a new object. It is initialised, but not added to the game
+        right away: that gets done at a certain point in the game loop."""
+        config = load_config_file(config)
+        obj = t()
+        obj.initialise(self, config)
+        self.new_objects.append(obj)
+        return obj
     
     def run(self):
         """ The game loop. This performs initialisation including setting
@@ -100,8 +102,8 @@ class Game(object):
         
         # Initialise
         pygame.init()
-        screen = pygame.display.set_mode((self.load_config("screen_width", 1024), 
-                                          self.load_config("screen_height", 768)))
+        screen = pygame.display.set_mode((self.config.get_or_default("screen_width", 1024), 
+                                          self.config.get_or_default("screen_height", 768)))
 
         # Preload certain images.
         preload_name = "preload.txt"
@@ -182,6 +184,40 @@ class Game(object):
                 separators=(',', ': ')
             )
 
+class Config(object):
+    """ A hierarchical data store. """
+    
+    def __init__(self):
+        """ Initialise an empty data store. """
+        self.data = {}
+        self.filename = None
+        
+    def load(self, filename):
+        """ Load data from a file. Remember the file so we can save it later. """
+        self.filename = filename
+        if (os.path.isfile(self.filename)):
+            self.data = json.load(open(self.filename, "r"))
+            
+    def save(self):
+        """ Save to our remembered filename. """
+        json.dump(self.data, open(self.filename, "w"), indent=4, separators=(',', ': '))
+
+    def __getitem__(self, key):
+        """ Get some data out. """
+        return self.data[key]
+        
+    def get_or_default(self, key, default):
+        """ Get some data out. """
+        tokens = key.split(".")
+        try:
+            ret = self.data
+            for tok in tokens:
+                ret = ret[tok]
+            return ret
+        except:
+            return default
+        
+
 class GameObject(object):
     """ An object in the game. It knows whether it needs to be deleted, and
     has access to object / component creation services. """
@@ -193,9 +229,10 @@ class GameObject(object):
         self.is_garbage = False
         self.game_services = None
 
-    def initialise(self, game_services):
+    def initialise(self, game_services, config):
         """ Initialise the object: create drawables, physics bodies, etc. """
         self.game_services = game_services
+        self.config = config
 
     def update(self, dt):
         """ Perform a logical update: AI behaviours, game logic, etc. Note
@@ -211,15 +248,10 @@ class GameObject(object):
 class Explosion(GameObject):
     """ An explosion. It will play an animation and then disappear. """
 
-    def __init__(self, filename):
-        """ The filename should be the name of an animation. """
-        GameObject.__init__(self)
-        self.anim_name = filename
-
-    def initialise(self, game_services):
+    def initialise(self, game_services, config):
         """ Create a body and a drawable for the explosion. """
-        GameObject.initialise(self, game_services)
-        anim = game_services.get_drawing().load_animation(self.anim_name)
+        GameObject.initialise(self, game_services, config)
+        anim = game_services.get_drawing().load_animation(config["anim_name"])
         self.body = Body(self)
         self.body.collideable = False
         self.drawable = AnimBodyDrawable(self, anim, self.body)
@@ -229,26 +261,25 @@ class Explosion(GameObject):
 
 class Bullet(GameObject):
 
-    def __init__(self, image_name, explosion_anim_name):
+    def __init__(self):
         """ Initialise the bullet with its image and explosion name. """
         GameObject.__init__(self)
-        self.image_name = image_name
-        self.explosion_anim_name = explosion_anim_name
-        self.lifetime = Timer(2)
 
-    def initialise(self, game_services):
+    def initialise(self, game_services, config):
         """ Build a body and drawable. The bullet will be destroyed after
         a few seconds. """
-        GameObject.initialise(self, game_services)
+        GameObject.initialise(self, game_services, config)
         self.body = Body(self)
-        self.body.size = 2
-        img = self.game_services.get_drawing().load_image(self.image_name)
+        self.body.size = config["size"]
+        self.lifetime = Timer(config["lifetime"])
+        img = self.game_services.get_drawing().load_image(config["image_name"])
         player_body = game_services.get_player().body
         drawable = BulletDrawable(self, img, self.body, player_body)
         game_services.get_physics().add_body(self.body)
         game_services.get_drawing().add_drawable(drawable)
 
     def update(self, dt):
+        """ Advance the life timer. """
         GameObject.update(self, dt)
         if self.lifetime.tick(dt):
             self.kill()
@@ -256,28 +287,21 @@ class Bullet(GameObject):
     def kill(self):
         """ Spawn an explosion when the bullet dies. """
         GameObject.kill(self)
-        explosion = Explosion(self.explosion_anim_name)
-        self.game_services.add_new_object(explosion)
+        explosion = self.game_services.create_game_object(Explosion, self.config["explosion_config"])
         explosion.body.position = Vec2d(self.body.position)
 
 class ShootingBullet(Bullet):
     """ A bullet that is a gun! """
-    def __init__(self, track_type, image_name, explosion_anim_name,
-                 sub_bullet_image_name, sub_bullet_explosion_anim_name):
-        Bullet.__init__(self, image_name, explosion_anim_name)
-        self.gun = None
-        self.gunner = None
-        self.track_type = track_type
-        self.sub_bullet_image_name = sub_bullet_image_name
-        self.sub_bullet_explosion_anim_name = sub_bullet_explosion_anim_name
-    def initialise(self, game_services):
-        Bullet.initialise(self, game_services)
-        self.gun = Gun(self.body, game_services,
-                       self.sub_bullet_image_name, self.sub_bullet_explosion_anim_name)
-        self.gun.shots_per_second = 20
-        self.gunner = BurstFireGunnery(self.gun)
-        self.gunner.fire_timer = Timer(0.1)
+
+    def initialise(self, game_services, config):
+        """ Initialise the shooting bullet. """
+        Bullet.initialise(self, game_services, config)
+        self.gun = Gun(self.body, game_services, game_services.load_config(config["gun_config"]))
+        self.gunner = BurstFireGunnery(self.gun, config)
+        self.track_type = config["track_type"]
+        
     def update(self, dt):
+        """ Update the shooting bullet. """
         Bullet.update(self, dt)
         if not self.gunner.tracking:
             closest = self.game_services.get_physics().closest_body_of_type(
@@ -293,19 +317,15 @@ class Gun(object):
     """ Something that knows how to spray bullets. Note that this is not a
     game object, it's something game objects can use to share code. """
 
-    def __init__(self, body, game_services, bullet_image_name, bullet_explosion_anim_name):
+    def __init__(self, body, game_services, config):
         """ Inject dependencies and set up default parameters. """
         self.body = body
         self.game_services = game_services
+        self.config = config
         self.shooting = False
         self.shooting_at = Vec2d(0, 0)
         self.shooting_at_screen = False
         self.shot_timer = 0
-        self.shots_per_second = 5
-        self.bullet_speed = 1500
-        self.bullet_image_name = bullet_image_name
-        self.bullet_explosion_anim_name = bullet_explosion_anim_name
-        self.spread = 5
 
     def start_shooting_world(self, at):
         """ Start shooting at a point in world space. """
@@ -329,9 +349,6 @@ class Gun(object):
         """ Stop spraying bullets. """
         self.shooting = False
 
-    def create_bullet(self):
-        return Bullet(self.bullet_image_name, self.bullet_explosion_anim_name)
-
     def update(self, dt):
         """ Create bullets if shooting. Our rate of fire is governed by a timer. """
         if self.shot_timer > 0:
@@ -340,58 +357,31 @@ class Gun(object):
             shooting_at_world = self.shooting_at_world()
             shooting_at_dir = (shooting_at_world - self.body.position).normalized()
             while self.shot_timer <= 0:
-                self.shot_timer += 1.0/self.shots_per_second
-                bullet = self.create_bullet()
-                self.game_services.add_new_object(bullet)
-                muzzle_velocity = shooting_at_dir * self.bullet_speed
-                muzzle_velocity.rotate(random.random() * self.spread - self.spread/2)
+                self.shot_timer += 1.0/self.config["shots_per_second"]
+                bullet = self.game_services.create_game_object(self.config["bullet_type"],
+                                                               self.game_services.load_config(self.config["bullet_config"]))
+                muzzle_velocity = shooting_at_dir * self.config["bullet_speed"]
+                muzzle_velocity.rotate(random.random() * self.config["spread"] - self.config["spread"]/2)
                 bullet.body.velocity = self.body.velocity + muzzle_velocity
                 bullet.body.position = Vec2d(self.body.position) + shooting_at_dir * (self.body.size+bullet.body.size+1)
-
-class ShootingBulletGun(Gun):
-    """ A gun that fires bullets that are themselves guns!! """
-    def __init__(self, body, game_services, bullet_image_name, bullet_explosion_anim_name,
-                 sub_bullet_image_name, sub_bullet_explosion_anim_name, track_type):
-        Gun.__init__(self, body, game_services, bullet_image_name, bullet_explosion_anim_name)
-        self.track_type = track_type
-        self.bullet_speed = 400
-        self.shots_per_second = 0.5
-        self.sub_bullet_image_name = sub_bullet_image_name
-        self.sub_bullet_explosion_anim_name = sub_bullet_explosion_anim_name
-    def create_bullet(self):
-        return ShootingBullet(self.track_type, self.bullet_image_name, self.bullet_explosion_anim_name,
-                              self.sub_bullet_image_name, self.sub_bullet_explosion_anim_name)
 
 class Shooter(GameObject):
     """ An object with a health bar that can shoot bullets. """
 
-    def __init__(self, bullet_image_name, bullet_explosion_anim_name, self_anim_name):
-        """ Inject dependencies and setup default parameters. """
-        GameObject.__init__(self)
-        self.self_anim_name = self_anim_name
-        self.bullet_image_name = bullet_image_name
-        self.bullet_explosion_anim_name = bullet_explosion_anim_name
-        self.max_hp = 50
-        self.hp = self.max_hp
-        self.gun = None
-        self.guns = []
-
-    def initialise(self, game_services):
+    def initialise(self, game_services, config):
         """ Create a body and some drawables. We also set up the gun. """
-        GameObject.initialise(self, game_services)
-        anim = game_services.get_drawing().load_animation(self.self_anim_name)
+        GameObject.initialise(self, game_services, config)
+        anim = game_services.get_drawing().load_animation(config["anim_name"])
         anim.randomise()
+        self.hp = self.config["hp"]
         self.body = Body(self)
-        self.body.mass = 100
+        self.body.mass = config["mass"]
         self.drawable = AnimBodyDrawable(self, anim, self.body)
         self.hp_drawable = HealthBarDrawable(self, self.body)
         game_services.get_physics().add_body(self.body)
         game_services.get_drawing().add_drawable(self.drawable)
         game_services.get_drawing().add_drawable(self.hp_drawable)
-        self.gun = Gun(self.body,
-                       game_services,
-                       self.bullet_image_name,
-                       self.bullet_explosion_anim_name)
+        self.gun = Gun(self.body, game_services, config)
         self.guns = [self.gun]
 
     def update(self, dt):
@@ -403,17 +393,17 @@ class Shooter(GameObject):
     def kill(self):
         """ Spawn an explosion on death. """
         GameObject.kill(self)
-        explosion = Explosion("res/anims/big_explosion/explosion.txt")
-        self.game_services.add_new_object(explosion)
+        explosion = self.game_services.create_game_object(Explosion, self.config["explosion_config"])
         explosion.body.position = Vec2d(self.body.position)
 
 class BurstFireGunnery(object):
     """ Shoots at something in bursts. """
-    def __init__(self, gun):
+    def __init__(self, gun, config):
+        self.config = config
         self.gun = gun
-        self.fire_timer = Timer(5)
+        self.fire_timer = Timer(config["fire_period"])
         self.fire_timer.advance_to_fraction(0.8)
-        self.burst_timer = Timer(0.5)
+        self.burst_timer = Timer(config["burst_period"])
         self.tracking = None
     def track(self, body):
         self.tracking = body
