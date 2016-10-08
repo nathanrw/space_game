@@ -119,6 +119,17 @@ class BulletDrawable(Drawable):
         pos = camera.world_to_screen(self.body.position) - Vec2d(rotated.get_rect().center)
         screen.blit(rotated, pos)
 
+class WinLoseDrawable(Drawable):
+    """ A drawable for displaying the result of the game. """
+    def __init__(self, camera, image):
+        Drawable.__init__(self, camera)
+        self.image = image
+        self.level = 999
+    def draw(self, camera):
+        screen = camera.surface()
+        pos = Vec2d(screen.get_rect().center) - Vec2d(self.image.get_size())/2
+        screen.blit(self.image, (int(pos.x), int(pos.y)))
+
 class BackgroundDrawable(Drawable):
     """ A drawable for a scrolling background. """
     def __init__(self, camera, image):

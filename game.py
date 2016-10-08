@@ -169,6 +169,9 @@ class Game(object):
 
         self.physics.add_collision_handler(BulletShooterCollisionHandler())
 
+        self.won = False
+        self.won_timer = Timer(10)
+
         # Main loop.
         running = True
         fps = 60
@@ -209,6 +212,19 @@ class Game(object):
 
             # Maintaim frame rate.
             clock.tick(fps)
+
+            # Check for win/lose.
+            if not self.won and (self.player.is_garbage or self.carrier.is_garbage):
+                self.won = True
+                image_name = "res/images/youwin.png"
+                if self.player.is_garbage:
+                    image_name = "res/images/youlose.png"
+                self.drawing.add_drawable(WinLoseDrawable(self.camera, self.drawing.load_image(image_name)))
+
+            # Close the game if we've won.
+            if self.won:
+                if self.won_timer.tick(tick):
+                    running = False
 
         # Finalise
         pygame.quit()
