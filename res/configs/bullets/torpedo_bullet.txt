@@ -1,0 +1,12 @@
+{
+	"type": "ShootingBullet",
+	"size": 10,
+	"lifetime": 2,
+	"image_name": "res/images/rocket.png",
+	"explosion_config": "explosions/big_explosion.txt",
+	"damage": 5,
+	"gun_config": "weapons/torpedo_blaster.txt",
+	"track_type": "Target",
+	"fire_period": 0.1,
+	"burst_period": 0.5
+}

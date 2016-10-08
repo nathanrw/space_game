@@ -53,6 +53,9 @@ class Game(object):
         # Configure the drawing.
         self.drawing.minimise_image_loading = self.config.get_or_default("minimise_image_loading", False)
 
+        # Cached configurations.
+        self.configs = {}
+
     def get_camera(self):
         """ Get the camera. """
         return self.camera
@@ -79,15 +82,21 @@ class Game(object):
 
     def load_config_file(self, filename):
         """ Read in a configuration file. """
-        c = Config()
-        c.load(filename)
-        return c
+        if not filename in self.configs:
+            c = Config()
+            c.load(filename)
+            self.configs[filename] = c
+        return self.configs[filename]
 
-    def create_game_object(self, t, config):
+    def lookup_type(self, typename):
+        return globals()[typename]
+
+    def create_game_object(self, config_name, *args):
         """ Add a new object. It is initialised, but not added to the game
         right away: that gets done at a certain point in the game loop."""
-        config = load_config_file(config)
-        obj = t()
+        config = self.load_config_file(config_name)
+        t = self.lookup_type(config["type"])
+        obj = t(*args)
         obj.initialise(self, config)
         self.new_objects.append(obj)
         return obj
@@ -117,16 +126,13 @@ class Game(object):
                 loading.increment()
 
         # Game state
-        self.camera = Camera(screen)
-        self.add_new_object(self.camera)
+        self.camera = self.create_game_object("camera.txt", screen)
         
-        self.player = Player(self.camera)
-        self.add_new_object(self.player)
+        self.player = self.create_game_object("player.txt")
         
         self.drawing.add_drawable(BackgroundDrawable(self.camera, self.drawing.load_image("res/images/star--background-seamless-repeating9.jpg")))
 
-        self.carrier = Carrier()
-        self.add_new_object(self.carrier)
+        self.carrier = self.create_game_object("enemies/carrier.txt")
         self.carrier.body.position = Vec2d((0, 100))
 
         self.physics.add_collision_handler(BulletShooterCollisionHandler())
@@ -195,13 +201,22 @@ class Config(object):
         
     def load(self, filename):
         """ Load data from a file. Remember the file so we can save it later. """
-        self.filename = filename
-        if (os.path.isfile(self.filename)):
+        self.filename = os.path.join("res/configs/", filename)
+        print "Loading config: ", self.filename
+        try:
             self.data = json.load(open(self.filename, "r"))
-        parent_filename = self.__get("derive")
+        except Exception, e:
+            print e
+            print "**************************************************************"
+            print "ERROR LOADING CONFIG FILE: ", self.filename
+            print "Probably either the file doesn't exist, or you forgot a comma!"
+            print "**************************************************************"
+            pygame.quit()
+            sys.exit(1)
+        parent_filename = self.__get("deriving")
         if parent_filename is not None:
             self.parent = Config()
-            self.parent.load(self.parent_filename)
+            self.parent.load(parent_filename)
             
     def save(self):
         """ Save to our remembered filename. """
@@ -209,8 +224,8 @@ class Config(object):
 
     def __getitem__(self, key):
         """ Get some data out. """
-        got = __get(key)
-        if got is None:
+        got = self.__get(key)
+        if got is None and self.parent is not None:
             return self.parent[key]
         else:
             return got
@@ -299,11 +314,11 @@ class Bullet(GameObject):
         GameObject.update(self, dt)
         if self.lifetime.tick(dt):
             self.kill()
-
+            
     def kill(self):
         """ Spawn an explosion when the bullet dies. """
         GameObject.kill(self)
-        explosion = self.game_services.create_game_object(Explosion, self.config["explosion_config"])
+        explosion = self.game_services.create_game_object(self.config["explosion_config"])
         explosion.body.position = Vec2d(self.body.position)
 
     def apply_damage(self, to):
@@ -318,8 +333,9 @@ class ShootingBullet(Bullet):
     def initialise(self, game_services, config):
         """ Initialise the shooting bullet. """
         Bullet.initialise(self, game_services, config)
-        self.gun = Gun(self.body, game_services, game_services.load_config(config["gun_config"]))
+        self.gun = Gun(self.body, game_services, game_services.load_config_file(config["gun_config"]))
         self.gunner = BurstFireGunnery(self.gun, config)
+        self.track_type = game_services.lookup_type(config["track_type"])
         
     def update(self, dt):
         """ Update the shooting bullet. """
@@ -327,7 +343,7 @@ class ShootingBullet(Bullet):
         if not self.gunner.tracking:
             closest = self.game_services.get_physics().closest_body_of_type(
                 self.body.position,
-                self.config["track_type"]
+                self.track_type
             )
             if closest:
                 self.gunner.track(closest)
@@ -379,8 +395,7 @@ class Gun(object):
             shooting_at_dir = (shooting_at_world - self.body.position).normalized()
             while self.shot_timer <= 0:
                 self.shot_timer += 1.0/self.config["shots_per_second"]
-                bullet = self.game_services.create_game_object(self.config["bullet_type"],
-                                                               self.game_services.load_config(self.config["bullet_config"]))
+                bullet = self.game_services.create_game_object(self.config["bullet_config"])
                 muzzle_velocity = shooting_at_dir * self.config["bullet_speed"]
                 muzzle_velocity.rotate(random.random() * self.config["spread"] - self.config["spread"]/2)
                 bullet.body.velocity = self.body.velocity + muzzle_velocity
@@ -395,15 +410,16 @@ class Shooter(GameObject):
         anim = game_services.get_drawing().load_animation(config["anim_name"])
         anim.randomise()
         self.hp = self.config["hp"]
-        self.max_hp = self.config["max_hp"] # Rendundant, but code uses this.
+        self.max_hp = self.config["hp"] # Rendundant, but code uses this.
         self.body = Body(self)
         self.body.mass = config["mass"]
+        self.body.size = config["size"]
         self.drawable = AnimBodyDrawable(self, anim, self.body)
         self.hp_drawable = HealthBarDrawable(self, self.body)
         game_services.get_physics().add_body(self.body)
         game_services.get_drawing().add_drawable(self.drawable)
         game_services.get_drawing().add_drawable(self.hp_drawable)
-        self.gun = Gun(self.body, game_services, config)
+        self.gun = Gun(self.body, game_services, game_services.load_config_file(config["gun_config"]))
         self.guns = [self.gun]
 
     def update(self, dt):
@@ -415,7 +431,7 @@ class Shooter(GameObject):
     def kill(self):
         """ Spawn an explosion on death. """
         GameObject.kill(self)
-        explosion = self.game_services.create_game_object(Explosion, self.config["explosion_config"])
+        explosion = self.game_services.create_game_object(self.config["explosion_config"])
         explosion.body.position = Vec2d(self.body.position)
 
     def receive_damage(self, amount):
@@ -458,7 +474,7 @@ class Target(Shooter):
     def initialise(self, game_services, config):
         """ Overidden to configure the body and the gun. """
         Shooter.initialise(self, game_services, config)
-        self.gunner = BurstFireGunnery(self.gun)
+        self.gunner = BurstFireGunnery(self.gun, config)
 
     def towards_player(self):
         """ Get the direction towards the player. """
@@ -515,7 +531,7 @@ class Carrier(Target):
             direction = self.towards_player()
             spread = self.config["takeoff_spread"]
             direction.rotate(spread*random.random()-spread/2.0)
-            child = self.game_services.create_game_object(Target, self.game_services.load_config("fighter.txt"))
+            child = self.game_services.create_game_object(self.config["fighter_config"])
             child.body.velocity = self.body.velocity + direction * self.config["takeoff_speed"]
             child.body.position = Vec2d(self.body.position)
 
@@ -555,12 +571,13 @@ class Player(Shooter):
         the player can drive us around. """
         Shooter.initialise(self, game_services, config)
         game_services.get_input_handling().add_input_handler(PlayerInputHandler(self))
+        self.dir = Vec2d(0, 0)
         self.normal_gun = Gun(self.body,
                               game_services,
-                              game_services.load_config(config["gun_config"]);
-        self.torpedo_gun = ShootingBulletGun(self.body,
-                                             game_services,
-                                             game_services.load_config(config["torpedo_gun_config"]))
+                              game_services.load_config_file(config["gun_config"]))
+        self.torpedo_gun = Gun(self.body,
+                               game_services,
+                               game_services.load_config_file(config["torpedo_gun_config"]))
         self.guns = [self.normal_gun, self.torpedo_gun]
         self.gun = self.normal_gun
 

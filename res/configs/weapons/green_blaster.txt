@@ -1,0 +1,4 @@
+{
+	"deriving": "weapons/red_blaster.txt",
+	"bullet_config": "bullets/green_bullet.txt"
+}

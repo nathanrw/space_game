@@ -1,0 +1,5 @@
+{
+	"deriving": "bullets/red_bullet.txt",
+	"image_name": "res/images/pewpewgreen.png",
+	"explosion_config": "explosions/green_explosion.txt"
+}

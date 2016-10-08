@@ -1,0 +1,8 @@
+{
+	"type": "Bullet",
+	"size": 3,
+	"lifetime": 2,
+	"image_name": "res/images/pewpew.png",
+	"explosion_config": "explosions/red_explosion.txt",
+	"damage": 1
+}

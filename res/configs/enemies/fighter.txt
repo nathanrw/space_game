@@ -1,0 +1,5 @@
+{
+	"deriving": "enemies/target.txt",
+	"anim_name": "enemy_fighter",
+	"hp": 4
+}
