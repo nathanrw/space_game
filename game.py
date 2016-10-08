@@ -46,6 +46,7 @@ from drawing import *
 from utils import *
 from loading_screen import *
 from input_handling import *
+from behaviours import *
                 
 def main():
     game = Game()
@@ -73,6 +74,9 @@ class Game(object):
 
         # The input handling system.
         self.input_handling = InputHandling()
+
+        # The behaviour handlers.
+        self.behaviours = Behaviours()
 
         # Currently existing objects and queue of objects to create.
         self.objects = []
@@ -107,6 +111,10 @@ class Game(object):
     def get_input_handling(self):
         """ Get the input handling system. """
         return self.input_handling
+
+    def get_behaviours(self):
+        """ Get the behaviour handling system. """
+        return self.behaviours
 
     def garbage_collect(self):
         """ Remove all of the objects that have been marked for deletion."""
@@ -201,6 +209,9 @@ class Game(object):
 
             # Update the drawables.
             self.drawing.update(tick)
+
+            # Update the behaviours
+            self.behaviours.update(tick)
 
             # Destroy anything that is now dead.
             self.garbage_collect()
