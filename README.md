@@ -5,17 +5,24 @@ A space game written in Python.
 
 ![A screenshot](screenshot.png?raw=true "Screenshot")
 
-Dependencies
-------------
+What
+----
 
-* Python 2.7
-* pygame
-* pymunk
+It's currently a very simple arcade space shooter. But it does have BULLETS THAT ARE GUNS THAT SHOOT MORE BULLETS. Beat that eh.
 
 How to run
 ----------
 
-"Space game" is a Python program. You run it with Python. In order to run it, you will need the 'pygame' and 'pymunk' packages.
+"Space game" is a Python program. You run it with Python.
+
+Dependencies
+------------
+
+In order to run "Space game," you will need the following packages installed:
+
+* Python 2.7
+* pygame
+* pymunk
 
 Controls
 --------
