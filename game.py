@@ -1,5 +1,37 @@
 #!/bin/python2
 
+"""
+A space game written in Python.
+
+It currently depends on pygame for windowing, event handling etc, and on
+pymunk for physics.
+
+The program is structured with the intention than various distinct concerns
+can be separated. The implementation of physics and the implementation of
+drawing no nothing about one another, for instance. This is a work in progress
+though. I'd like to make it realise this ideal more.
+
+Game object creation is data-driven. Entities are defined in configuration
+.txt files containing json data; these live under res/configs.
+
+Things I would like to work on now:
+
+1) Make it more of a game i.e. add win/lose conditions, support controllers,
+   add more types of enemy, weapon etc.
+
+2) Make the object creation scheme more robust and efficient. There's a lot
+   of string wrangling and the current approach to error handling is "YOLO".
+
+3) Decompose logical behaviours defined in this file into composable
+   behaviour components, and delete most of the classes. Make components
+   data driven so they can be added in the config files.
+
+4) Make the use of pymunk more idiomatic. It's currently horrendous.
+
+I'll probably do (1) first and do the others as necessary to facillitate it.
+   
+"""
+
 import pygame
 import math
 import random
