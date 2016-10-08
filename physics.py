@@ -98,11 +98,11 @@ class Body(object):
         """ Actually add the body to the simulation. """
         if self.body is None:
             self.space = space
-            moment = pymunk.moment_for_circle(self.__mass, 0, self.__size)
-            self.body = pymunk.Body(self.__mass, moment)
+            moment = pymunk.moment_for_circle(float(self.__mass), 0, float(self.__size))
+            self.body = pymunk.Body(float(self.__mass), moment)
             self.body.position = vec2tup(self.__position)
             self.body.velocity = vec2tup(self.__velocity)
-            self.shape = pymunk.Circle(self.body, self.__size)
+            self.shape = pymunk.Circle(self.body, float(self.__size))
             if self.collideable:
                 self.shape.collision_type = 1
             else:
@@ -160,7 +160,7 @@ class Body(object):
     @size.setter
     def size(self, value):
         if self.shape is not None:
-            self.shape.unsafe_set_radius(value)
+            self.shape.unsafe_set_radius(float(value))
         else:
             self.__size = value
 
@@ -174,7 +174,7 @@ class Body(object):
     @mass.setter
     def mass(self, value):
         if self.body is not None:
-            self.body.mass = value
+            self.body.mass = float(value)
         else:
             self.__mass = value
 

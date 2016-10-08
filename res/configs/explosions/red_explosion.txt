@@ -1,0 +1,4 @@
+{
+	"type": "Explosion",
+	"anim_name": "red_explosion"
+}

@@ -43,7 +43,8 @@ class Drawing(object):
 
     def load_animation(self, filename):
         if not filename in self.animations:
-            anim = json.load(open(filename))
+            fname = os.path.join(os.path.join("res/anims", filename), "anim.txt")
+            anim = json.load(open(fname))
             name_base = anim["name_base"]
             num_frames = anim["num_frames"]
             extension = anim["extension"]
@@ -54,7 +55,7 @@ class Drawing(object):
                 if self.minimise_image_loading and num_frames > 10 and i % 10 != 0:
                     continue
                 padded = (4-len(str(i)))*"0" + str(i)
-                img_filename = os.path.join(os.path.dirname(filename), name_base + padded + extension)
+                img_filename = os.path.join(os.path.dirname(fname), name_base + padded + extension)
                 frames.append(self.load_image(img_filename))
             self.animations[filename] = (frames, period)
             print "Loaded animation: %s" % filename

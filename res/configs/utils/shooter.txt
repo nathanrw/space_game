@@ -1,0 +1,8 @@
+{
+	"hp": 100,
+	"mass": 100,
+	"size": 20,
+	"anim_name": "player",
+	"explosion_config": "explosions/big_explosion.txt",
+	"gun_config": "weapons/red_blaster.txt"
+}

@@ -1,5 +1,5 @@
 {
   "screen_width": 1680,
   "screen_height": 1050,
-  "minimise_image_loading": 0
+  "minimise_image_loading": 1
 }

@@ -1,0 +1,6 @@
+{
+	"deriving": "utils/shooter.txt",
+	"type": "Player",
+	"anim_name": "player_ship",
+	"torpedo_gun_config": "weapons/torpedo_gun.txt"
+}

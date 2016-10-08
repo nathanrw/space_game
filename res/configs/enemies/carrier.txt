@@ -1,0 +1,11 @@
+{
+	"deriving": "enemies/target.txt",
+	"type": "Carrier",
+	"anim_name": "enemy_ship",
+	"size": 64,
+	"spawn_period": 10,
+	"takeoff_speed": 700,
+	"takeoff_spread": 30,
+	"fighter_config": "enemies/fighter.txt",
+	"gun_config": "weapons/big_green_blaster.txt"
+}

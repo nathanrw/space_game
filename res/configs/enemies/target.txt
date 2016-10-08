@@ -1,0 +1,9 @@
+{
+	"type": "Target",
+	"deriving": "utils/shooter.txt",
+	"desired_distance_to_player": 500,
+	"acceleration": 600,
+	"fire_period": 10,
+	"burst_period": 3,
+	"gun_config": "weapons/green_blaster.txt"
+}
