@@ -350,10 +350,7 @@ class Explosion(GameObject):
         game_services.get_drawing().add_drawable(self.drawable)
 
 class Bullet(GameObject):
-
-    def __init__(self):
-        """ Initialise the bullet with its image and explosion name. """
-        GameObject.__init__(self)
+    """ A projectile. """
 
     def initialise(self, game_services, config):
         """ Build a body and drawable. The bullet will be destroyed after
@@ -367,18 +364,8 @@ class Bullet(GameObject):
         drawable = BulletDrawable(self, img, self.body, player_body)
         game_services.get_physics().add_body(self.body)
         game_services.get_drawing().add_drawable(drawable)
-
-    def update(self, dt):
-        """ Advance the life timer. """
-        GameObject.update(self, dt)
-        if self.lifetime.tick(dt):
-            self.kill()
-            
-    def kill(self):
-        """ Spawn an explosion when the bullet dies. """
-        GameObject.kill(self)
-        explosion = self.game_services.create_game_object(self.config["explosion_config"])
-        explosion.body.position = Vec2d(self.body.position)
+        game_services.get_behaviours().add_behaviour(ExplodesOnDeath(self, game_services, game_services.load_config(config["explosion_config"])))
+        game_services.get_behaviours().add_behaviour(KillOnTimer(self, game_services, config))
 
     def apply_damage(self, to):
         """ Apply damage to an object we've hit. """
@@ -394,20 +381,7 @@ class ShootingBullet(Bullet):
         Bullet.initialise(self, game_services, config)
         self.gun = Gun(self.body, game_services, game_services.load_config_file(config["gun_config"]))
         self.gunner = BurstFireGunnery(self.gun, config)
-        self.track_type = game_services.lookup_type(config["track_type"])
-        
-    def update(self, dt):
-        """ Update the shooting bullet. """
-        Bullet.update(self, dt)
-        if not self.gunner.tracking:
-            closest = self.game_services.get_physics().closest_body_of_type(
-                self.body.position,
-                self.track_type
-            )
-            if closest:
-                self.gunner.track(closest)
-        self.gun.update(dt)
-        self.gunner.update(dt)
+        game_services.get_behaviours().add_behaviour(ShootsBullets(self, game_services, config, self.gun, self.gunnery))
 
 class Gun(object):
     """ Something that knows how to spray bullets. Note that this is not a
@@ -478,6 +452,7 @@ class Shooter(GameObject):
         game_services.get_physics().add_body(self.body)
         game_services.get_drawing().add_drawable(self.drawable)
         game_services.get_drawing().add_drawable(self.hp_drawable)
+        game_services.get_behaviours().add_behaviour(ExplodesOnDeath(self, game_services, game_services.load_config(config["explosion_config"])))
         self.gun = Gun(self.body, game_services, game_services.load_config_file(config["gun_config"]))
         self.guns = [self.gun]
 
@@ -486,12 +461,6 @@ class Shooter(GameObject):
         GameObject.update(self, dt)
         for g in self.guns:
             g.update(dt)
-
-    def kill(self):
-        """ Spawn an explosion on death. """
-        GameObject.kill(self)
-        explosion = self.game_services.create_game_object(self.config["explosion_config"])
-        explosion.body.position = Vec2d(self.body.position)
 
     def receive_damage(self, amount):
         self.hp -= amount
@@ -534,14 +503,7 @@ class Target(Shooter):
         """ Overidden to configure the body and the gun. """
         Shooter.initialise(self, game_services, config)
         self.gunner = BurstFireGunnery(self.gun, config)
-
-    def towards_player(self):
-        """ Get the direction towards the player. """
-        player = self.game_services.get_player()
-        player_pos = player.body.position
-        displacement = player_pos - self.body.position
-        direction = displacement.normalized()
-        return direction
+        game_services.get_behaviours().add_behaviour(FollowsPlayer(self, game_services, config))
                 
     def update(self, dt):
         """ Logical update: shoot in bursts, fly towards the player and spawn
@@ -549,18 +511,6 @@ class Target(Shooter):
 
         # Call base class.
         Shooter.update(self, dt)
-
-        # Accelerate towards the player.
-        # Todo: make it accelerate faster if moving away from the player.
-        player = self.game_services.get_player()
-        player_pos = player.body.position
-        displacement = player_pos - self.body.position
-        direction = displacement.normalized()
-        if displacement.length > self.config["desired_distance_to_player"]:
-            acceleration = direction * self.config["acceleration"]
-            self.body.velocity += acceleration * dt
-        else:
-            self.body.velocity += (player.body.velocity - self.body.velocity)*dt
 
         # Shoot!
         self.gunner.track(player.body)
@@ -572,27 +522,7 @@ class Carrier(Target):
     def initialise(self, game_services, config):
         """ Overidden to configure the body and the gun. """
         Target.initialise(self, game_services, config)
-        self.spawn_timer = Timer(config["spawn_period"])
-        self.spawn_timer.advance_to_fraction(0.8)
-    
-    def update(self, dt):
-        """ Overidden to launch fighters. """
-        Target.update(self, dt)
-        
-        # Launch fighters!
-        if self.spawn_timer.tick(dt):
-            self.spawn_timer.reset()
-            self.spawn()
-            
-    def spawn(self):
-        """ Spawn more enemies! """
-        for i in xrange(20):
-            direction = self.towards_player()
-            spread = self.config["takeoff_spread"]
-            direction.rotate(spread*random.random()-spread/2.0)
-            child = self.game_services.create_game_object(self.config["fighter_config"])
-            child.body.velocity = self.body.velocity + direction * self.config["takeoff_speed"]
-            child.body.position = Vec2d(self.body.position)
+        game_services.get_behaviours().add_behaviour(LaunchesFighters(self, game_services, config))
 
 class Camera(GameObject):
     """ A camera, which drawing is done in relation to. """
