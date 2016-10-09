@@ -1,4 +1,4 @@
-#!/bin/python2
+#!/usr/bin/env python2
 
 """
 A space game written in Python.
