@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 """
 A space game written in Python.
 
@@ -48,10 +46,6 @@ from loading_screen import *
 from input_handling import *
 from behaviours import *
                 
-def main():
-    game = Game()
-    game.run()
-
 class Game(object):
     
     def __init__(self):
@@ -426,6 +420,3 @@ class BulletShooterCollisionHandler(CollisionHandler):
         CollisionHandler.__init__(self, Bullet, Shooter)
     def handle_matching_collision(self, bullet, shooter):
         bullet.apply_damage(shooter)
-
-if __name__ == '__main__':
-    main()
