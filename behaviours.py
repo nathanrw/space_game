@@ -50,24 +50,108 @@ class FollowsPlayer(EnemyBehaviour):
         else:
             self.body.velocity += (player.body.velocity - self.body.velocity)*dt
 
-class ShootsBullets(Behaviour):
-    def __init__(self, game_object, game_services, config, gun, gunnery):
+class ManuallyShootsBullets(Behaviour):
+    """ Something that knows how to spray bullets. Note that this is not a
+    game object, it's something game objects can use to share code. """
+
+    def __init__(self, game_object, game_services, config):
+        """ Inject dependencies and set up default parameters. """
         Behaviour.__init__(self, game_object, game_services, config)
-        self.gun = gun
-        self.gunnery = gunnery
+        self.body = game_object.body
+        self.shooting = False
+        self.shooting_at = Vec2d(0, 0)
+        self.shooting_at_screen = False
+        self.shot_timer = 0
+
+    def start_shooting_world(self, at):
+        """ Start shooting at a point in world space. """
+        self.shooting = True
+        self.shooting_at = at
+        self.shooting_at_screen = False
+
+    def start_shooting_screen(self, at):
+        """ Start shooting at a point in screen space. """
+        self.start_shooting_world(at)
+        self.shooting_at_screen = True
+
+    def shooting_at_world(self):
+        """ Get the point, in world space, that we are shooting at. """
+        if self.shooting_at_screen:
+            return self.game_services.get_camera().screen_to_world(self.shooting_at)
+        else:
+            return self.shooting_at
+
+    def stop_shooting(self):
+        """ Stop spraying bullets. """
+        self.shooting = False
+
+    def update(self, dt):
+        """ Create bullets if shooting. Our rate of fire is governed by a timer. """
+        if self.shot_timer > 0:
+            self.shot_timer -= dt
+        if self.shooting:
+            shooting_at_world = self.shooting_at_world()
+            shooting_at_dir = (shooting_at_world - self.body.position).normalized()
+            while self.shot_timer <= 0:
+                self.shot_timer += 1.0/self.config["shots_per_second"]
+                bullet = self.game_services.create_game_object(self.config["bullet_config"])
+                muzzle_velocity = shooting_at_dir * self.config["bullet_speed"]
+                spread = self.config["spread"]
+                muzzle_velocity.rotate(random.random() * spread - spread)
+                bullet.body.velocity = self.body.velocity + muzzle_velocity
+                separation = self.body.size+bullet.body.size+1
+                bullet.body.position = Vec2d(self.body.position) + shooting_at_dir * separation
+
+class AutomaticallyShootsBullets(ManuallyShootsBullets):
+    """ Something that shoots bullets at something else. """
+
+    def __init__(self, game_object, game_services, config)
+        """ Initialise. """
+        gun_config = game_services.load_config_file(config["gun_config"])
+        ManuallyShootsBullets.__init__(self, game_object, game_services, gun_config)
+        self.tracking_config = config
         self.track_type = game_services.lookup_type(config["track_type"])
+        self.fire_timer = Timer(config["fire_period"])
+        self.fire_timer.advance_to_fraction(0.8)
+        self.burst_timer = Timer(config["burst_period"])
+        self.tracking = None
+
     def update(self, dt):
         """ Update the shooting bullet. """
+
+        # Update tracking.
         Bullet.update(self, dt)
-        if not self.gunner.tracking:
+        if not self.tracking:
             closest = self.game_services.get_physics().closest_body_of_type(
                 self.body.position,
                 self.track_type
             )
             if closest:
-                self.gunner.track(closest)
-        self.gun.update(dt)
-        self.gunner.update(dt)
+                self.tracking = closest
+
+        # Update aim.
+        if self.tracking:
+            if self.tracking.is_garbage():
+                self.tracking = None
+        if self.tracking:
+            if not self.shooting:
+                if self.fire_timer.tick(dt):
+                    self.fire_timer.reset()
+                    self.start_shooting_world(self.tracking.position)
+            else:
+                if self.burst_timer.tick(dt):
+                    self.burst_timer.reset()
+                    self.stop_shooting()
+                else:
+                    # Maintain aim.
+                    self.start_shooting_world(self.tracking.position)
+
+        # Shoot bullets.
+        ManuallyShootsBullets.update(self, dt)
+
+class MovesCamera(Behaviour):
+    def update(self, dt):
+        self.game_services.get_camera().target_position = Vec2d(self.game_object.body.position)
 
 class LaunchesFighters(EnemyBehaviour):
     def __init__(self, game_object, game_services, config):

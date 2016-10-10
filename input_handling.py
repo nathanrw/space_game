@@ -13,6 +13,9 @@ class InputHandling(object):
             if handler.handle_input(event):
                 return True
         return False
+    def update(self, dt):
+        for handler in self.input_handlers:
+            handler.update(dt)
 
 class InputHandler(object):
     def __init__(self, game_object):
@@ -21,10 +24,13 @@ class InputHandler(object):
         return self.game_object.is_garbage
     def handle_input(self, event):
         return False
+    def update(self, dt):
+        pass
 
 class PlayerInputHandler(InputHandler):
     def __init__(self, player):
         InputHandler.__init__(self, player)
+        self.dir = Vec2d(0, 0)
     def handle_input(self, e):
         if InputHandler.handle_input(self, e):
             return True
@@ -37,11 +43,11 @@ class PlayerInputHandler(InputHandler):
         player = self.game_object
         if e.type == pygame.KEYDOWN:
             if e.key in kmap:
-                player.dir -= kmap[e.key]
+                self.dir -= kmap[e.key]
                 return True
         elif e.type == pygame.KEYUP:
             if e.key in kmap:
-                player.dir += kmap[e.key]
+                self.dir += kmap[e.key]
                 return True
         elif e.type == pygame.MOUSEBUTTONDOWN:
             player.start_shooting(Vec2d(e.pos))
@@ -54,3 +60,5 @@ class PlayerInputHandler(InputHandler):
                 player.start_shooting(Vec2d(e.pos))
                 return True
         return False
+    def update(self, dt):
+        self.game_object.body.velocity += self.dir.normalized() * dt * 500 
