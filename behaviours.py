@@ -1,5 +1,7 @@
 from vector2d import Vec2d
 
+from utils import *
+
 import pygame
 
 class Behaviours(object):
@@ -7,8 +9,9 @@ class Behaviours(object):
         self.behaviours = []
     def add_behaviour(self, behaviour):
         self.behaviours.append(behaviour)
+        return behaviour
     def update(self, dt):
-        garbage = [x for x in self.drawables if not x.is_garbage()]
+        garbage = [x for x in self.behaviours if x.is_garbage()]
         for behaviour in garbage:
             self.behaviours.remove(behaviour)
             behaviour.on_object_killed()
@@ -42,13 +45,13 @@ class FollowsPlayer(EnemyBehaviour):
         # Todo: make it accelerate faster if moving away from the player.
         player = self.game_services.get_player()
         player_pos = player.body.position
-        displacement = player_pos - self.body.position
+        displacement = player_pos - self.game_object.body.position
         direction = displacement.normalized()
         if displacement.length > self.config["desired_distance_to_player"]:
             acceleration = direction * self.config["acceleration"]
-            self.body.velocity += acceleration * dt
+            self.game_object.body.velocity += acceleration * dt
         else:
-            self.body.velocity += (player.body.velocity - self.body.velocity)*dt
+            self.game_object.body.velocity += (player.body.velocity - self.game_object.body.velocity)*dt
 
 class ManuallyShootsBullets(Behaviour):
     """ Something that knows how to spray bullets. Note that this is not a
@@ -105,7 +108,7 @@ class ManuallyShootsBullets(Behaviour):
 class AutomaticallyShootsBullets(ManuallyShootsBullets):
     """ Something that shoots bullets at something else. """
 
-    def __init__(self, game_object, game_services, config)
+    def __init__(self, game_object, game_services, config):
         """ Initialise. """
         gun_config = game_services.load_config_file(config["gun_config"])
         ManuallyShootsBullets.__init__(self, game_object, game_services, gun_config)
@@ -120,7 +123,6 @@ class AutomaticallyShootsBullets(ManuallyShootsBullets):
         """ Update the shooting bullet. """
 
         # Update tracking.
-        Bullet.update(self, dt)
         if not self.tracking:
             closest = self.game_services.get_physics().closest_body_of_type(
                 self.body.position,
@@ -176,7 +178,6 @@ class KillOnTimer(Behaviour):
         Behaviour.__init__(self, game_object, game_services, config)
         self.lifetime = Timer(config["lifetime"])
     def update(self, dt):
-        GameObject.update(self, dt)
         if self.lifetime.tick(dt):
             self.game_object.kill()
 

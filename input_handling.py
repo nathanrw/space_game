@@ -56,7 +56,7 @@ class PlayerInputHandler(InputHandler):
             player.stop_shooting()
             return True
         elif e.type == pygame.MOUSEMOTION:
-            if player.gun.shooting:
+            if player.is_shooting():
                 player.start_shooting(Vec2d(e.pos))
                 return True
         return False

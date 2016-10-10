@@ -4,6 +4,11 @@ import sys
 import json
 import os
 
+def bail():
+    """ Bail out, ensuring the pygame windows goes away. """
+    pygame.quit()
+    sys.exit(1)
+
 class Timer(object):
     def __init__(self, period):
         self.timer = 0
@@ -44,8 +49,7 @@ class Config(object):
             print "ERROR LOADING CONFIG FILE: ", self.filename
             print "Probably either the file doesn't exist, or you forgot a comma!"
             print "**************************************************************"
-            pygame.quit()
-            sys.exit(1)
+            bail() # Bail - we might be in the physics thread which ignores exceptions
         parent_filename = self.__get("deriving")
         if parent_filename is not None:
             self.parent = Config()
@@ -57,19 +61,30 @@ class Config(object):
 
     def __getitem__(self, key):
         """ Get some data out. """
-        got = self.__get(key)
-        if got is None and self.parent is not None:
-            return self.parent[key]
-        else:
-            return got
+        got = self.get_or_none(key)
+        if got is None:
+            print "**************************************************************"
+            print "ERROR READING CONFIG ATTRIBUTE: %s" % key
+            print "CONFIG FILE: %s" % self.filename
+            print "It's probably not been added to the file, or there is a bug."
+            print "**************************************************************"
+            bail() # Bail - we might be in the physics thread which ignores exceptions
+        return got
         
     def get_or_default(self, key, default):
         """ Get some data out. """
-        got = self[key]
+        got = self.get_or_none(key)
         if got is None:
             return default
         else:
             return got
+
+    def get_or_none(self, key):
+        """ Get some data, or None if it isnt found. """
+        got = self.__get(key)
+        if got is None and self.parent is not None:
+            got = self.parent.get_or_none(key)
+        return got
 
     def __get(self, key):
         """ Retrieve some data from our data store."""

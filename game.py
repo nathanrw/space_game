@@ -401,11 +401,11 @@ class Player(Shooter):
         self.normal_gun = behaviours.add_behaviour(
             ManuallyShootsBullets(self,
                                   game_services,
-                                  game_services.load_config(config["gun_config"])))
+                                  game_services.load_config_file(config["gun_config"])))
         self.torpedo_gun = behaviours.add_behaviour(
             ManuallyShootsBullets(self,
                                   game_services,
-                                  game_services.load_config(config["torpedo_gun_config"])))
+                                  game_services.load_config_file(config["torpedo_gun_config"])))
         self.guns = [ self.normal_gun, self.torpedo_gun ]
         behaviours.add_behaviour(MovesCamera(self, game_services, config))
 
@@ -418,7 +418,7 @@ class Player(Shooter):
             g.stop_shooting()
 
     def is_shooting(self):
-        return self.normal_gun.is_shooting
+        return self.normal_gun.shooting
 
 class BulletShooterCollisionHandler(CollisionHandler):
     """ Collision handler to apply bullet damage. """
