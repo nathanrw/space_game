@@ -1,15 +1,51 @@
+""" Basic building blocks of the game infrastructure. This includes a scheme
+for assembly game objects from components, a system for loading game object
+configuration from json data files, and other utilities. """
+
 import random
 import pygame
 import sys
 import json
 import os
 
+from loading_screen import LoadingScreen
+from vector2d import Vec2d
+
+def fromwin(path):
+    """Paths serialized on windows have \\ in them, so we need to convert
+       them in order to read them on unix. Windows will happily read unix
+       paths so we dont need to worry about going the other way."""
+    return path.replace("\\", "/")
+
 def bail():
     """ Bail out, ensuring the pygame windows goes away. """
     pygame.quit()
     sys.exit(1)
 
+class GameServices(object):
+    """ Functionality required of the game. """
+    def __init__(self):
+        pass
+    def get_player(self):
+        """ Get the player's game object. """
+        pass
+    def get_camera(self):
+        """ Get the camera. """
+        pass
+    def get_entity_manager(self):
+        """ Get the entity manager. """
+        pass
+    def get_resource_loader(self):
+        """ Get the object that can load images and so on. """
+        pass
+    def lookup_type(self, name):
+        """ Lookup a class by string name so that it can be dynamically
+        instantiated. This is used for component and game object creation. """
+        pass
+
 class Timer(object):
+    """ A simple stopwatch - you tell it how much time has gone by and it
+    tells you when it's done. """
     def __init__(self, period):
         self.timer = 0
         self.period = period
@@ -27,6 +63,241 @@ class Timer(object):
         self.timer -= self.period
     def randomise(self):
         self.timer = self.period * random.random()
+
+class EntityManager(object):
+    """ Manages a set of components systems which themselves manage components. """
+
+    def __init__(self, game_services):
+        """ Initialise the entity manager. """
+
+        # Currently existing objects and queue of objects to create.
+        self.objects = []
+        self.new_objects = []
+
+        # System stuff
+        self.systems = {}
+        self.systems_list = []
+
+        # The services we require from the game. This is a little circular as it
+        # exposes the entity manager but there you go...
+        self.game_services = game_services
+
+        # The componet class has a method manager_type() which defines what type of
+        # system is supposed to manage components of that type. If we get a component
+        # that claims to be managed by type t, we assume all components of that type
+        # are managed by type t, and record the mapping here.
+        #
+        # Note that we could probably express this relationship a lot more cleanly. But
+        # this will do for now...
+        self.component_type_mapping = {}
+
+    def create_queued_objects(self):
+        """ Create objects that have been queued. """
+        for o in self.new_objects:
+            self.objects.append(o)
+            self.new_objects = []
+
+    def garbage_collect(self):
+        """ Remove all of the objects that have been marked for deletion."""
+        self.objects = [ x for x in self.objects if not x.is_garbage ]
+
+    def create_game_object(self, config_name, *args):
+        """ Add a new object. It is initialised, but not added to the game
+        right away: that gets done at a certain point in the game loop."""
+        config = self.game_services.get_resource_loader().load_config_file(config_name)
+        t = self.game_services.lookup_type(config["type"])
+        obj = t(*args)
+        obj.initialise(self.game_services, config)
+        self.new_objects.append(obj)
+        return obj
+    
+    def register_component_system(self, system):
+        """ Register a component system. """
+        self.systems[system.__class__] = system
+        self.systems_list.append(system) # Note: could just insert at right place.
+        self.systems_list = sorted(
+            self.systems_list,
+            lambda x, y: cmp(x.priority, y.priority)
+        )
+
+    def get_component_system(self, component):
+        """ Get the system that should manage a given component. """
+        return self.get_component_system_by_type(component.manager_type())
+        
+    def get_component_system_by_type(self, t):
+        """ Get the component system of the given type. """
+        if not t in self.systems:
+            self.register_component_system(t())
+        return self.systems[t]
+
+    def add_component(self, component):
+        """ Add a component to the appropriate managing system. Note that the component
+        knows what game object it is attached to. """
+
+        # See comment above.
+        if not component.__class__ in self.component_type_mapping:
+            self.component_type_mapping[component.__class__] = component.manager_type()
+
+        # Do the business.
+        self.get_component_system(component).add_component(component)
+
+    def remove_component_by_concrete_type(self, game_object, component_type):
+        """ Remove all components of the given ***concrete*** type from the game object. """
+        # If we haven't seen a component of this concrete type then there is by definition
+        # nothing to remove.
+        if component_type in self.component_type_mapping:
+            system_type = self.component_type_mapping[component_type]
+            system = self.get_component_system_by_type(system_type)
+            system.remove_object_components(game_object, component_type)
+
+    def update(self, dt):
+        """ Update all of the systems in priority order. """
+        for system in self.systems_list:
+            system.update(dt)
+        self.garbage_collect()
+
+class ComponentSystem(object):
+    """ Manages a set of game object components. It knows how to update the
+    components over time, how to get the components out for a particular object,
+    and how to remove components when their objects are dead. """
+
+    def __init__(self):
+        """ Initialise. """
+        self.components = []
+        self.priority = 0
+        
+    def add_component(self, component):
+        """ Add a component. """
+        self.components.append(component)
+        
+    def remove_component(self, component):
+        """ Remove a particular component. """
+        self.components.remove(component)
+
+    def get_component(self, game_object, component_type):
+        """ Get a single component of a particular type."""
+        components = self.get_components(game_object, component_type)
+        if len(components) > 1:
+            raise Exception("Expected there to be either 0 or 1 components attached to game object.")
+        elif len(components) == 1:
+            return components[0]
+        else:
+            return None
+        
+    def get_components(self, game_object, component_type):
+        """ Get all components of a particular type attached to the given object. """
+        components = []
+        for c in self.components:
+            if c.game_object == game_object and c.__class__ == component_type:
+                components.append(c)
+        return components
+    
+    def remove_object_components(self, game_object, component_type):
+        """ Remove all components of a particular concrete type from an object. """
+        components = self.get_components(game_object, component_type)
+        for c in components:
+            self.remove_component(c)
+
+    def garbage_collect(self):
+        """ Remove all dead components. """
+        to_remove = [x for x in self.components if x.is_garbage()]
+        for component in to_remove:
+            component.on_object_killed()
+            self.remove_component(component)
+            
+    def update(self, dt):
+        """ Update the components. """
+        self.garbage_collect()
+        for component in self.components:
+            component.update(dt)
+
+# You will notice some overlap between game objects and components e.g.
+# create_game_object(), get_system_by_type(). I think eventually everything
+# in GameObject apart from is_garbage() i.e. config and game services will
+# move completely into components. Currently all that derived game objects
+# do is initialise() themselves with different components.
+
+class Component(object):
+    """ A game object component. """
+    
+    def __init__(self, game_object):
+        """ Initialise the component. """
+        self.game_object = game_object
+        
+    def manager_type(self):
+        """ Return the type of system that should be managing us. """
+        return ComponentSystem
+    
+    def is_garbage(self):
+        """ Is our entity dead? """
+        return self.game_object.is_garbage
+    
+    def update(self, dt):
+        """ Update the component. """
+        pass
+    
+    def on_object_killed(self):
+        """ Do something when the object is killed. """
+        pass
+
+    def get_system_by_type(self, t):
+        return self.game_object.get_system_by_type(t)
+
+    def create_game_object(self, *args):
+        return self.game_object.create_game_object(*args)
+
+class GameObject(object):
+    """ An object in the game. It knows whether it needs to be deleted, and
+    has access to object / component creation services. """
+
+    def __init__(self):
+        """ Constructor. Since you don't have access to the game services
+        in __init__, more complicated initialisation must be done in
+        initialise()."""
+        self.is_garbage = False
+        self.game_services = None
+
+    def initialise(self, game_services, config):
+        """ Initialise the object: create drawables, physics bodies, etc. """
+        self.game_services = game_services
+        self.config = config
+
+    def kill(self):
+        """ Mark the object for deletion. """
+        self.is_garbage = True
+
+    def add_component(self, component):
+        """ Shortcut to add a component. """
+        self.game_services.get_entity_manager().add_component(component)
+
+    def get_system_by_type(self, t):
+        return self.game_services.get_entity_manager().get_component_system_by_type(t)
+
+    def create_game_object(self, *args):
+        return self.game_services.get_entity_manager().create_game_object(*args)
+
+class Camera(GameObject):
+    """ A camera, which drawing is done in relation to. """
+
+    def __init__(self, screen):
+        """ Initialise the camera. """
+        GameObject.__init__(self)
+        self.position = Vec2d(0, 0)
+        self.screen = screen
+
+    def surface(self):
+        """ Get the surface drawing will be done on. """
+        return self.screen
+
+    def world_to_screen(self, world):
+        """ Convert from world coordinates to screen coordinates. """
+        centre = Vec2d(self.screen.get_size())/2
+        return centre + world - self.position
+
+    def screen_to_world(self, screen):
+        """ Convert from screen coordinates to world coordinates. """
+        centre = Vec2d(self.screen.get_size())/2
+        return screen + self.position - centre
 
 class Config(object):
     """ A hierarchical data store. """
@@ -96,3 +367,94 @@ class Config(object):
             return ret
         except:
             return None
+
+class ResourceLoader(object):
+    """ A resource loader - loads and caches resources which can be requested by the game. """
+    
+    def __init__(self):
+        """ Initialise the resource loader. """
+        self.images = {}
+        self.animations = {}
+        self.minimise_image_loading = False
+        self.configs = {}
+        self.preload_name = None
+
+    def preload(self, screen):
+        """ Preload certain resources to reduce game stutter. """
+        self.preload_name = "preload.txt"
+        if self.minimise_image_loading:
+            self.preload_name = "preload_min.txt"
+        if os.path.isfile(self.preload_name):
+            filenames = json.load(open(self.preload_name, "r"))
+            loading = LoadingScreen(len(filenames), screen)
+            for filename in filenames:
+                self.load_image(filename)
+                loading.increment()
+
+    def save_preload(self):
+        """ Save a list of what to preload next time. """
+        if self.preload_name is not None and not os.path.isfile(self.preload_name):
+            json.dump(
+                self.images.keys(),
+                open(preload_name, "w"),
+                indent=4,
+                separators=(',', ': ')
+            )
+        
+    def load_image(self, filename):
+        """ Load an image from the file system. """
+        filename = fromwin(filename)
+        if not filename in self.images:
+            self.images[filename] = pygame.image.load(filename).convert_alpha()
+            print "Loaded image: %s" % filename
+        return self.images[filename]
+
+    def load_animation(self, filename):
+        """ Load an animation from the filesystem. """
+        if not filename in self.animations:
+            fname = os.path.join(os.path.join("res/anims", filename), "anim.txt")
+            anim = json.load(open(fname))
+            name_base = anim["name_base"]
+            num_frames = anim["num_frames"]
+            extension = anim["extension"]
+            period = anim["period"]
+            frames = []
+            for i in range(num_frames):
+                # If we want to load faster disable loading too many anims...
+                if self.minimise_image_loading and num_frames > 10 and i % 10 != 0:
+                    continue
+                padded = (4-len(str(i)))*"0" + str(i)
+                img_filename = os.path.join(os.path.dirname(fname), name_base + padded + extension)
+                frames.append(self.load_image(img_filename))
+            self.animations[filename] = (frames, period)
+            print "Loaded animation: %s" % filename
+        (frames, period) = self.animations[filename]
+        return Animation(frames, period)
+
+    def load_config_file(self, filename):
+        """ Read in a configuration file. """
+        if not filename in self.configs:
+            c = Config()
+            c.load(filename)
+            self.configs[filename] = c
+        return self.configs[filename]
+
+class Animation(object):
+    """ A set of images with a timer which determines what image gets drawn
+    at any given moment. """
+    def __init__(self, frames, period):
+        self.frames = frames
+        self.timer = Timer(period)
+        self.orientation = 0
+    def tick(self, dt):
+        return self.timer.tick(dt)
+    def reset(self):
+        self.timer.reset()
+    def draw(self, world_pos, camera):
+        img = self.frames[self.timer.pick_index(len(self.frames))]
+        if (self.orientation != 0):
+            img = img = pygame.transform.rotate(img, 90 - self.orientation)
+        screen_pos = camera.world_to_screen(world_pos) - Vec2d(img.get_rect().center)
+        camera.surface().blit(img, screen_pos)
+    def randomise(self):
+        self.timer.randomise()

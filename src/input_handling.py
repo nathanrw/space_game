@@ -2,32 +2,27 @@ from vector2d import Vec2d
 
 import pygame
 
-class InputHandling(object):
-    def __init__(self):
-        self.input_handlers = []
-    def add_input_handler(self, handler):
-        self.input_handlers.append(handler)
+from utils import *
+
+class InputHandling(ComponentSystem):
+    """ A system for input handlers: components that know how to deal
+    with input. """
     def handle_input(self, event):
-        self.input_handlers = [ x for x in self.input_handlers if not x.is_garbage() ]
-        for handler in self.input_handlers:
+        self.garbage_collect()
+        for handler in self.components:
             if handler.handle_input(event):
                 return True
         return False
-    def update(self, dt):
-        for handler in self.input_handlers:
-            handler.update(dt)
 
-class InputHandler(object):
-    def __init__(self, game_object):
-        self.game_object = game_object
-    def is_garbage(self):
-        return self.game_object.is_garbage
+class InputHandler(Component):
+    """ An input handling component. """
+    def manager_type(self):
+        return InputHandling
     def handle_input(self, event):
         return False
-    def update(self, dt):
-        pass
 
 class PlayerInputHandler(InputHandler):
+    """ Deals with input to the player's ship. """
     def __init__(self, player):
         InputHandler.__init__(self, player)
         self.dir = Vec2d(0, 0)

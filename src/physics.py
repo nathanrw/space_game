@@ -1,21 +1,22 @@
 from vector2d import Vec2d
 
+from utils import *
+
 import pymunk
 
 def vec2tup(vec):
     """ Convert a vector defining the get operator into a tuple. """
     return (vec[0], vec[1])
 
-class Physics(object):
+class Physics(ComponentSystem):
     """ Physics system. It's now implemented using pymunk, but that fact should
-        not leak out of this file!"""
+        not leak out of this file! Game objects that need to be simulated should
+        be given Body components which will be managed by a Physics system. """
 
     def __init__(self):
         """ Initialise physics. """
-
-        # List of body components. These encapsulate pymunk bodies/shapes.
-        self.bodies = []
-
+        ComponentSystem.__init__(self)
+        
         # List of collision handlers. These operate in terms of types of
         # game object. We implement them using a pymunk collision handler.
         self.collision_handlers = []
@@ -42,15 +43,23 @@ class Physics(object):
         self.default_handler = self.space.add_default_collision_handler()
         self.default_handler.begin = lambda a, s, d: False
 
-    def add_body(self, body):
+    def add_component(self, body):
         """ Add a body to the simulation, initialising it. """
-        self.bodies.append(body)
+        ComponentSystem.add_component(self, body)
         body.create(self.space)
 
-    def remove_body(self, body):
+    def add_body(self, body):
+        """ As above. """
+        self.add_component(self, body)
+
+    def remove_component(self, body):
         """ Remove a body from the simulation, deinitialising it. """
-        self.bodies.remove(body)
+        ComponentSystem.remove_component(self, body)
         body.destroy()
+
+    def remove_body(self, body):
+        """ As above. """
+        self.remove_component(self, body)
 
     def add_collision_handler(self, handler):
         """ Add a logical collision handler for the game. """
@@ -58,14 +67,12 @@ class Physics(object):
 
     def update(self, dt):
         """ Advance the simulation. """
-        to_remove = [x for x in self.bodies if x.is_garbage()]
-        for b in to_remove:
-            self.remove_body(b)
+        ComponentSystem.update(self, dt)
         self.space.step(dt)
 
     def closest_body_of_type(self, point, t):
         """ Find the closest body of a given type. """
-        bodies_of_type = filter(lambda x: isinstance(x.game_object, t), self.bodies)
+        bodies_of_type = filter(lambda x: isinstance(x.game_object, t), self.components)
         best_yet = None
         best_length_yet = None
         for b in bodies_of_type:
@@ -75,7 +82,7 @@ class Physics(object):
                 best_length_yet = length
         return best_yet
 
-class Body(object):
+class Body(Component):
     """ Physical body attached to a game object. Note that it's implemented
     in terms of pymunk now. It will need to change since we're currently
     using pymunk in a pretty horrendous way: this was to preserve the original
@@ -84,6 +91,7 @@ class Body(object):
     
     def __init__(self, game_object):
         """ Initialise the body, attached to the given game object. """
+        Component.__init__(self, game_object)
         self.__position = Vec2d(0, 0)
         self.__velocity = Vec2d(0, 0)
         self.__size = 5
@@ -91,8 +99,10 @@ class Body(object):
         self.__collideable = True
         self.body = None
         self.shape = None
-        self.game_object = game_object
         self.space = None
+
+    def manager_type(self):
+        return Physics
 
     def create(self, space):
         """ Actually add the body to the simulation. """
@@ -116,11 +126,6 @@ class Body(object):
             self.space.remove(self.body, self.shape)
             self.body = None
             self.shape = None
-
-    def is_garbage(self):
-        """ If a body's corresponding game object has been removed, then
-        the body should be removed from the simulation. """
-        return self.game_object.is_garbage
         
     @property
     def position(self):

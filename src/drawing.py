@@ -1,3 +1,7 @@
+""" Everything that draws itself on the screen is a drawable. A drawable is
+a special kind of component that knows how to draw itself given a surface
+and a camera. """
+
 import pygame
 import os
 import json
@@ -6,73 +10,24 @@ from vector2d import Vec2d
 
 from utils import *
 
-def fromwin(path):
-    """Paths serialized on windows have \\ in them, so we need to convert
-       them in order to read them on unix. Windows will happily read unix
-       paths so we dont need to worry about going the other way."""
-    return path.replace("\\", "/")
-
-class Drawing(object):
+class Drawing(ComponentSystem):
     """ A class that manages a set of things that can draw themselves. """
 
-    def __init__(self):
-        self.drawables = []
-        self.images = {}
-        self.animations = {}
-        self.minimise_image_loading = False
-
-    def add_drawable(self, drawable):
-        self.drawables.append(drawable)
-
     def draw(self, camera):
-        self.drawables = sorted(self.drawables, lambda x, y: cmp(x.level, y.level))
-        for drawable in self.drawables:
+        """ Draw the drawables in order of layer. """
+        self.components = sorted(self.components, lambda x, y: cmp(x.level, y.level))
+        for drawable in self.components:
             drawable.draw(camera)
 
-    def update(self, dt):
-        self.drawables = [x for x in self.drawables if not x.is_garbage()]
-        for drawable in self.drawables:
-            drawable.update(dt)
-
-    def load_image(self, filename):
-        filename = fromwin(filename)
-        if not filename in self.images:
-            self.images[filename] = pygame.image.load(filename).convert_alpha()
-            print "Loaded image: %s" % filename
-        return self.images[filename]
-
-    def load_animation(self, filename):
-        if not filename in self.animations:
-            fname = os.path.join(os.path.join("res/anims", filename), "anim.txt")
-            anim = json.load(open(fname))
-            name_base = anim["name_base"]
-            num_frames = anim["num_frames"]
-            extension = anim["extension"]
-            period = anim["period"]
-            frames = []
-            for i in range(num_frames):
-                # If we want to load faster disable loading too many anims...
-                if self.minimise_image_loading and num_frames > 10 and i % 10 != 0:
-                    continue
-                padded = (4-len(str(i)))*"0" + str(i)
-                img_filename = os.path.join(os.path.dirname(fname), name_base + padded + extension)
-                frames.append(self.load_image(img_filename))
-            self.animations[filename] = (frames, period)
-            print "Loaded animation: %s" % filename
-        (frames, period) = self.animations[filename]
-        return Animation(frames, period)
-
-class Drawable(object):
+class Drawable(Component):
     """ Base class for something that can be drawn. """
     def __init__(self, game_object):
-        self.game_object = game_object
+        Component.__init__(self, game_object)
         self.level = 0
+    def manager_type(self):
+        return Drawing
     def draw(self, camera):
         pass
-    def update(self, dt):
-        pass
-    def is_garbage(self):
-        return self.game_object.is_garbage
 
 class AnimBodyDrawable(Drawable):
     """ Draws an animation at the position of a body. """
@@ -164,21 +119,3 @@ class Polygon(object):
     def draw(self, camera):
         transformed = [camera.world_to_screen(x) for x in self.points]
         pygame.draw.polygon(camera.surface(), self.colour, transformed)
-
-class Animation(object):
-    def __init__(self, frames, period):
-        self.frames = frames
-        self.timer = Timer(period)
-        self.orientation = 0
-    def tick(self, dt):
-        return self.timer.tick(dt)
-    def reset(self):
-        self.timer.reset()
-    def draw(self, world_pos, camera):
-        img = self.frames[self.timer.pick_index(len(self.frames))]
-        if (self.orientation != 0):
-            img = img = pygame.transform.rotate(img, 90 - self.orientation)
-        screen_pos = camera.world_to_screen(world_pos) - Vec2d(img.get_rect().center)
-        camera.surface().blit(img, screen_pos)
-    def randomise(self):
-        self.timer.randomise()
