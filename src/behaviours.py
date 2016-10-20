@@ -46,8 +46,7 @@ class FollowsPlayer(EnemyBehaviour):
 		self.target_dist = self.config["desired_distance_to_player"]
 
 	def update(self, dt):
-		# Accelerate towards the player.
-		# Todo: make it accelerate faster if moving away from the player.
+		# accelerate towards the player and tries to match velocities when close
 		player = self.game_services.get_player()
 		displacement = player.body.position - self.game_object.body.position
 		rvel = player.body.velocity - self.game_object.body.velocity
@@ -55,9 +54,7 @@ class FollowsPlayer(EnemyBehaviour):
 		distality = 1 - 2 ** ( - displacement.length / self.target_dist )
 		direction = ( 1 - distality ) * rvel.normalized() + distality * displacement.normalized()
 		force = min( [ max( [displacement.length / self.target_dist, rvel.length/200 ] ), 1] ) * self.thrust * direction
-		# self.game_object.body.body.apply_force_at_local_point( force, ( 0, 0 ) )
 		self.game_object.body.body.force = force
-		# print "rvel " + str( rvel )
 
 class ManuallyShootsBullets(Behaviour):
     """ Something that knows how to spray bullets. Note that this is not a
