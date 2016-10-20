@@ -44,9 +44,11 @@ class FollowsPlayer(EnemyBehaviour):
         # Accelerate towards the player.
         # Todo: make it accelerate faster if moving away from the player.
         player = self.game_services.get_player()
-        player_pos = player.body.position
-        displacement = player_pos - self.game_object.body.position
-        direction = displacement.normalized()
+        displacement = player.body.position - self.game_object.body.position
+	rvel = player.body.velocity - self.game_object.body.velocity
+	distality = 1 - 2 ** ( - displacement.length )
+        direction = ( 1 - distality ) * rvel.normalized() + distality * displacement.normalized()
+	# done till here
         if displacement.length > self.config["desired_distance_to_player"]:
             acceleration = direction * self.config["acceleration"]
             self.game_object.body.velocity += acceleration * dt
