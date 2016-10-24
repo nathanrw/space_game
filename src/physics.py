@@ -183,6 +183,21 @@ class Body(Component):
         else:
             self.__mass = value
 
+
+    @property
+    def force(self):
+        if self.body is not None:
+            return Vec2d( self.body.force )
+        else:
+            return self.__force
+
+    @force.setter
+    def force(self, value):
+        if self.body is not None:
+            self.body.force = vec2tup(value)
+        else:
+            self.__force = value
+
     @property
     def collideable(self):
         return self.__collideable
