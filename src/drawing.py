@@ -9,6 +9,7 @@ import json
 from vector2d import Vec2d
 
 from utils import *
+from physics import *
 
 class Drawing(ComponentSystem):
     """ A class that manages a set of things that can draw themselves. """
@@ -21,8 +22,8 @@ class Drawing(ComponentSystem):
 
 class Drawable(Component):
     """ Base class for something that can be drawn. """
-    def __init__(self, game_object):
-        Component.__init__(self, game_object)
+    def __init__(self, game_object, game_services, config):
+        Component.__init__(self, game_object, game_services, config)
         self.level = 0
     def manager_type(self):
         return Drawing
@@ -31,11 +32,10 @@ class Drawable(Component):
 
 class AnimBodyDrawable(Drawable):
     """ Draws an animation at the position of a body. """
-    def __init__(self, obj, anim, body):
-        Drawable.__init__(self, obj)
-        self.anim = anim
-        self.body = body
-        self.kill_on_finished = False
+    def __init__(self, game_object, game_services, config):
+        Drawable.__init__(self, game_object, game_services, config)
+        self.anim = game_services.get_resource_loader().load_animation(config["anim_name"])
+        self.kill_on_finished = config.get_or_default("kill_on_finish", False)
     def update(self, dt):
         if self.anim.tick(dt):
             if self.kill_on_finished:
@@ -43,17 +43,18 @@ class AnimBodyDrawable(Drawable):
             else:
                 self.anim.reset()
     def draw(self, camera):
-        self.anim.draw(self.body.position, camera)
+        body = self.get_component(Body)
+        self.anim.draw(body.position, camera)
 
 class HealthBarDrawable(Drawable):
     """ Draws a health bar above a body. """
-    def __init__(self, obj, body):
-        Drawable.__init__(self, obj)
-        self.body = body
+    def __init__(self, game_object, game_services, config):
+        Drawable.__init__(self, game_object, game_services, config)
     def draw(self, camera):
-        rect = pygame.Rect(0, 0, self.body.size*2, 6)
-        rect.center = camera.world_to_screen(self.body.position)
-        rect.top = rect.top - (self.body.size + 10)
+        body = self.get_component(Body)
+        rect = pygame.Rect(0, 0, body.size*2, 6)
+        rect.center = camera.world_to_screen(body.position)
+        rect.top = rect.top - (body.size + 10)
         pygame.draw.rect(camera.surface(), (255, 0, 0), rect)
         rect.width = int(self.game_object.hp/float(self.game_object.max_hp) * rect.width)
         pygame.draw.rect(camera.surface(), (0, 255, 0), rect)
@@ -61,27 +62,27 @@ class HealthBarDrawable(Drawable):
 class BulletDrawable(Drawable):
     """ A drawable that draws an image aligned with the relative velocity
     of a body to the player """
-    def __init__(self, bullet, image, body, player_body):
-        Drawable.__init__(self, bullet)
-        self.image = image
-        self.body = body
-        self.player_body = player_body
+    def __init__(self, game_object, game_services, config):
+        Drawable.__init__(self, game_object, game_services, config)
+        self.image = game_services.get_resource_loader().load_image(config["image_name"])
     def draw(self, camera):
         screen = camera.surface()
         player_velocity = Vec2d(0, 0)
-        if self.player_body is not None:
-            player_velocity = self.player_body.velocity
-        relative_velocity = self.body.velocity - player_velocity
+        body = self.get_component(Body)
+        player_body = self.game_services.get_player().get_component(Body)
+        if player_body is not None:
+            player_velocity = player_body.velocity
+        relative_velocity = body.velocity - player_velocity
         rotation = relative_velocity.get_angle()
         rotated = pygame.transform.rotate(self.image, 90 - rotation + 180)
-        pos = camera.world_to_screen(self.body.position) - Vec2d(rotated.get_rect().center)
+        pos = camera.world_to_screen(body.position) - Vec2d(rotated.get_rect().center)
         screen.blit(rotated, pos)
 
 class WinLoseDrawable(Drawable):
     """ A drawable for displaying the result of the game. """
-    def __init__(self, camera, image):
-        Drawable.__init__(self, camera)
-        self.image = image
+    def __init__(self, game_object, game_services, config):
+        Drawable.__init__(self, game_object, game_services, config)
+        self.image = game_services.get_resource_loader().load_image(config["image_name"])
         self.level = 999
     def draw(self, camera):
         screen = camera.surface()
@@ -90,15 +91,15 @@ class WinLoseDrawable(Drawable):
 
 class BackgroundDrawable(Drawable):
     """ A drawable for a scrolling background. """
-    def __init__(self, camera, image):
-        Drawable.__init__(self, camera)
-        self.image = image
+    def __init__(self, game_object, game_services, config):
+        Drawable.__init__(self, game_object, game_services, config)
+        self.image = game_services.get_resource_loader().load_image(config["image_name"])
         self.level = -999
     def draw(self, camera):
         screen = camera.surface()
         (image_width, image_height) = self.image.get_size()
         (screen_width, screen_height) = screen.get_size()
-        pos = self.game_object.position
+        pos = camera.position
         x = int(pos.x)
         y = int(pos.y)
         start_i = -(x%image_width)

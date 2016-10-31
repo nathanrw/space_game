@@ -89,14 +89,14 @@ class Body(Component):
     interface while integrating pymunk. But we should stop mucking around with
     position / velocity / size (!) and use forces instead. """
     
-    def __init__(self, game_object):
+    def __init__(self, game_object, game_services, config):
         """ Initialise the body, attached to the given game object. """
-        Component.__init__(self, game_object)
+        Component.__init__(self, game_object, game_services, config)
         self.__position = Vec2d(0, 0)
         self.__velocity = Vec2d(0, 0)
-        self.__size = 5
-        self.__mass = 1.0
-        self.__collideable = True
+        self.__size = config.get_or_default("size", 5)
+        self.__mass = config.get_or_default("mass", 1)
+        self.__collideable = config.get_or_default("is_collideable", True)
         self.body = None
         self.shape = None
         self.space = None

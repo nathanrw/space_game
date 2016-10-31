@@ -255,9 +255,11 @@ class ComponentSystem(object):
 class Component(object):
     """ A game object component. """
     
-    def __init__(self, game_object):
+    def __init__(self, game_object, game_services, config):
         """ Initialise the component. """
         self.game_object = game_object
+        self.game_services = game_services
+        self.config = config
         
     def manager_type(self):
         """ Return the type of system that should be managing us. """

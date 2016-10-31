@@ -24,8 +24,8 @@ class InputHandler(Component):
 
 class PlayerInputHandler(InputHandler):
     """ Deals with input to the player's ship. """
-    def __init__(self, player):
-        InputHandler.__init__(self, player)
+    def __init__(self, game_object, game_services, config):
+        InputHandler.__init__(self, game_object, game_services, config)
         self.dir = Vec2d(0, 0)
     def handle_input(self, e):
         if InputHandler.handle_input(self, e):
@@ -58,4 +58,5 @@ class PlayerInputHandler(InputHandler):
         return False
     def update(self, dt):
         body = self.get_component(Body)
-        body.velocity += self.dir.normalized() * dt * 500 
+        if body is not None:
+            body.velocity += self.dir.normalized() * dt * 500 

@@ -142,9 +142,8 @@ class Game(object):
         self.player = self.entity_manager.create_game_object("player.txt")
 
         # Draw a pretty scrolling background.
-        background_name = "res/images/star--background-seamless-repeating9.jpg"
-        self.entity_manager.add_component(
-            BackgroundDrawable(self.camera, self.resource_loader.load_image(background_name)))
+        cfg = {"image_name":"res/images/star--background-seamless-repeating9.jpg"}
+        self.entity_manager.add_component(BackgroundDrawable(self.camera, self.game_services, cfg))
 
         # The enemy at present is just one carrier.
         self.carrier = self.entity_manager.create_game_object("enemies/carrier.txt")
@@ -191,8 +190,8 @@ class Game(object):
                 image_name = "res/images/youwin.png"
                 if self.player.is_garbage:
                     image_name = "res/images/youlose.png"
-                img = self.resource_loader.load_image(image_name)
-                self.entity_manager.add_component(WinLoseDrawable(self.camera, img))
+                cfg = {"image_name":image_name}
+                self.entity_manager.add_component(WinLoseDrawable(self.camera, self.game_services, cfg))
 
             # Close the game if we've won.
             if self.won:

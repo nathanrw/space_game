@@ -26,9 +26,7 @@ class Behaviour(Component):
     various things. Perhaps eventually all components will look like
     this, and this class can be deleted. """
     def __init__(self, game_object, game_services, config):
-        Component.__init__(self, game_object)
-        self.game_services = game_services
-        self.config = config
+        Component.__init__(self, game_object, game_services, config)
 
 class EnemyBehaviour(Behaviour):
     def towards_player(self):
@@ -218,13 +216,8 @@ class Explosion(GameObject):
     def initialise(self, game_services, config):
         """ Create a body and a drawable for the explosion. """
         GameObject.initialise(self, game_services, config)
-        anim = game_services.get_resource_loader().load_animation(config["anim_name"])
-        body = Body(self)
-        body.collideable = False
-        self.add_component(body)
-        drawable = AnimBodyDrawable(self, anim, body)
-        drawable.kill_on_finished = True
-        self.add_component(drawable)
+        self.add_component(Body(self, game_services, config))
+        self.add_component(AnimBodyDrawable(self, game_services, config))
 
 class Bullet(GameObject):
     """ A projectile. """
@@ -233,13 +226,8 @@ class Bullet(GameObject):
         """ Build a body and drawable. The bullet will be destroyed after
         a few seconds. """
         GameObject.initialise(self, game_services, config)
-        body = Body(self)
-        body.size = config["size"]
-        self.lifetime = Timer(config["lifetime"])
-        img = self.game_services.get_resource_loader().load_image(config["image_name"])
-        player_body = game_services.get_player().get_component(Body)
-        self.add_component(body)
-        self.add_component(BulletDrawable(self, img, body, player_body))
+        self.add_component(Body(self, game_services, config))
+        self.add_component(BulletDrawable(self, game_services, config))
         self.add_component(ExplodesOnDeath(self, game_services, config))
         self.add_component(KillOnTimer(self, game_services, config))
 
@@ -263,18 +251,11 @@ class Shooter(GameObject):
     def initialise(self, game_services, config):
         """ Create a body and some drawables. We also set up the gun. """
         GameObject.initialise(self, game_services, config)
-        anim = game_services.get_resource_loader().load_animation(config["anim_name"])
-        anim.randomise()
         self.hp = self.config["hp"]
         self.max_hp = self.config["hp"] # Rendundant, but code uses this.
-        body = Body(self)
-        body.mass = config["mass"]
-        body.size = config["size"]
-        drawable = AnimBodyDrawable(self, anim, body)
-        hp_drawable = HealthBarDrawable(self, body)
-        self.add_component(body)
-        self.add_component(drawable)
-        self.add_component(hp_drawable)
+        self.add_component(Body(self, game_services, config))
+        self.add_component(AnimBodyDrawable(self, game_services, config))
+        self.add_component(HealthBarDrawable(self, game_services, config))
         self.add_component(ExplodesOnDeath(self, game_services, config))
 
     def receive_damage(self, amount):
@@ -306,15 +287,11 @@ class Player(Shooter):
         """ Initialise with the game services: create an input handler so
         the player can drive us around. """
         Shooter.initialise(self, game_services, config)
-        normal_gun = ManuallyShootsBullets(self,
-                                           game_services,
-                                           game_services.get_resource_loader().load_config_file(config["gun_config"]))
-        torpedo_gun = ManuallyShootsBullets(self,
-                                            game_services,
-                                            game_services.get_resource_loader().load_config_file(config["torpedo_gun_config"]))
-        self.add_component(PlayerInputHandler(self))
-        self.add_component(normal_gun)
-        self.add_component(torpedo_gun)
+        gun_config = game_services.get_resource_loader().load_config_file(config["gun_config"])
+        torp_config = game_services.get_resource_loader().load_config_file(config["torpedo_gun_config"])
+        self.add_component(PlayerInputHandler(self, game_services, config))
+        self.add_component(ManuallyShootsBullets(self, game_services, gun_config))
+        self.add_component(ManuallyShootsBullets(self, game_services, torp_config))
         self.add_component(MovesCamera(self, game_services, config))
 
     def start_shooting(self, pos):
