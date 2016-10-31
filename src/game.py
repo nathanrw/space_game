@@ -148,7 +148,7 @@ class Game(object):
 
         # The enemy at present is just one carrier.
         self.carrier = self.entity_manager.create_game_object("enemies/carrier.txt")
-        self.carrier.body.position = Vec2d((0, 100))
+        self.carrier.get_component(Body).position = Vec2d((0, 100))
 
         # Make it so that bullets can damage things. In future I'd like "damages" and
         # "causes damage" to be components, in which case this will need to be reworked...

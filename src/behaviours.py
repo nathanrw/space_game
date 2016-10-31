@@ -34,27 +34,43 @@ class EnemyBehaviour(Behaviour):
     def towards_player(self):
         """ Get the direction towards the player. """
         player = self.game_services.get_player()
-        player_pos = player.body.position
-        displacement = player_pos - self.game_object.body.position
+        if player.is_garbage:
+            return Vec2d(0, 1)
+        player_pos = player.get_component(Body).position
+        displacement = player_pos - self.get_component(Body).position
         direction = displacement.normalized()
         return direction
 
 class FollowsPlayer(EnemyBehaviour):
     def __init__(self, game_object, game_services, config):
         EnemyBehaviour.__init__(self, game_object, game_services, config)
-        self.thrust = self.game_object.body.mass * self.config["acceleration"]
-        self.target_dist = self.config["desired_distance_to_player"]
 
     def update(self, dt):
+
         # accelerate towards the player and tries to match velocities when close
         player = self.game_services.get_player()
-        displacement = player.body.position - self.game_object.body.position
-        rvel = player.body.velocity - self.game_object.body.velocity
-        # distality is a mapping of distance onto the interval [0,1) to interpolate between two behaviours
-        distality = 1 - 2 ** ( - displacement.length / self.target_dist )
+        if player.is_garbage:
+            return
+        
+        body = self.get_component(Body)
+        player_body = player.get_component(Body)
+        displacement = player_body.position - body.position
+        rvel = player_body.velocity - body.velocity
+        target_dist = self.config["desired_distance_to_player"]
+
+        # distality is a mapping of distance onto the interval [0,1) to
+        # interpolate between two behaviours
+        distality = 1 - 2 ** ( - displacement.length / target_dist )
         direction = ( 1 - distality ) * rvel.normalized() + distality * displacement.normalized()
-        force = min( [ max( [displacement.length / self.target_dist, rvel.length/200 ] ), 1] ) * self.thrust * direction
-        self.game_object.body.force = force
+
+        # Determine the fraction of our thrust to apply. This is governed by
+        # how far away the target is, and how far away we want to be.
+        frac = min(max(displacement.length / target_dist, rvel.length/200), 1)
+
+        # Apply force in the interpolated direction.
+        thrust = body.mass * self.config["acceleration"]
+        force = frac * thrust * direction
+        body.force = force
 
 class ManuallyShootsBullets(Behaviour):
     """ Something that knows how to spray bullets. Note that this is not a
@@ -63,7 +79,6 @@ class ManuallyShootsBullets(Behaviour):
     def __init__(self, game_object, game_services, config):
         """ Inject dependencies and set up default parameters. """
         Behaviour.__init__(self, game_object, game_services, config)
-        self.body = game_object.body
         self.shooting = False
         self.shooting_at = Vec2d(0, 0)
         self.shooting_at_screen = False
@@ -96,17 +111,19 @@ class ManuallyShootsBullets(Behaviour):
         if self.shot_timer > 0:
             self.shot_timer -= dt
         if self.shooting:
+            body = self.get_component(Body)
             shooting_at_world = self.shooting_at_world()
-            shooting_at_dir = (shooting_at_world - self.body.position).normalized()
+            shooting_at_dir = (shooting_at_world - body.position).normalized()
             while self.shot_timer <= 0:
                 self.shot_timer += 1.0/self.config["shots_per_second"]
                 bullet = self.create_game_object(self.config["bullet_config"])
                 muzzle_velocity = shooting_at_dir * self.config["bullet_speed"]
                 spread = self.config["spread"]
                 muzzle_velocity.rotate(random.random() * spread - spread)
-                bullet.body.velocity = self.body.velocity + muzzle_velocity
-                separation = self.body.size+bullet.body.size+1
-                bullet.body.position = Vec2d(self.body.position) + shooting_at_dir * separation
+                bullet_body = bullet.get_component(Body)
+                bullet_body.velocity = body.velocity + muzzle_velocity
+                separation = body.size+bullet_body.size+1
+                bullet_body.position = Vec2d(body.position) + shooting_at_dir * separation
 
 class AutomaticallyShootsBullets(ManuallyShootsBullets):
     """ Something that shoots bullets at something else. """
@@ -125,10 +142,12 @@ class AutomaticallyShootsBullets(ManuallyShootsBullets):
     def update(self, dt):
         """ Update the shooting bullet. """
 
+        body = self.get_component(Body)
+
         # Update tracking.
         if not self.tracking:
             closest = self.get_system_by_type(Physics).closest_body_of_type(
-                self.body.position,
+                body.position,
                 self.track_type
             )
             if closest:
@@ -156,7 +175,7 @@ class AutomaticallyShootsBullets(ManuallyShootsBullets):
 
 class MovesCamera(Behaviour):
     def update(self, dt):
-        self.game_services.get_camera().position = Vec2d(self.game_object.body.position)
+        self.game_services.get_camera().position = Vec2d(self.get_component(Body).position)
 
 class LaunchesFighters(EnemyBehaviour):
     def __init__(self, game_object, game_services, config):
@@ -173,8 +192,10 @@ class LaunchesFighters(EnemyBehaviour):
             spread = self.config["takeoff_spread"]
             direction.rotate(spread*random.random()-spread/2.0)
             child = self.create_game_object(self.config["fighter_config"])
-            child.body.velocity = self.game_object.body.velocity + direction * self.config["takeoff_speed"]
-            child.body.position = Vec2d(self.game_object.body.position)
+            body = self.get_component(Body)
+            child_body = child.get_component(Body)
+            child_body.velocity = body.velocity + direction * self.config["takeoff_speed"]
+            child_body.position = Vec2d(body.position)
 
 class KillOnTimer(Behaviour):
     """ For objects that should be destroyed after a limited time. """
@@ -189,7 +210,7 @@ class ExplodesOnDeath(Behaviour):
     """ For objects that spawn an explosion when they die. """
     def on_object_killed(self):
         explosion = self.create_game_object(self.config["explosion_config"])
-        explosion.body.position = Vec2d(self.game_object.body.position)
+        explosion.get_component(Body).position = Vec2d(self.get_component(Body).position)
 
 class Explosion(GameObject):
     """ An explosion. It will play an animation and then disappear. """
@@ -198,12 +219,12 @@ class Explosion(GameObject):
         """ Create a body and a drawable for the explosion. """
         GameObject.initialise(self, game_services, config)
         anim = game_services.get_resource_loader().load_animation(config["anim_name"])
-        self.body = Body(self)
-        self.body.collideable = False
-        self.drawable = AnimBodyDrawable(self, anim, self.body)
-        self.drawable.kill_on_finished = True
-        self.add_component(self.body)
-        self.add_component(self.drawable)
+        body = Body(self)
+        body.collideable = False
+        self.add_component(body)
+        drawable = AnimBodyDrawable(self, anim, body)
+        drawable.kill_on_finished = True
+        self.add_component(drawable)
 
 class Bullet(GameObject):
     """ A projectile. """
@@ -212,13 +233,13 @@ class Bullet(GameObject):
         """ Build a body and drawable. The bullet will be destroyed after
         a few seconds. """
         GameObject.initialise(self, game_services, config)
-        self.body = Body(self)
-        self.body.size = config["size"]
+        body = Body(self)
+        body.size = config["size"]
         self.lifetime = Timer(config["lifetime"])
         img = self.game_services.get_resource_loader().load_image(config["image_name"])
-        player_body = game_services.get_player().body
-        self.add_component(self.body)
-        self.add_component(BulletDrawable(self, img, self.body, player_body))
+        player_body = game_services.get_player().get_component(Body)
+        self.add_component(body)
+        self.add_component(BulletDrawable(self, img, body, player_body))
         self.add_component(ExplodesOnDeath(self, game_services, config))
         self.add_component(KillOnTimer(self, game_services, config))
 
@@ -246,14 +267,14 @@ class Shooter(GameObject):
         anim.randomise()
         self.hp = self.config["hp"]
         self.max_hp = self.config["hp"] # Rendundant, but code uses this.
-        self.body = Body(self)
-        self.body.mass = config["mass"]
-        self.body.size = config["size"]
-        self.drawable = AnimBodyDrawable(self, anim, self.body)
-        self.hp_drawable = HealthBarDrawable(self, self.body)
-        self.add_component(self.body)
-        self.add_component(self.drawable)
-        self.add_component(self.hp_drawable)
+        body = Body(self)
+        body.mass = config["mass"]
+        body.size = config["size"]
+        drawable = AnimBodyDrawable(self, anim, body)
+        hp_drawable = HealthBarDrawable(self, body)
+        self.add_component(body)
+        self.add_component(drawable)
+        self.add_component(hp_drawable)
         self.add_component(ExplodesOnDeath(self, game_services, config))
 
     def receive_damage(self, amount):
@@ -285,31 +306,33 @@ class Player(Shooter):
         """ Initialise with the game services: create an input handler so
         the player can drive us around. """
         Shooter.initialise(self, game_services, config)
-        self.normal_gun = ManuallyShootsBullets(self,
-                                  game_services,
-                                  game_services.get_resource_loader().load_config_file(config["gun_config"]))
-        self.torpedo_gun = ManuallyShootsBullets(self,
-                                  game_services,
-                                  game_services.get_resource_loader().load_config_file(config["torpedo_gun_config"]))
-        self.guns = [ self.normal_gun, self.torpedo_gun ]
+        normal_gun = ManuallyShootsBullets(self,
+                                           game_services,
+                                           game_services.get_resource_loader().load_config_file(config["gun_config"]))
+        torpedo_gun = ManuallyShootsBullets(self,
+                                            game_services,
+                                            game_services.get_resource_loader().load_config_file(config["torpedo_gun_config"]))
         self.add_component(PlayerInputHandler(self))
-        self.add_component(self.normal_gun)
-        self.add_component(self.torpedo_gun)
+        self.add_component(normal_gun)
+        self.add_component(torpedo_gun)
         self.add_component(MovesCamera(self, game_services, config))
 
     def start_shooting(self, pos):
         """ Start shooting at a particular screen space point. """
-        for g in self.guns:
+        guns = self.get_components(ManuallyShootsBullets)
+        for g in guns:
             g.start_shooting_screen(pos)
 
     def stop_shooting(self):
         """ Stop the guns. """
-        for g in self.guns:
+        guns = self.get_components(ManuallyShootsBullets)
+        for g in guns:
             g.stop_shooting()
 
     def is_shooting(self):
         """ Are the guns firing? If one is they both are. """
-        return self.normal_gun.shooting
+        guns = self.get_components(ManuallyShootsBullets)
+        return guns[0].shooting
 
 class BulletShooterCollisionHandler(CollisionHandler):
     """ Collision handler to apply bullet damage. """

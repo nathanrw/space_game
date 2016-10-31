@@ -3,6 +3,7 @@ from vector2d import Vec2d
 import pygame
 
 from utils import *
+from physics import *
 
 class InputHandling(ComponentSystem):
     """ A system for input handlers: components that know how to deal
@@ -56,4 +57,5 @@ class PlayerInputHandler(InputHandler):
                 return True
         return False
     def update(self, dt):
-        self.game_object.body.velocity += self.dir.normalized() * dt * 500 
+        body = self.get_component(Body)
+        body.velocity += self.dir.normalized() * dt * 500 

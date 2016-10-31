@@ -68,7 +68,10 @@ class BulletDrawable(Drawable):
         self.player_body = player_body
     def draw(self, camera):
         screen = camera.surface()
-        relative_velocity = self.body.velocity - self.player_body.velocity
+        player_velocity = Vec2d(0, 0)
+        if self.player_body is not None:
+            player_velocity = self.player_body.velocity
+        relative_velocity = self.body.velocity - player_velocity
         rotation = relative_velocity.get_angle()
         rotated = pygame.transform.rotate(self.image, 90 - rotation + 180)
         pos = camera.world_to_screen(self.body.position) - Vec2d(rotated.get_rect().center)
