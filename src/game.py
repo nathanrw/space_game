@@ -40,6 +40,7 @@ from drawing import *
 from utils import *
 from input_handling import *
 from behaviours import *
+from game_objects import *
 
 class SpaceGameServices(GameServices):
     """ The services exposed to the game objects. This is separate from

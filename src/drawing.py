@@ -10,6 +10,7 @@ from vector2d import Vec2d
 
 from utils import *
 from physics import *
+from behaviours import Hitpoints
 
 class Drawing(ComponentSystem):
     """ A class that manages a set of things that can draw themselves. """
@@ -52,11 +53,16 @@ class HealthBarDrawable(Drawable):
         Drawable.__init__(self, game_object, game_services, config)
     def draw(self, camera):
         body = self.get_component(Body)
+        if body is None:
+            return
+        hitpoints = self.get_component(Hitpoints)
+        if hitpoints is None:
+            return
         rect = pygame.Rect(0, 0, body.size*2, 6)
         rect.center = camera.world_to_screen(body.position)
         rect.top = rect.top - (body.size + 10)
         pygame.draw.rect(camera.surface(), (255, 0, 0), rect)
-        rect.width = int(self.game_object.hp/float(self.game_object.max_hp) * rect.width)
+        rect.width = int(hitpoints.hp/float(hitpoints.max_hp) * rect.width)
         pygame.draw.rect(camera.surface(), (0, 255, 0), rect)
 
 class BulletDrawable(Drawable):
