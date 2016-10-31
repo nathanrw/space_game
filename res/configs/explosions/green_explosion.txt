@@ -1,4 +1,6 @@
 {
 	"type": "Explosion",
-	"anim_name": "green_explosion"
+	"anim_name": "green_explosion",
+	"kill_on_finish":1,
+	"collideable":0
 }

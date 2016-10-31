@@ -1,4 +1,6 @@
 {
 	"type": "Explosion",
-	"anim_name": "big_explosion"
+	"anim_name": "big_explosion",
+	"kill_on_finish":1,
+	"collideable":0
 }
