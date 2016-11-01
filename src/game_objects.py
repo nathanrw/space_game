@@ -1,8 +1,7 @@
+""" Definitions of all game objects. Note that pretty much all they now
+do is fill themselves with components. It should soon be possible to
+initialise them from data and remove this file."""
 
-from vector2d import Vec2d
-
-from utils import *
-from physics import *
 from drawing import *
 from input_handling import *
 from physics import *
