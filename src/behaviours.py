@@ -12,23 +12,13 @@ I want to do.
 """
 
 from vector2d import Vec2d
-
-from utils import *
-from physics import *
-from drawing import *
-from input_handling import *
-from physics import *
+from utils import Component, Timer
+from physics import Body, Physics
 
 import pygame
+import random
         
-class Behaviour(Component):
-    """ A component with access to the game state so that it can do
-    various things. Perhaps eventually all components will look like
-    this, and this class can be deleted. """
-    def __init__(self, game_object, game_services, config):
-        Component.__init__(self, game_object, game_services, config)
-
-class EnemyBehaviour(Behaviour):
+class EnemyBehaviour(Component):
     def towards_player(self):
         """ Get the direction towards the player. """
         player = self.game_services.get_player()
@@ -70,13 +60,13 @@ class FollowsPlayer(EnemyBehaviour):
         force = frac * thrust * direction
         body.force = force
 
-class ManuallyShootsBullets(Behaviour):
+class ManuallyShootsBullets(Component):
     """ Something that knows how to spray bullets. Note that this is not a
     game object, it's something game objects can use to share code. """
 
     def __init__(self, game_object, game_services, config):
         """ Inject dependencies and set up default parameters. """
-        Behaviour.__init__(self, game_object, game_services, config)
+        Component.__init__(self, game_object, game_services, config)
         self.shooting = False
         self.shooting_at = Vec2d(0, 0)
         self.shooting_at_screen = False
@@ -171,13 +161,13 @@ class AutomaticallyShootsBullets(ManuallyShootsBullets):
         # Shoot bullets.
         ManuallyShootsBullets.update(self, dt)
 
-class MovesCamera(Behaviour):
+class MovesCamera(Component):
     def update(self, dt):
         self.game_services.get_camera().position = Vec2d(self.get_component(Body).position)
 
 class LaunchesFighters(EnemyBehaviour):
     def __init__(self, game_object, game_services, config):
-        Behaviour.__init__(self, game_object, game_services, config)
+        Component.__init__(self, game_object, game_services, config)
         self.spawn_timer = Timer(config["spawn_period"])
         self.spawn_timer.advance_to_fraction(0.8)
     def update(self, dt):
@@ -195,24 +185,24 @@ class LaunchesFighters(EnemyBehaviour):
             child_body.velocity = body.velocity + direction * self.config["takeoff_speed"]
             child_body.position = Vec2d(body.position)
 
-class KillOnTimer(Behaviour):
+class KillOnTimer(Component):
     """ For objects that should be destroyed after a limited time. """
     def __init__(self, game_object, game_services, config):
-        Behaviour.__init__(self, game_object, game_services, config)
+        Component.__init__(self, game_object, game_services, config)
         self.lifetime = Timer(config["lifetime"])
     def update(self, dt):
         if self.lifetime.tick(dt):
             self.game_object.kill()
 
-class ExplodesOnDeath(Behaviour):
+class ExplodesOnDeath(Component):
     """ For objects that spawn an explosion when they die. """
     def on_object_killed(self):
         explosion = self.create_game_object(self.config["explosion_config"])
         explosion.get_component(Body).position = Vec2d(self.get_component(Body).position)
 
-class Hitpoints(Behaviour):
+class Hitpoints(Component):
     def __init__(self, game_object, game_services, config):
-        Behaviour.__init__(self, game_object, game_services, config)
+        Component.__init__(self, game_object, game_services, config)
         self.hp = self.config["hp"]
         self.max_hp = self.config["hp"] # Rendundant, but code uses this.
 
@@ -221,7 +211,7 @@ class Hitpoints(Behaviour):
         if self.hp <= 0:
             self.game_object.kill()
 
-class DamageOnContact(Behaviour):
+class DamageOnContact(Component):
     def apply_damage(self, game_object):
         """ Apply damage to an object we've hit. """
         if self.config.get_or_default("destroy_on_hit", True):
