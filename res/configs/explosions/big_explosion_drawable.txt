@@ -1,0 +1,5 @@
+{
+  "type": "AnimBodyDrawable",
+  "anim_name": "big_explosion",
+  "kill_on_finish":1
+}

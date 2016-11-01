@@ -1,6 +1,6 @@
 {
-	"type": "Explosion",
-	"anim_name": "green_explosion",
-	"kill_on_finish":1,
-	"collideable":0
+  "components": [
+    { "config": "explosions/green_explosion_drawable.txt" },
+    { "config": "explosions/explosion_body.txt" }
+  ]
 }

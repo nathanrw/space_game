@@ -110,15 +110,15 @@ class EntityManager(object):
         config = loader.load_config_file(config_name)
 
         # Instantiate the object.
-        t = self.game_services.lookup_type(config["type"])
+        t = self.game_services.lookup_type(config.get_or_default("type", "GameObject"))
         obj = t(*args)
         obj.initialise(self.game_services, config)
 
         # Add components specified in the config.
         components = config.get_or_default("components", [])
         for component in components:
-            component_type = self.game_services.lookup_type(component["type"])
             component_config = loader.load_config_file(component["config"])
+            component_type = self.game_services.lookup_type(component_config["type"])
             obj.add_component(component_type(obj, self.game_services, component_config))
 
         # Add the object to the creation queue, and return it to the caller.

@@ -9,15 +9,6 @@ from behaviours import *
 
 import pygame
 
-class Explosion(GameObject):
-    """ An explosion. It will play an animation and then disappear. """
-
-    def initialise(self, game_services, config):
-        """ Create a body and a drawable for the explosion. """
-        GameObject.initialise(self, game_services, config)
-        self.add_component(Body(self, game_services, config))
-        self.add_component(AnimBodyDrawable(self, game_services, config))
-
 class Bullet(GameObject):
     """ A projectile. """
 
