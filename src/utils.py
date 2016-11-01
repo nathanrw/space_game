@@ -106,10 +106,22 @@ class EntityManager(object):
     def create_game_object(self, config_name, *args):
         """ Add a new object. It is initialised, but not added to the game
         right away: that gets done at a certain point in the game loop."""
-        config = self.game_services.get_resource_loader().load_config_file(config_name)
+        loader = self.game_services.get_resource_loader()
+        config = loader.load_config_file(config_name)
+
+        # Instantiate the object.
         t = self.game_services.lookup_type(config["type"])
         obj = t(*args)
         obj.initialise(self.game_services, config)
+
+        # Add components specified in the config.
+        components = config.get_or_default("components", [])
+        for component in components:
+            component_type = self.game_services.lookup_type(component["type"])
+            component_config = loader.load_config_file(component["config"])
+            obj.add_component(component_type(obj, self.game_services, component_config))
+
+        # Add the object to the creation queue, and return it to the caller.
         self.new_objects.append(obj)
         return obj
     
