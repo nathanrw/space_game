@@ -28,6 +28,7 @@ class ShootingBullet(Bullet):
     def initialise(self, game_services, config):
         """ Initialise the shooting bullet. """
         Bullet.initialise(self, game_services, config)
+        self.add_component(ManuallyShootsBullets(self, game_services, game_services.get_resource_loader().load_config_file(config["gun_config"])))
         self.add_component(AutomaticallyShootsBullets(self, game_services, config))
 
 class Shooter(GameObject):
@@ -48,6 +49,7 @@ class Target(Shooter):
     def initialise(self, game_services, config):
         """ Overidden to configure the body and the gun. """
         Shooter.initialise(self, game_services, config)
+        self.add_component(ManuallyShootsBullets(self, game_services, game_services.get_resource_loader().load_config_file(config["gun_config"])))
         self.add_component(AutomaticallyShootsBullets(self, game_services, config))
         self.add_component(FollowsPlayer(self, game_services, config))
 

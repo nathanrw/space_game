@@ -113,14 +113,12 @@ class ManuallyShootsBullets(Component):
                 separation = body.size+bullet_body.size+1
                 bullet_body.position = Vec2d(body.position) + shooting_at_dir * separation
 
-class AutomaticallyShootsBullets(ManuallyShootsBullets):
+class AutomaticallyShootsBullets(Component):
     """ Something that shoots bullets at something else. """
 
     def __init__(self, game_object, game_services, config):
         """ Initialise. """
-        gun_config = game_services.get_resource_loader().load_config_file(config["gun_config"])
-        ManuallyShootsBullets.__init__(self, game_object, game_services, gun_config)
-        self.tracking_config = config
+        Component.__init__(self, game_object, game_services, config)
         self.track_type = game_services.lookup_type(config["track_type"])
         self.fire_timer = Timer(config["fire_period"])
         self.fire_timer.advance_to_fraction(0.8)
@@ -131,6 +129,7 @@ class AutomaticallyShootsBullets(ManuallyShootsBullets):
         """ Update the shooting bullet. """
 
         body = self.get_component(Body)
+        gun = self.get_component(ManuallyShootsBullets)
 
         # Update tracking.
         if not self.tracking:
@@ -146,20 +145,17 @@ class AutomaticallyShootsBullets(ManuallyShootsBullets):
             if self.tracking.is_garbage():
                 self.tracking = None
         if self.tracking:
-            if not self.shooting:
+            if not gun.shooting:
                 if self.fire_timer.tick(dt):
                     self.fire_timer.reset()
-                    self.start_shooting_world(self.tracking.position)
+                    gun.start_shooting_world(self.tracking.position)
             else:
                 if self.burst_timer.tick(dt):
                     self.burst_timer.reset()
-                    self.stop_shooting()
+                    gun.stop_shooting()
                 else:
                     # Maintain aim.
-                    self.start_shooting_world(self.tracking.position)
-
-        # Shoot bullets.
-        ManuallyShootsBullets.update(self, dt)
+                    gun.start_shooting_world(self.tracking.position)
 
 class MovesCamera(Component):
     def update(self, dt):
