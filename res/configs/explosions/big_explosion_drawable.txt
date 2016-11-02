@@ -1,5 +1,4 @@
 {
-  "type": "AnimBodyDrawable",
-  "anim_name": "big_explosion",
-  "kill_on_finish":1
+  "deriving": "explosions/explosion_drawable.txt",
+  "anim_name": "big_explosion"
 }

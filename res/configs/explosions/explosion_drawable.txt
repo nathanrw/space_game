@@ -1,0 +1,4 @@
+{
+  "type": "AnimBodyDrawable",
+  "kill_on_finish":1
+}

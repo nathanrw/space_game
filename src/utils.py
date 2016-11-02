@@ -117,7 +117,11 @@ class EntityManager(object):
         # Add components specified in the config.
         components = config.get_or_default("components", [])
         for component in components:
-            component_config = loader.load_config_file(component["config"])
+            component_config = None
+            if "config" in component:
+                component_config = loader.load_config_file(component["config"])
+            else:
+                component_config = Config(component)
             component_type = self.game_services.lookup_type(component_config["type"])
             obj.add_component(component_type(obj, self.game_services, component_config))
 
@@ -392,11 +396,25 @@ class Camera(GameObject):
 class Config(object):
     """ A hierarchical data store. """
     
-    def __init__(self):
-        """ Initialise an empty data store. """
+    def __init__(self, wrap=None):
+        """ Initialise an empty data store, or a wrapping one if a dictionary
+        is provided."""
         self.parent = None
         self.data = {}
         self.filename = None
+        self.child_path = None
+
+        if wrap is not None:
+            self.data = wrap
+
+    def create_child(self, path):
+        """ Create a config wrapping a child node. """
+        cfg = Config()
+        cfg.parent = self.parent
+        cfg.data = self.data
+        cfg.filename = self.filename
+        cfg.child_path = path
+        return cfg
         
     def load(self, filename):
         """ Load data from a file. Remember the file so we can save it later. """
@@ -442,6 +460,8 @@ class Config(object):
 
     def get_or_none(self, key):
         """ Get some data, or None if it isnt found. """
+        if self.child_path is not None:
+            key = self.child_path + "." + key
         got = self.__get(key)
         if got is None and self.parent is not None:
             got = self.parent.get_or_none(key)
