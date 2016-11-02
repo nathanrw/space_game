@@ -1,5 +1,20 @@
 {
-	"deriving": "bullets/red_bullet.txt",
-	"image_name": "res/images/pewpewgreen.png",
-	"explosion_config": "explosions/green_explosion.txt"
+  "components": [
+    { "type": "Body",
+      "mass": 100,
+      "size": 3
+    },
+    { "type": "KillOnTimer",
+      "lifetime": 2
+    },
+    { "type": "BulletDrawable",
+      "image_name": "res/images/pewpewgreen.png"
+    },
+    { "type": "DamageOnContact",
+      "damage": 1
+    },
+    { "type": "ExplodesOnDeath",
+      "explosion_config": "explosions/red_explosion.txt"
+    }
+  ]
 }

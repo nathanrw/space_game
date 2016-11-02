@@ -1,8 +1,20 @@
 {
-	"type": "Bullet",
-	"size": 3,
-	"lifetime": 2,
-	"image_name": "res/images/pewpew.png",
-	"explosion_config": "explosions/red_explosion.txt",
-	"damage": 1
+  "components": [
+    { "type": "Body",
+      "mass": 100,
+      "size": 3
+    },
+    { "type": "KillOnTimer",
+      "lifetime": 2
+    },
+    { "type": "BulletDrawable",
+      "image_name": "res/images/pewpew.png"
+    },
+    { "type": "DamageOnContact",
+      "damage": 1
+    },
+    { "type": "ExplodesOnDeath",
+      "explosion_config": "explosions/red_explosion.txt"
+    }
+  ]
 }

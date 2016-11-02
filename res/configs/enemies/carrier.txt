@@ -1,11 +1,35 @@
 {
-	"deriving": "enemies/target.txt",
-	"type": "Carrier",
-	"anim_name": "enemy_ship",
-	"size": 64,
-	"spawn_period": 10,
-	"takeoff_speed": 700,
-	"takeoff_spread": 30,
-	"fighter_config": "enemies/fighter.txt",
-	"gun_config": "weapons/big_green_blaster.txt"
+  "type": "Target",
+  "components": [
+    { "type": "LaunchesFighters",
+      "spawn_period": 10,
+      "takeoff_speed": 700,
+      "takeoff_spread": 30,
+      "fighter_config": "enemies/fighter.txt"
+    },
+    { "type": "Hitpoints",
+      "hp": 4
+    },
+    { "type": "Body",
+      "mass": 100,
+      "size": 64
+    },
+    { "type": "AnimBodyDrawable",
+      "anim_name": "enemy_ship"
+    },
+    { "type": "HealthBarDrawable" },
+    { "config": "weapons/big_green_blaster.txt" },
+    { "type": "AutomaticallyShootsBullets",
+      "fire_period": 10,
+      "burst_period": 3,
+      "track_type": "Player"
+    },
+    { "type": "ExplodesOnDeath",
+      "explosion_config": "explosions/big_explosion.txt"
+    },
+    { "type": "FollowsPlayer",
+      "desired_distance_to_player": 500,
+      "acceleration": 600
+    }
+  ]
 }

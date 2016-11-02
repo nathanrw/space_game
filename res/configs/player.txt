@@ -1,6 +1,23 @@
 {
-	"deriving": "utils/shooter.txt",
-	"type": "Player",
-	"anim_name": "player_ship",
-	"torpedo_gun_config": "weapons/torpedo_gun.txt"
+  "type": "Player",
+  "components": [
+    { "type": "Hitpoints",
+      "hp": 100
+    },
+    { "type": "Body",
+      "mass": 100,
+      "size": 20
+    },
+    { "type": "AnimBodyDrawable",
+      "anim_name": "player_ship"
+    },
+    { "type": "HealthBarDrawable" },
+    { "config": "weapons/torpedo_gun.txt" },
+    { "config": "weapons/red_blaster.txt" },
+    { "type": "ExplodesOnDeath",
+      "explosion_config": "explosions/big_explosion.txt"
+    },
+    { "type": "MovesCamera" },
+    { "type": "PlayerInputHandler" }
+  ]
 }
