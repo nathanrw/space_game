@@ -2,13 +2,6 @@
 
 See utils.py for the overall scheme this fits into.
 
-Currently for the most part all derived game objects do is initialise()
-themselves with different components. I think all this will get pushed
-into components and some data driven composition scheme, and the actual
-game objects will become very simple. Even the player could be turned
-into a behaviour as opposed to a derived object. This is probably what
-I want to do.
-
 """
 
 from vector2d import Vec2d
