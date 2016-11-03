@@ -119,7 +119,6 @@ class AutomaticallyShootsBullets(Component):
     def __init__(self, game_object, game_services, config):
         """ Initialise. """
         Component.__init__(self, game_object, game_services, config)
-        self.track_type = game_services.lookup_type(config["track_type"])
         self.fire_timer = Timer(config["fire_period"])
         self.fire_timer.advance_to_fraction(0.8)
         self.burst_timer = Timer(config["burst_period"])
@@ -133,9 +132,19 @@ class AutomaticallyShootsBullets(Component):
 
         # Update tracking.
         if not self.tracking:
-            closest = self.get_system_by_type(Physics).closest_body_of_type(
+
+            # Find the closest object we don't like.
+            self_team = self.get_component(Team)
+            def f(body):
+                if self_team is None:
+                    return True
+                team = body.get_component(Team)
+                if team is not None:
+                    return team.team() != self_team.team()
+                return True
+            closest = self.get_system_by_type(Physics).closest_body_with(
                 body.position,
-                self.track_type
+                f
             )
             if closest:
                 self.tracking = closest
@@ -221,3 +230,9 @@ class DamageCollisionHandler(CollisionHandler):
         CollisionHandler.__init__(self, DamageOnContact, Hitpoints)
     def handle_matching_collision(self, dmg, hp):
         dmg.apply_damage(hp)
+
+class Team(Component):
+    def __init__(self, game_object, game_services, config):
+        Component.__init__(self, game_object, game_services, config)
+    def team(self):
+        return self.config["team"]

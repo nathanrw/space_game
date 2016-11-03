@@ -1,5 +1,4 @@
 {
-  "type": "Player",
   "components": [
     { "type": "Hitpoints",
       "hp": 100
@@ -18,6 +17,8 @@
       "explosion_config": "explosions/big_explosion.txt"
     },
     { "type": "MovesCamera" },
-    { "type": "PlayerInputHandler" }
+    { "type": "PlayerInputHandler" },
+    { "type": "Team",
+      "team": "player" }
   ]
 }

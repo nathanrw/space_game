@@ -70,12 +70,12 @@ class Physics(ComponentSystem):
         ComponentSystem.update(self, dt)
         self.space.step(dt)
 
-    def closest_body_of_type(self, point, t):
-        """ Find the closest body of a given type. """
-        bodies_of_type = filter(lambda x: isinstance(x.game_object, t), self.components)
+    def closest_body_with(self, point, f):
+        """ Find the closest body of a given predicate. """
+        bodies = filter(f, self.components)
         best_yet = None
         best_length_yet = None
-        for b in bodies_of_type:
+        for b in bodies:
             length = (b.position - point).length
             if not best_yet or length < best_length_yet:
                 best_yet = b

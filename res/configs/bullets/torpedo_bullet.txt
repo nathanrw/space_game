@@ -3,8 +3,7 @@
     { "config": "weapons/torpedo_blaster.txt" },
     { "type": "AutomaticallyShootsBullets",
       "fire_period": 0.1,
-      "burst_period": 0.5,
-      "track_type": "Target"
+      "burst_period": 0.5
     },
     { "type": "Body",
       "mass": 100,
@@ -21,6 +20,8 @@
     },
     { "type": "ExplodesOnDeath",
       "explosion_config": "explosions/big_explosion.txt"
-    }
+    },
+    { "type": "Team",
+      "team": "player" }
   ]
 }

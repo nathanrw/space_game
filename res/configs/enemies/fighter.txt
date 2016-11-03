@@ -1,5 +1,4 @@
 {
-  "type": "Target",
   "components": [
     { "type": "Hitpoints",
       "hp": 4
@@ -15,8 +14,7 @@
     { "config": "weapons/green_blaster.txt" },
     { "type": "AutomaticallyShootsBullets",
       "fire_period": 10,
-      "burst_period": 3,
-      "track_type": "Player"
+      "burst_period": 3
     },
     { "type": "ExplodesOnDeath",
       "explosion_config": "explosions/big_explosion.txt"
@@ -24,6 +22,8 @@
     { "type": "FollowsPlayer",
       "desired_distance_to_player": 500,
       "acceleration": 600
-    }
+    },
+    { "type": "Team",
+      "team": "enemy" }
   ]
 }
