@@ -13,7 +13,7 @@ I want to do.
 
 from vector2d import Vec2d
 from utils import Component, Timer
-from physics import Body, Physics
+from physics import Body, Physics, CollisionHandler
 
 import pygame
 import random
@@ -208,10 +208,16 @@ class Hitpoints(Component):
             self.game_object.kill()
 
 class DamageOnContact(Component):
-    def apply_damage(self, game_object):
+    def apply_damage(self, hitpoints):
         """ Apply damage to an object we've hit. """
         if self.config.get_or_default("destroy_on_hit", True):
             self.game_object.kill()
-        hitpoints = game_object.get_component(Hitpoints)
         if hitpoints is not None:
             hitpoints.receive_damage(self.config["damage"])
+
+class DamageCollisionHandler(CollisionHandler):
+    """ Collision handler to apply bullet damage. """
+    def __init__(self):
+        CollisionHandler.__init__(self, DamageOnContact, Hitpoints)
+    def handle_matching_collision(self, dmg, hp):
+        dmg.apply_damage(hp)

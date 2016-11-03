@@ -150,9 +150,8 @@ class Game(object):
         self.carrier = self.entity_manager.create_game_object("enemies/carrier.txt")
         self.carrier.get_component(Body).position = Vec2d((0, 100))
 
-        # Make it so that bullets can damage things. In future I'd like "damages" and
-        # "causes damage" to be components, in which case this will need to be reworked...
-        self.physics.add_collision_handler(BulletShooterCollisionHandler())
+        # Make it so that bullets can damage things.
+        self.physics.add_collision_handler(DamageCollisionHandler())
 
         # Once the game is won (or lost) we stop the game after a timer elapses.
         self.won = False

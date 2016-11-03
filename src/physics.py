@@ -238,17 +238,22 @@ class CollisionHandler(object):
         self.t2 = t2
         
     def handle_collision(self, o1, o2):
-        """ Handle type colliding bodies if they are of matching types. """
-        if (isinstance(o1, self.t1) and isinstance(o2, self.t2)):
-            self.handle_matching_collision(o1, o2)
+        """ Handle type colliding bodies if they have components of
+        matching types. """
+        c1 = o1.get_component(self.t1)
+        c2 = o2.get_component(self.t2)
+        c3 = o1.get_component(self.t2)
+        c4 = o2.get_component(self.t1)
+        if c1 is not None and c2 is not None:
+            self.handle_matching_collision(c1, c2)
             return True
-        elif (isinstance(o2, self.t1) and isinstance(o1, self.t2)):
-            self.handle_matching_collision(o2, o1)
+        elif c3 is not None and c4 is not None:
+            self.handle_matching_collision(c4, c3)
             return True
         return False
     
-    def handle_matching_collision(self, o1, o2):
-        """ These objects are colliding, so the game should do something. """
+    def handle_matching_collision(self, c1, c2):
+        """ These components are colliding, so the game should do something. """
         pass
 
     def wants_physical_simulation(self):
