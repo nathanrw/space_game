@@ -20,9 +20,7 @@ Things I would like to work on now:
 2) Make the object creation scheme more robust and efficient. There's a lot
    of string wrangling and the current approach to error handling is "YOLO".
 
-3) Make components data driven so they can be added in the config files.
-
-4) Make the use of pymunk more idiomatic. It's currently horrendous.
+3) Make the use of pymunk more idiomatic. It's currently horrendous.
    
 """
 
