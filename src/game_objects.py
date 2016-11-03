@@ -14,23 +14,6 @@ class Target(GameObject):
 class Player(GameObject):
     """ The player! """
 
-    def start_shooting(self, pos):
-        """ Start shooting at a particular screen space point. """
-        guns = self.get_components(ManuallyShootsBullets)
-        for g in guns:
-            g.start_shooting_screen(pos)
-
-    def stop_shooting(self):
-        """ Stop the guns. """
-        guns = self.get_components(ManuallyShootsBullets)
-        for g in guns:
-            g.stop_shooting()
-
-    def is_shooting(self):
-        """ Are the guns firing? If one is they both are. """
-        guns = self.get_components(ManuallyShootsBullets)
-        return guns[0].shooting
-
 class BulletShooterCollisionHandler(CollisionHandler):
     """ Collision handler to apply bullet damage. """
     def __init__(self):
