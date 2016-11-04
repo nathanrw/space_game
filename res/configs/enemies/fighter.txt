@@ -1,29 +1,29 @@
 {
   "components": [
-    { "type": "Hitpoints",
+    { "type": "src.behaviours.Hitpoints",
       "hp": 4
     },
-    { "type": "Body",
+    { "type": "src.physics.Body",
       "mass": 100,
       "size": 20
     },
-    { "type": "AnimBodyDrawable",
+    { "type": "src.drawing.AnimBodyDrawable",
       "anim_name": "enemy_fighter"
     },
-    { "type": "HealthBarDrawable" },
+    { "type": "src.drawing.HealthBarDrawable" },
     { "config": "weapons/green_blaster.txt" },
-    { "type": "AutomaticallyShootsBullets",
+    { "type": "src.behaviours.AutomaticallyShootsBullets",
       "fire_period": 10,
       "burst_period": 3
     },
-    { "type": "ExplodesOnDeath",
+    { "type": "src.behaviours.ExplodesOnDeath",
       "explosion_config": "explosions/big_explosion.txt"
     },
-    { "type": "FollowsPlayer",
+    { "type": "src.behaviours.FollowsPlayer",
       "desired_distance_to_player": 500,
       "acceleration": 600
     },
-    { "type": "Team",
+    { "type": "src.behaviours.Team",
       "team": "enemy" }
   ]
 }

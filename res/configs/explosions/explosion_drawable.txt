@@ -1,4 +1,4 @@
 {
-  "type": "AnimBodyDrawable",
+  "type": "src.drawing.AnimBodyDrawable",
   "kill_on_finish":1
 }

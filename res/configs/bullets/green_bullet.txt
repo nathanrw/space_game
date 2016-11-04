@@ -1,19 +1,19 @@
 {
   "components": [
-    { "type": "Body",
+    { "type": "src.physics.Body",
       "mass": 100,
       "size": 3
     },
-    { "type": "KillOnTimer",
+    { "type": "src.behaviours.KillOnTimer",
       "lifetime": 2
     },
-    { "type": "BulletDrawable",
+    { "type": "src.drawing.BulletDrawable",
       "image_name": "res/images/pewpewgreen.png"
     },
-    { "type": "DamageOnContact",
+    { "type": "src.behaviours.DamageOnContact",
       "damage": 1
     },
-    { "type": "ExplodesOnDeath",
+    { "type": "src.behaviours.ExplodesOnDeath",
       "explosion_config": "explosions/red_explosion.txt"
     }
   ]

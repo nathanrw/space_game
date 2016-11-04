@@ -17,10 +17,7 @@ Things I would like to work on now:
 1) Make it more of a game i.e. support controllers, add more types of enemy,
    weapon etc.
 
-2) Make the object creation scheme more robust and efficient. There's a lot
-   of string wrangling and the current approach to error handling is "YOLO".
-
-3) Make the use of pymunk more idiomatic. It's currently horrendous.
+2) Make the use of pymunk more idiomatic. It's currently horrendous.
    
 """
 
@@ -33,11 +30,11 @@ import sys
 
 from vector2d import Vec2d
 
-from physics import *
-from drawing import *
-from utils import *
-from input_handling import *
-from behaviours import *
+from physics import Physics, Body
+from drawing import Drawing, BackgroundDrawable, WinLoseDrawable
+from behaviours import DamageCollisionHandler
+from utils import GameServices, ResourceLoader, EntityManager, Camera, Timer
+from input_handling import InputHandling
 
 class SpaceGameServices(GameServices):
     """ The services exposed to the game objects. This is separate from
@@ -62,12 +59,6 @@ class SpaceGameServices(GameServices):
     def get_resource_loader(self):
         """ Get the resource loader. """
         return self.game.resource_loader
-
-    def lookup_type(self, typename):
-        """ Lookup a class by string name so that it can be dynamically
-        instantiated. This is used for component and game object creation. """
-        # Note that this implementation is a bit YOLO...
-        return globals()[typename]
                 
 class Game(object):
     """ Class glueing all of the building blocks together into an actual
@@ -138,10 +129,6 @@ class Game(object):
 
         # Make the player
         self.player = self.entity_manager.create_game_object("player.txt")
-
-        # Draw a pretty scrolling background.
-        cfg = {"image_name":"res/images/star--background-seamless-repeating9.jpg"}
-        self.entity_manager.add_component(BackgroundDrawable(self.camera, self.game_services, cfg))
 
         # The enemy at present is just one carrier.
         self.carrier = self.entity_manager.create_game_object("enemies/carrier.txt")

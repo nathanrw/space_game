@@ -38,10 +38,43 @@ class GameServices(object):
     def get_resource_loader(self):
         """ Get the object that can load images and so on. """
         pass
-    def lookup_type(self, name):
+    def lookup_type(self, class_path):
         """ Lookup a class by string name so that it can be dynamically
-        instantiated. This is used for component and game object creation. """
-        pass
+        instantiated. This is used for component and game object creation.
+        This implementation has been pinched from an answer on stack overflow:
+        http://stackoverflow.com/questions/16696225/dynamically-\
+        instantiate-object-of-the-python-class-similar-to-php-new-classname"""
+
+        try:
+            module_path, class_name = class_path.rsplit(".", 1)
+        except ValueError:
+            print "**************************************************************"
+            print "ERROR CREATING OBJECT: '%s'" % class_path
+            print "Must specify e.g. module.class in path. Got: '%s'." % class_path
+            print "**************************************************************"
+            bail()           
+            
+        try:
+            module = __import__(module_path, fromlist=[class_name])
+        except ImportError:
+            print "**************************************************************"
+            print "ERROR CREATING OBJECT: '%s'" % class_path
+            print "The module '%s' could not be imported." % module_path
+            print "**************************************************************"
+            bail()
+
+        try:
+            cls = getattr(module, class_name)
+        except AttributeError:
+            print "**************************************************************"
+            print "ERROR CREATING OBJECT: '%s'" % class_path
+            print "The attribute '%s' could not be found." % class_name
+            print "**************************************************************"
+            bail()
+
+        # Might not actually be a class. But if it's a function that returns
+        # an instance, who cares...
+        return cls
 
 class Timer(object):
     """ A simple stopwatch - you tell it how much time has gone by and it
@@ -110,7 +143,7 @@ class EntityManager(object):
         config = loader.load_config_file(config_name)
 
         # Instantiate the object.
-        t = self.game_services.lookup_type(config.get_or_default("type", "GameObject"))
+        t = self.game_services.lookup_type(config.get_or_default("type", "src.utils.GameObject"))
         obj = t(*args)
         obj.initialise(self.game_services, config)
 

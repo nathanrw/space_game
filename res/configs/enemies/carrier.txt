@@ -1,35 +1,35 @@
 {
   "components": [
-    { "type": "LaunchesFighters",
+    { "type": "src.behaviours.LaunchesFighters",
       "spawn_period": 10,
       "takeoff_speed": 700,
       "takeoff_spread": 30,
       "fighter_config": "enemies/fighter.txt"
     },
-    { "type": "Hitpoints",
+    { "type": "src.behaviours.Hitpoints",
       "hp": 200
     },
-    { "type": "Body",
+    { "type": "src.physics.Body",
       "mass": 100,
       "size": 64
     },
-    { "type": "AnimBodyDrawable",
+    { "type": "src.drawing.AnimBodyDrawable",
       "anim_name": "enemy_ship"
     },
-    { "type": "HealthBarDrawable" },
+    { "type": "src.drawing.HealthBarDrawable" },
     { "config": "weapons/big_green_blaster.txt" },
-    { "type": "AutomaticallyShootsBullets",
+    { "type": "src.behaviours.AutomaticallyShootsBullets",
       "fire_period": 10,
       "burst_period": 3
     },
-    { "type": "ExplodesOnDeath",
+    { "type": "src.behaviours.ExplodesOnDeath",
       "explosion_config": "explosions/big_explosion.txt"
     },
-    { "type": "FollowsPlayer",
+    { "type": "src.behaviours.FollowsPlayer",
       "desired_distance_to_player": 500,
       "acceleration": 600
     },
-    { "type": "Team",
+    { "type": "src.behaviours.Team",
       "team": "enemy" }
   ]
 }
