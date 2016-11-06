@@ -19,6 +19,9 @@
     { "type": "src.behaviours.MovesCamera" },
     { "type": "src.input_handling.PlayerInputHandler" },
     { "type": "src.behaviours.Team",
-      "team": "player" }
+      "team": "player" },
+    { "type": "src.behaviours.Thrusters",
+      "max_thrust": 100000 },
+    { "type": "src.drawing.ThrustersDrawable" }
   ]
 }

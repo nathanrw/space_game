@@ -130,6 +130,21 @@ class Body(Component):
             self.space.remove(self.body, self.shape)
             self.body = None
             self.shape = None
+
+    def world_to_local(self, point):
+        if self.body is not None:
+            return Vec2d(self.body.world_to_local(vec2tup(point)))
+        return None
+
+    def local_to_world(self, point):
+        if self.body is not None:
+            return Vec2d(self.body.local_to_world(vec2tup(point)))
+        return None
+
+    def apply_force_at_local_point(self, force, point):
+        """ Apply a force to the body."""
+        if self.body is not None:
+            self.body.apply_force_at_local_point(vec2tup(force), vec2tup(point))
         
     @property
     def position(self):

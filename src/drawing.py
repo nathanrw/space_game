@@ -5,7 +5,7 @@ and a camera. """
 import pygame
 
 from physics import *
-from behaviours import Hitpoints, Text
+from behaviours import Hitpoints, Text, Thrusters
 
 class Drawing(ComponentSystem):
     """ A class that manages a set of things that can draw themselves. """
@@ -43,8 +43,25 @@ class AnimBodyDrawable(Drawable):
                 self.anim.reset()
     def draw(self, camera):
         body = self.get_component(Body)
-        self.anim.orientation = body.orientation
+        self.anim.orientation = -body.orientation
         self.anim.draw(body.position, camera)
+
+class ThrustersDrawable(Drawable):
+    """ Draw thrusters for an object that has them. """
+    def __init__(self, game_object, game_services, config):
+        Drawable.__init__(self, game_object, game_services, config)
+    def draw(self, camera):
+        body = self.get_component(Body)
+        thrusters = self.get_component(Thrusters)
+        if body is None or thrusters is None:
+            return
+        for thruster in thrusters.thrusters():
+            if thruster.thrust() > 0:
+                pos = thruster.world_position(body)
+                dir = thruster.world_direction(body)
+                length = min(max(10, thruster.thrust() / 100.0), 200)
+                poly = Polygon.make_bullet_polygon(pos, pos-(dir*length))
+                poly.draw(camera)
 
 class HealthBarDrawable(Drawable):
     """ Draws a health bar above a body. """
@@ -158,7 +175,7 @@ class BackgroundDrawable(Drawable):
 class Polygon(object):
     """ A polygon. Used to be used for bullets. """
     @classmethod
-    def make_bullet_polygon(a, b):
+    def make_bullet_polygon(klass, a, b):
         perp = (a-b).perpendicular_normal() * (a-b).length * 0.1
         lerp = a + (b - a) * 0.1
         c = lerp + perp

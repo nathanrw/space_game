@@ -3,8 +3,7 @@ from vector2d import Vec2d
 import pygame
 
 from utils import ComponentSystem, Component
-from physics import Body
-from behaviours import ManuallyShootsBullets
+from behaviours import ManuallyShootsBullets, Thrusters
 
 class InputHandling(ComponentSystem):
     """ A system for input handlers: components that know how to deal
@@ -26,10 +25,6 @@ class InputHandler(Component):
 class PlayerInputHandler(InputHandler):
     """ Deals with input to the player's ship. """
 
-    def __init__(self, game_object, game_services, config):
-        InputHandler.__init__(self, game_object, game_services, config)
-        self.dir = Vec2d(0, 0)
-
     def start_shooting(self, pos):
         """ Start shooting at a particular screen space point. """
         guns = self.get_components(ManuallyShootsBullets)
@@ -50,20 +45,25 @@ class PlayerInputHandler(InputHandler):
     def handle_input(self, e):
         if InputHandler.handle_input(self, e):
             return True
+        thrusters = self.get_component(Thrusters)
+        if thrusters is None:
+            return False
         kmap = {
-            pygame.K_w: Vec2d(0, 1),
-            pygame.K_a: Vec2d(1, 0),
-            pygame.K_s: Vec2d(0, -1),
-            pygame.K_d: Vec2d(-1, 0)
+            pygame.K_w: (lambda: thrusters.go_forwards(), lambda: thrusters.stop_going_forwards()),
+            pygame.K_a: (lambda: thrusters.go_left(), lambda: thrusters.stop_going_left()),
+            pygame.K_s: (lambda: thrusters.go_backwards(), lambda: thrusters.stop_going_backwards()),
+            pygame.K_d: (lambda: thrusters.go_right(), lambda: thrusters.stop_going_right()),
+            pygame.K_q: (lambda: thrusters.turn_left(), lambda: thrusters.stop_turning_left()),
+            pygame.K_e: (lambda: thrusters.turn_right(), lambda: thrusters.stop_turning_right())
         }
         player = self.game_object
         if e.type == pygame.KEYDOWN:
             if e.key in kmap:
-                self.dir -= kmap[e.key]
+                kmap[e.key][0]()
                 return True
         elif e.type == pygame.KEYUP:
             if e.key in kmap:
-                self.dir += kmap[e.key]
+                kmap[e.key][1]()
                 return True
         elif e.type == pygame.MOUSEBUTTONDOWN:
             self.start_shooting(Vec2d(e.pos))
@@ -76,8 +76,3 @@ class PlayerInputHandler(InputHandler):
                 self.start_shooting(Vec2d(e.pos))
                 return True
         return False
-
-    def update(self, dt):
-        body = self.get_component(Body)
-        if body is not None:
-            body.velocity += self.dir.normalized() * dt * 500 

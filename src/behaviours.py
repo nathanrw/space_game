@@ -240,6 +240,90 @@ class Text(Component):
         Component.__init__(self, game_object, game_services, config)
         self.text = "Hello, world!"
 
+class Thruster(object):
+    def __init__(self, position, direction, max_thrust, name):
+        self.__position = position
+        self.__direction = direction
+        self.__max_thrust = max_thrust
+        self.__thrust = 0
+        self.__name = name
+    def go(self):
+        self.__thrust = self.__max_thrust
+    def stop(self):
+        self.__thrust = 0
+    def apply(self, body):
+        if self.__thrust > 0:
+            force = self.__direction * self.__thrust
+            body.apply_force_at_local_point(force, self.__position)
+    def world_position(self, body):
+        return body.local_to_world(self.__position)
+    def world_direction(self, body):
+        return body.local_to_world(self.__direction+self.__position) - body.local_to_world(self.__position)
+    def thrust(self):
+        return self.__thrust
+    def max_thrust(self):
+        return self.__max_thrust
+    def name(self):
+        return self.name
+
+class Thrusters(Component):
+    """ Thruster component. This allows an entity with a body to move itself.
+    Eventually I intend to have the thrusters be configurable, but for now its
+    hard coded."""
+    def __init__(self, game_object, game_services, config):
+        Component.__init__(self, game_object, game_services, config)
+        self.__top_left_thruster =     Thruster(Vec2d(-20, -20), Vec2d( 1,  0), config["max_thrust"] / 8, "top_left")
+        self.__bottom_left_thruster =  Thruster(Vec2d(-20,  20), Vec2d( 1,  0), config["max_thrust"] / 8, "bottom_left")
+        self.__top_right_thruster =    Thruster(Vec2d( 20, -20), Vec2d(-1,  0), config["max_thrust"] / 8, "top_right")
+        self.__bottom_right_thruster = Thruster(Vec2d( 20,  20), Vec2d(-1,  0), config["max_thrust"] / 8, "bottom_right")
+        self.__top_thruster =          Thruster(Vec2d(  0, -20), Vec2d( 0,  1), config["max_thrust"] / 4, "top")
+        self.__bottom_thruster =       Thruster(Vec2d(  0,  20), Vec2d( 0, -1), config["max_thrust"]    , "bottom")
+        self.__thrusters = [self.__top_left_thruster, self.__top_right_thruster,
+                            self.__top_thruster, self.__bottom_thruster,
+                            self.__bottom_left_thruster, self.__bottom_right_thruster]
+    def go_forwards(self):
+        self.__bottom_thruster.go()
+    def stop_going_forwards(self):
+        self.__bottom_thruster.stop()
+    def go_backwards(self):
+        self.__top_thruster.go()
+    def stop_going_backwards(self):
+        self.__top_thruster.stop()
+    def go_left(self):
+        self.__top_right_thruster.go()
+        self.__bottom_right_thruster.go()
+    def stop_going_left(self):
+        self.__top_right_thruster.stop()
+        self.__bottom_right_thruster.stop()
+    def go_right(self):
+        self.__top_left_thruster.go()
+        self.__bottom_left_thruster.go()
+    def stop_going_right(self):
+        self.__top_left_thruster.stop()
+        self.__bottom_left_thruster.stop()
+    def turn_left(self):
+        self.__top_right_thruster.go()
+        self.__bottom_left_thruster.go()
+    def stop_turning_left(self):
+        self.__top_right_thruster.stop()
+        self.__bottom_left_thruster.stop()
+    def turn_right(self):
+        self.__top_left_thruster.go()
+        self.__bottom_right_thruster.go()
+    def stop_turning_right(self):
+        self.__top_left_thruster.stop()
+        self.__bottom_right_thruster.stop()
+    def stop(self):
+        for t in self.__thrusters:
+            t.stop()
+    def update(self, dt):
+        body = self.get_component(Body)
+        if body is not None:
+            for t in self.__thrusters:
+                t.apply(body)
+    def thrusters(self):
+        return self.__thrusters
+
 class WaveSpawner(Component):
     """ Spawns waves of enemies. """
 
