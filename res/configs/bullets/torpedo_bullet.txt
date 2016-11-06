@@ -6,7 +6,7 @@
       "burst_period": 0.5
     },
     { "type": "src.physics.Body",
-      "mass": 100,
+      "mass": 10,
       "size": 10
     },
     { "type": "src.behaviours.KillOnTimer",
