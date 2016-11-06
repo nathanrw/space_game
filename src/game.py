@@ -169,13 +169,13 @@ class Game(object):
             clock.tick(fps)
 
             # Check for win/lose.
-            if not self.won and (self.player.is_garbage or self.carrier.is_garbage):
-                self.won = True
-                image_name = "res/images/youwin.png"
+            if not self.won:
                 if self.player.is_garbage:
-                    image_name = "res/images/youlose.png"
-                cfg = {"image_name":image_name}
-                self.entity_manager.add_component(WinLoseDrawable(self.camera, self.game_services, cfg))
+                    self.won = True
+                    self.entity_manager.create_game_object("lose_screen.txt")
+                elif self.carrier.is_garbage:
+                    self.won = True
+                    self.entity_manager.create_game_object("win_screen.txt")
 
             # Close the game if we've won.
             if self.won:

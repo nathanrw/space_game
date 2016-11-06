@@ -1,0 +1,6 @@
+{
+    "components": [
+        { "type": "src.drawing.WinLoseDrawable",
+          "image_name": "res/images/youwin.png"}
+    ]
+}
