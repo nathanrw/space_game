@@ -262,9 +262,9 @@ class WaveSpawner(Component):
             message = self.create_game_object("endgame_message.txt")
             message_text = message.get_component(Text)
             if self.max_waves():
-                message_text.text = "GAME OVER"
-            else:
                 message_text.text = "VICTORY"
+            else:
+                message_text.text = "GAME OVER"
 
         # If the wave is dead and we're not yet preparing (which displays a timed message) then
         # start preparing a wave.
