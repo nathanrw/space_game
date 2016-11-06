@@ -198,6 +198,11 @@ class ExplodesOnDeath(Component):
         explosion = self.create_game_object(self.config["explosion_config"])
         explosion.get_component(Body).position = Vec2d(self.get_component(Body).position)
 
+class EndProgramOnDeath(Component):
+    """ If the entity this is attached to is destroyed, the program will exit. """
+    def on_object_killed(self):
+        self.game_services.end_game()
+
 class Hitpoints(Component):
     def __init__(self, game_object, game_services, config):
         Component.__init__(self, game_object, game_services, config)
@@ -229,3 +234,11 @@ class Team(Component):
         Component.__init__(self, game_object, game_services, config)
     def team(self):
         return self.config["team"]
+
+class WaveSpawner(Component):
+    def __init__(self, game_object, game_services, config):
+        Component.__init__(self, game_object, game_services, config)
+        self.wave = 0
+        self.spawned = []
+    def update(self, dt):
+        Component.update(self, dt)
