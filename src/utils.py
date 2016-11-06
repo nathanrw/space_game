@@ -539,7 +539,7 @@ class ResourceLoader(object):
         if self.preload_name is not None and not os.path.isfile(self.preload_name):
             json.dump(
                 self.images.keys(),
-                open(preload_name, "w"),
+                open(self.preload_name, "w"),
                 indent=4,
                 separators=(',', ': ')
             )
