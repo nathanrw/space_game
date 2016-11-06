@@ -84,16 +84,31 @@ class BulletDrawable(Drawable):
         pos = camera.world_to_screen(body.position) - Vec2d(rotated.get_rect().center)
         screen.blit(rotated, pos)
 
-class WinLoseDrawable(Drawable):
-    """ A drawable for displaying the result of the game. """
+class TextDrawable(Drawable):
+    """ Draws text in the middle of the screen. """
+
     def __init__(self, game_object, game_services, config):
+        """Load the font."""
         Drawable.__init__(self, game_object, game_services, config)
-        self.image = game_services.get_resource_loader().load_image(config["image_name"])
-        self.level = 999
+        self.__font = game_services.get_resource_loader().load_font(config["font_name"], config["font_size"])
+        colour_dict = config["font_colour"]
+        self.__colour = (colour_dict["red"], colour_dict["green"], colour_dict["blue"])
+        self.__text = None
+        self.set_text(config.get_or_default("text", "Hello, World!"))
+        self.__level = 999
+
+    def set_text(self, text):
+        """Set the text, caching the image."""
+        if text == self.__text:
+            return
+        self.__text = text
+        self.__image = self.__font.render(self.__text, True, self.__colour)
+
     def draw(self, camera):
+        """Draw the text to the screen."""
         screen = camera.surface()
-        pos = Vec2d(screen.get_rect().center) - Vec2d(self.image.get_size())/2
-        screen.blit(self.image, (int(pos.x), int(pos.y)))
+        pos = Vec2d(screen.get_rect().center) - Vec2d(self.__image.get_size()) / 2
+        screen.blit(self.__image, (int(pos.x), int(pos.y)))
 
 class BackgroundDrawable(Drawable):
     """ A drawable for a scrolling background. """

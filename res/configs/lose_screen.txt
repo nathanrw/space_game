@@ -1,6 +1,9 @@
 {
     "components": [
-        { "type": "src.drawing.WinLoseDrawable",
-          "image_name": "res/images/youlose.png"}
+        { "type": "src.drawing.TextDrawable",
+          "font_name": "res/fonts/nasdaqer/NASDAQER.ttf",
+          "font_size": 62,
+          "font_colour": { "red": 255, "green": 255, "blue": 255},
+          "text": "GAME OVER" }
     ]
 }

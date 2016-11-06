@@ -518,8 +518,9 @@ class ResourceLoader(object):
         """ Initialise the resource loader. """
         self.images = {}
         self.animations = {}
-        self.minimise_image_loading = False
+        self.fonts = {}
         self.configs = {}
+        self.minimise_image_loading = False
         self.preload_name = None
 
     def preload(self, screen):
@@ -543,6 +544,12 @@ class ResourceLoader(object):
                 indent=4,
                 separators=(',', ': ')
             )
+
+    def load_font(self, filename, size):
+        """ Load a font from the file system. """
+        if not (filename, size) in self.fonts:
+            self.fonts[(filename, size)] = pygame.font.Font(filename, size)
+        return self.fonts[(filename, size)]
         
     def load_image(self, filename):
         """ Load an image from the file system. """
