@@ -32,7 +32,7 @@ from vector2d import Vec2d
 
 from physics import Physics, Body
 from drawing import Drawing, TextDrawable
-from behaviours import DamageCollisionHandler
+from behaviours import DamageCollisionHandler, EndProgramOnDeath
 from utils import GameServices, ResourceLoader, EntityManager, Timer
 from input_handling import InputHandling
 
@@ -59,6 +59,10 @@ class SpaceGameServices(GameServices):
     def get_resource_loader(self):
         """ Get the resource loader. """
         return self.game.resource_loader
+
+    def end_game(self):
+        """ Stop the game from running. """
+        self.game.stop_running()
                 
 class Game(object):
     """ Class glueing all of the building blocks together into an actual
@@ -105,6 +109,10 @@ class Game(object):
         self.resource_loader.minimise_image_loading = \
             self.config.get_or_default("minimise_image_loading", False)
 
+    def stop_running(self):
+        """ Stop the game from running. """
+        self.running = False
+
     def run(self):
         """ The game loop. This performs initialisation including setting
         up pygame, and shows a loading screen while certain resources are
@@ -139,13 +147,12 @@ class Game(object):
 
         # Once the game is won (or lost) we stop the game after a timer elapses.
         self.won = False
-        self.won_timer = Timer(10)
 
         # Main loop.
-        running = True
+        self.running = True
         fps = 60
         clock = pygame.time.Clock()
-        while running:
+        while self.running:
 
             ## Create any queued objects
             self.entity_manager.create_queued_objects()
@@ -176,11 +183,7 @@ class Game(object):
                     message.get_component(TextDrawable).set_text("GAME OVER")
                 else:
                     message.get_component(TextDrawable).set_text("VICTORY")
-
-            # Close the game if we've won.
-            if self.won:
-                if self.won_timer.tick(1.0/fps):
-                    running = False
+                message.add_component(EndProgramOnDeath(message, self.game_services, {}))
 
         # Finalise
         pygame.quit()

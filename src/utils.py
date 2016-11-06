@@ -38,6 +38,9 @@ class GameServices(object):
     def get_resource_loader(self):
         """ Get the object that can load images and so on. """
         pass
+    def end_game(self):
+        """ Tidy up and exit the program cleanly. """
+        pass
     def lookup_type(self, class_path):
         """ Lookup a class by string name so that it can be dynamically
         instantiated. This is used for component and game object creation.
