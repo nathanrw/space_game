@@ -3,6 +3,7 @@ from vector2d import Vec2d
 from utils import *
 
 import pymunk
+import math
 
 def vec2tup(vec):
     """ Convert a vector defining the get operator into a tuple. """
@@ -94,6 +95,7 @@ class Body(Component):
         Component.__init__(self, game_object, game_services, config)
         self.__position = Vec2d(0, 0)
         self.__velocity = Vec2d(0, 0)
+        self.__angle_radians = 0
         self.__size = config.get_or_default("size", 5)
         self.__mass = config.get_or_default("mass", 1)
         self.__collideable = config.get_or_default("is_collideable", True)
@@ -112,7 +114,9 @@ class Body(Component):
             self.body = pymunk.Body(float(self.__mass), moment)
             self.body.position = vec2tup(self.__position)
             self.body.velocity = vec2tup(self.__velocity)
+            self.body.angle = self.__angle_radians
             self.shape = pymunk.Circle(self.body, float(self.__size))
+            self.shape.friction = 0.8
             if self.collideable:
                 self.shape.collision_type = 1
             else:
@@ -186,17 +190,17 @@ class Body(Component):
 
     @property
     def force(self):
+        """ Note: force gets reset with each tick so no point caching it. """
         if self.body is not None:
             return Vec2d( self.body.force )
         else:
-            return self.__force
+            return Vec2d(0, 0)
 
     @force.setter
     def force(self, value):
+        """ Note: force gets reset with each tick so no point caching it. """
         if self.body is not None:
             self.body.force = vec2tup(value)
-        else:
-            self.__force = value
 
     @property
     def collideable(self):
@@ -213,19 +217,21 @@ class Body(Component):
             else:
                 self.shape.collision_type = 0
 
-    # Note: orientation and angular velocity are not implemented
-    # properly yet.
     @property
-    def orientation(self): return 0
+    def orientation(self):
+        """ Note: Expose degrees because pygame likes degrees. """
+        if self.body is not None:
+            return math.degrees(self.body.angle)
+        else:
+            return math.degrees(self.__angle_radians)
 
     @orientation.setter
-    def orientation(self, value): pass
-
-    @property
-    def angular_velocity(self): return 0
-
-    @angular_velocity.setter
-    def angular_velocity(self, value): pass
+    def orientation(self, value):
+        """ Note: Expose degrees because pygame likes degrees. """
+        if self.body is not None:
+            self.body.angle = math.radians(value)
+        else:
+            self.__angle_radians = math.radians(value)
 
 class CollisionHandler(object):
     """ A logical collision handler. While physical collision handling is

@@ -43,6 +43,7 @@ class AnimBodyDrawable(Drawable):
                 self.anim.reset()
     def draw(self, camera):
         body = self.get_component(Body)
+        self.anim.orientation = body.orientation
         self.anim.draw(body.position, camera)
 
 class HealthBarDrawable(Drawable):
