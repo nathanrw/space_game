@@ -1,9 +1,0 @@
-{
-    "components": [
-        { "type": "src.drawing.TextDrawable",
-          "font_name": "res/fonts/nasdaqer/NASDAQER.ttf",
-          "font_size": 62,
-          "font_colour": { "red": 255, "green": 255, "blue": 255},
-          "text": "VICTORY" }
-    ]
-}

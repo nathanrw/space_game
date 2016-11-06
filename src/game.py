@@ -31,9 +31,9 @@ import sys
 from vector2d import Vec2d
 
 from physics import Physics, Body
-from drawing import Drawing, BackgroundDrawable, WinLoseDrawable
+from drawing import Drawing, TextDrawable
 from behaviours import DamageCollisionHandler
-from utils import GameServices, ResourceLoader, EntityManager, Camera, Timer
+from utils import GameServices, ResourceLoader, EntityManager, Timer
 from input_handling import InputHandling
 
 class SpaceGameServices(GameServices):
@@ -169,13 +169,13 @@ class Game(object):
             clock.tick(fps)
 
             # Check for win/lose.
-            if not self.won:
+            if not self.won and (self.player.is_garbage or self.carrier.is_garbage):
+                self.won = True
+                message = self.entity_manager.create_game_object("message.txt")
                 if self.player.is_garbage:
-                    self.won = True
-                    self.entity_manager.create_game_object("lose_screen.txt")
-                elif self.carrier.is_garbage:
-                    self.won = True
-                    self.entity_manager.create_game_object("win_screen.txt")
+                    message.get_component(TextDrawable).set_text("GAME OVER")
+                else:
+                    message.get_component(TextDrawable).set_text("VICTORY")
 
             # Close the game if we've won.
             if self.won:
