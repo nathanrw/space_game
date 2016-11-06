@@ -4,10 +4,11 @@
       "spawn_period": 10,
       "takeoff_speed": 700,
       "takeoff_spread": 30,
+      "num_fighters": 10,
       "fighter_config": "enemies/fighter.txt"
     },
     { "type": "src.behaviours.Hitpoints",
-      "hp": 200
+      "hp": 50
     },
     { "type": "src.physics.Body",
       "mass": 100,
@@ -20,7 +21,7 @@
     { "config": "weapons/big_green_blaster.txt" },
     { "type": "src.behaviours.AutomaticallyShootsBullets",
       "fire_period": 10,
-      "burst_period": 3
+      "burst_period": 1
     },
     { "type": "src.behaviours.ExplodesOnDeath",
       "explosion_config": "explosions/big_explosion.txt"

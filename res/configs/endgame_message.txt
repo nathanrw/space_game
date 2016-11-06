@@ -5,6 +5,9 @@
           "font_size": 62,
           "font_colour": { "red": 255, "green": 255, "blue": 255} },
         { "type": "src.behaviours.KillOnTimer",
-          "lifetime": 10 }
+          "lifetime": 10 },
+        { "type": "src.behaviours.Text",
+          "text": "Hello, World!" },
+        { "type": "src.behaviours.EndProgramOnDeath" }
     ]
 }

@@ -173,7 +173,7 @@ class LaunchesFighters(EnemyBehaviour):
             self.spawn_timer.reset()
             self.spawn()
     def spawn(self):
-        for i in xrange(20):
+        for i in xrange(self.config["num_fighters"]):
             direction = self.towards_player()
             spread = self.config["takeoff_spread"]
             direction.rotate(spread*random.random()-spread/2.0)
@@ -235,10 +235,82 @@ class Team(Component):
     def team(self):
         return self.config["team"]
 
-class WaveSpawner(Component):
+class Text(Component):
     def __init__(self, game_object, game_services, config):
         Component.__init__(self, game_object, game_services, config)
-        self.wave = 0
+        self.text = "Hello, world!"
+
+class WaveSpawner(Component):
+    """ Spawns waves of enemies. """
+
+    def __init__(self, game_object, game_services, config):
+        Component.__init__(self, game_object, game_services, config)
+        self.wave = 1
         self.spawned = []
+        self.message = None
+        self.done = False
+
     def update(self, dt):
+        """ Update the spawner. """
         Component.update(self, dt)
+
+        # Check for end condition and show game ending message if so.
+        if self.done:
+            return
+        elif self.player_is_dead() or self.max_waves():
+            self.done = True
+            message = self.create_game_object("endgame_message.txt")
+            message_text = message.get_component(Text)
+            if self.max_waves():
+                message_text.text = "GAME OVER"
+            else:
+                message_text.text = "VICTORY"
+
+        # If the wave is dead and we're not yet preparing (which displays a timed message) then
+        # start preparing a wave.
+        if self.wave_is_dead() and self.message is None:
+            self.prepare_for_wave()
+
+        # If we're prepared to spawn i.e. the wave is dead and the message has gone, spawn a wave!
+        if self.prepared_to_spawn():
+            self.spawn_wave()
+
+    def player_is_dead(self):
+        """ Check whether the player is dead. """
+        player = self.game_services.get_player()
+        return player.is_garbage
+
+    def spawn_wave(self):
+        """ Spawn a wave of enemies, each one harder than the last."""
+        player = self.game_services.get_player()
+        player_body = player.get_component(Body)
+        self.wave += 1
+        for i in xrange(self.wave-1):
+            carrier = self.create_game_object("enemies/carrier.txt")
+            carrier.get_component(Body).position = \
+                player_body.position + Vec2d((random.random()*100, random.random()*100))
+            self.spawned.append(carrier)
+
+    def wave_is_dead(self):
+        """ Has the last wave been wiped out? """
+        self.spawned = filter(lambda x: not x.is_garbage, self.spawned)
+        return len(self.spawned) == 0
+
+    def prepare_for_wave(self):
+        """ Prepare for a wave. """
+        from drawing import TextDrawable # nasty: avoid circular dependency.
+        self.message = self.create_game_object("update_message.txt")
+        self.message.get_component(Text).text = "WAVE %s PREPARING" % self.wave
+
+    def prepared_to_spawn(self):
+        """ Check whether the wave is ready. """
+        if self.message is None or not self.wave_is_dead():
+            return False
+        if self.message.is_garbage:
+            self.message = None
+            return True
+        return False
+
+    def max_waves(self):
+        """ Check whether the player has beaten enough waves. """
+        return self.wave == 10

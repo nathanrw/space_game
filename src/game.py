@@ -22,18 +22,11 @@ Things I would like to work on now:
 """
 
 import pygame
-import math
-import random
-import os
-import json
-import sys
 
-from vector2d import Vec2d
-
-from physics import Physics, Body
-from drawing import Drawing, TextDrawable
-from behaviours import DamageCollisionHandler, EndProgramOnDeath
-from utils import GameServices, ResourceLoader, EntityManager, Timer
+from physics import Physics
+from drawing import Drawing
+from behaviours import DamageCollisionHandler
+from utils import GameServices, ResourceLoader, EntityManager
 from input_handling import InputHandling
 
 class SpaceGameServices(GameServices):
@@ -84,7 +77,7 @@ class Game(object):
         self.camera = None
 
         # The enemy.
-        self.carrier = None
+        self.wave_spawner = None
 
         # The physics
         self.physics = Physics()
@@ -138,15 +131,11 @@ class Game(object):
         # Make the player
         self.player = self.entity_manager.create_game_object("player.txt")
 
-        # The enemy at present is just one carrier.
-        self.carrier = self.entity_manager.create_game_object("enemies/carrier.txt")
-        self.carrier.get_component(Body).position = Vec2d((0, 100))
+        # Create the wave spawner.
+        self.wave_spawner = self.entity_manager.create_game_object("wave_spawner.txt")
 
         # Make it so that bullets can damage things.
         self.physics.add_collision_handler(DamageCollisionHandler())
-
-        # Once the game is won (or lost) we stop the game after a timer elapses.
-        self.won = False
 
         # Main loop.
         self.running = True
@@ -160,7 +149,7 @@ class Game(object):
             # Input
             for e in pygame.event.get():
                 if e.type == pygame.QUIT:
-                    running = False
+                    self.running = False
                 elif self.input_handling.handle_input(e):
                     pass
 
@@ -174,16 +163,6 @@ class Game(object):
 
             # Maintaim frame rate.
             clock.tick(fps)
-
-            # Check for win/lose.
-            if not self.won and (self.player.is_garbage or self.carrier.is_garbage):
-                self.won = True
-                message = self.entity_manager.create_game_object("message.txt")
-                if self.player.is_garbage:
-                    message.get_component(TextDrawable).set_text("GAME OVER")
-                else:
-                    message.get_component(TextDrawable).set_text("VICTORY")
-                message.add_component(EndProgramOnDeath(message, self.game_services, {}))
 
         # Finalise
         pygame.quit()

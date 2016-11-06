@@ -3,14 +3,9 @@ a special kind of component that knows how to draw itself given a surface
 and a camera. """
 
 import pygame
-import os
-import json
 
-from vector2d import Vec2d
-
-from utils import *
 from physics import *
-from behaviours import Hitpoints
+from behaviours import Hitpoints, Text
 
 class Drawing(ComponentSystem):
     """ A class that manages a set of things that can draw themselves. """
@@ -19,7 +14,8 @@ class Drawing(ComponentSystem):
         """ Draw the drawables in order of layer. """
         self.components = sorted(self.components, lambda x, y: cmp(x.level, y.level))
         for drawable in self.components:
-            drawable.draw(camera)
+            if drawable.visible():
+                drawable.draw(camera)
 
 class Drawable(Component):
     """ Base class for something that can be drawn. """
@@ -30,6 +26,8 @@ class Drawable(Component):
         return Drawing
     def draw(self, camera):
         pass
+    def visible(self):
+        return True
 
 class AnimBodyDrawable(Drawable):
     """ Draws an animation at the position of a body. """
@@ -85,7 +83,9 @@ class BulletDrawable(Drawable):
         screen.blit(rotated, pos)
 
 class TextDrawable(Drawable):
-    """ Draws text in the middle of the screen. """
+    """ Draws text in the middle of the screen. Note that you don't set the text on the
+    drawable, it gets stored in a Text component. This means that logic code doesn't need
+    to mess with the drawable. """
 
     def __init__(self, game_object, game_services, config):
         """Load the font."""
@@ -94,21 +94,46 @@ class TextDrawable(Drawable):
         colour_dict = config["font_colour"]
         self.__colour = (colour_dict["red"], colour_dict["green"], colour_dict["blue"])
         self.__text = None
-        self.set_text(config.get_or_default("text", "Hello, World!"))
+        self.__image = None
         self.__level = 999
+        self.__blink = config.get_or_default("blink", 0)
+        self.__blink_timer = Timer(config.get_or_default("blink_period", 0.5))
+        self.__visible = True
 
-    def set_text(self, text):
-        """Set the text, caching the image."""
-        if text == self.__text:
-            return
-        self.__text = text
-        self.__image = self.__font.render(self.__text, True, self.__colour)
+    def visible(self):
+        """ Override to support blinking. """
+        return self.__visible
+
+    def update(self, dt):
+        """ Update: support blinking. """
+        Drawable.update(self, dt)
+        if self.__blink:
+            if self.__blink_timer.tick(dt):
+                self.__blink_timer.reset()
+                self.__visible = not self.__visible
 
     def draw(self, camera):
         """Draw the text to the screen."""
-        screen = camera.surface()
-        pos = Vec2d(screen.get_rect().center) - Vec2d(self.__image.get_size()) / 2
-        screen.blit(self.__image, (int(pos.x), int(pos.y)))
+
+        # Try to obtain some text to draw.
+        text = None
+        text_component = self.get_component(Text)
+        if text_component is not None:
+            text = text_component.text
+
+        # Now cache the rendered text, if the text differs to what we had before. Note
+        # that since the text can be null we have to handle that by unsetting the image.
+        if self.__text != text:
+            self.__image = None
+            if text is not None:
+                self.__image = self.__font.render(text, True, self.__colour)
+            self.__text = text
+
+        # Now draw the cached image, if we have one.
+        if self.__image is not None:
+            screen = camera.surface()
+            pos = Vec2d(screen.get_rect().center) - Vec2d(self.__image.get_size()) / 2
+            screen.blit(self.__image, (int(pos.x), int(pos.y)))
 
 class BackgroundDrawable(Drawable):
     """ A drawable for a scrolling background. """
