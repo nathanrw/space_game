@@ -1,6 +1,6 @@
 {
   "type": "src.behaviours.ManuallyShootsBullets",
-  "shots_per_second": 5,
+  "shots_per_second": 20,
   "bullet_config": "bullets/red_bullet.txt",
   "bullet_speed": 2000,
   "spread": 10
