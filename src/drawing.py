@@ -109,18 +109,19 @@ class TextDrawable(Drawable):
         """Load the font."""
         Drawable.__init__(self, game_object, game_services, config)
         self.__font = game_services.get_resource_loader().load_font(config["font_name"], config["font_size"])
+        self.__small_font = game_services.get_resource_loader().load_font(config["font_name"], 14)
         colour_dict = config["font_colour"]
         self.__colour = (colour_dict["red"], colour_dict["green"], colour_dict["blue"])
         self.__text = None
         self.__image = None
+        self.__warning = self.__small_font.render("WARNING", True, self.__colour)
         self.__level = 999
         self.__blink = config.get_or_default("blink", 0)
         self.__blink_timer = Timer(config.get_or_default("blink_period", 0.5))
         self.__visible = True
-
-    def visible(self):
-        """ Override to support blinking. """
-        return self.__visible
+        self.__offs = 0
+        self.__scroll_speed = 300
+        self.__padding = 20
 
     def update(self, dt):
         """ Update: support blinking. """
@@ -129,6 +130,30 @@ class TextDrawable(Drawable):
             if self.__blink_timer.tick(dt):
                 self.__blink_timer.reset()
                 self.__visible = not self.__visible
+
+        self.__offs += self.__scroll_speed * dt
+
+        # TODO: calculate period properly...
+        #self.__offs = self.__offs % (self.__warning.get_width()+self.__padding)
+
+    def draw_warning(self, camera, forwards, y):
+        # Draw scrolling warning
+        if self.__blink:
+            screen = camera.surface()
+            (image_width, image_height) = self.__warning.get_size()
+            (screen_width, screen_height) = screen.get_size()
+            x = self.__offs
+            if not forwards:
+                x = -x
+            start_i = -(x%image_width)
+            for i in xrange(int(start_i), screen_width, image_width + self.__padding):
+                screen.blit(self.__warning, (i, y))
+            rect = screen.get_rect()
+            rect.height = 5
+            rect.bottom = y-5
+            pygame.draw.rect(camera.surface(), self.__colour, rect)
+            rect.top=y+self.__warning.get_height()+5
+            pygame.draw.rect(camera.surface(), self.__colour, rect)
 
     def draw(self, camera):
         """Draw the text to the screen."""
@@ -148,10 +173,16 @@ class TextDrawable(Drawable):
             self.__text = text
 
         # Now draw the cached image, if we have one.
-        if self.__image is not None:
+        if self.__visible and self.__image is not None:
             screen = camera.surface()
             pos = Vec2d(screen.get_rect().center) - Vec2d(self.__image.get_size()) / 2
             screen.blit(self.__image, (int(pos.x), int(pos.y)))
+
+        if self.__image is not None:
+            screen = camera.surface()
+            pos = Vec2d(screen.get_rect().center) - Vec2d(self.__image.get_size()) / 2
+            self.draw_warning(camera, True, int(pos.y-self.__warning.get_height()-10))
+            self.draw_warning(camera, False, int(pos.y+self.__image.get_height()+10))
 
 class BackgroundDrawable(Drawable):
     """ A drawable for a scrolling background. """
