@@ -132,9 +132,7 @@ class TextDrawable(Drawable):
                 self.__visible = not self.__visible
 
         self.__offs += self.__scroll_speed * dt
-
-        # TODO: calculate period properly...
-        #self.__offs = self.__offs % (self.__warning.get_width()+self.__padding)
+        self.__offs = self.__offs % (self.__warning.get_width()+self.__padding)
 
     def draw_warning(self, camera, forwards, y):
         # Draw scrolling warning
@@ -145,7 +143,7 @@ class TextDrawable(Drawable):
             x = self.__offs
             if not forwards:
                 x = -x
-            start_i = -(x%image_width)
+            start_i = -(x%(image_width+self.__padding))
             for i in xrange(int(start_i), screen_width, image_width + self.__padding):
                 screen.blit(self.__warning, (i, y))
             rect = screen.get_rect()
