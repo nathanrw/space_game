@@ -248,6 +248,19 @@ class Body(Component):
         else:
             self.__angle_radians = math.radians(value)
 
+    @property
+    def angular_velocity(self):
+        """ Note: Expose degrees because pygame likes degrees. """
+        if self.body is not None:
+            return math.degrees(self.body.angular_velocity)
+        return 0
+
+    @angular_velocity.setter
+    def angular_velocity(self, value):
+        """ Note: Expose degrees because pygame likes degrees. """
+        if self.body is not None:
+            self.body.angular_velocity = math.radians(value)
+
 class CollisionHandler(object):
     """ A logical collision handler. While physical collision handling is
     dealt with by the physics implementation, game behaviours must be added

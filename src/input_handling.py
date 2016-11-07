@@ -49,12 +49,12 @@ class PlayerInputHandler(InputHandler):
         if thrusters is None:
             return False
         kmap = {
-            pygame.K_w: (lambda: thrusters.go_forwards(), lambda: thrusters.stop_going_forwards()),
-            pygame.K_a: (lambda: thrusters.go_left(), lambda: thrusters.stop_going_left()),
-            pygame.K_s: (lambda: thrusters.go_backwards(), lambda: thrusters.stop_going_backwards()),
-            pygame.K_d: (lambda: thrusters.go_right(), lambda: thrusters.stop_going_right()),
-            pygame.K_q: (lambda: thrusters.turn_left(), lambda: thrusters.stop_turning_left()),
-            pygame.K_e: (lambda: thrusters.turn_right(), lambda: thrusters.stop_turning_right())
+            pygame.K_w: (lambda: thrusters.go_forwards(), lambda: thrusters.go_backwards()),
+            pygame.K_a: (lambda: thrusters.go_left(), lambda: thrusters.go_right()),
+            pygame.K_s: (lambda: thrusters.go_backwards(), lambda: thrusters.go_forwards()),
+            pygame.K_d: (lambda: thrusters.go_right(), lambda: thrusters.go_left()),
+            pygame.K_q: (lambda: thrusters.turn_left(), lambda: thrusters.turn_right()),
+            pygame.K_e: (lambda: thrusters.turn_right(), lambda: thrusters.turn_left())
         }
         player = self.game_object
         if e.type == pygame.KEYDOWN:

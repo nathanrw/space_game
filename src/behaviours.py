@@ -265,63 +265,119 @@ class Thruster(object):
         return self.__max_thrust
     def name(self):
         return self.name
+    def on(self):
+        return self.__thrust > 0
 
 class Thrusters(Component):
     """ Thruster component. This allows an entity with a body to move itself.
     Eventually I intend to have the thrusters be configurable, but for now its
     hard coded."""
+
     def __init__(self, game_object, game_services, config):
+        """ Initialise - set up the enginges. """
         Component.__init__(self, game_object, game_services, config)
-        self.__top_left_thruster =     Thruster(Vec2d(-20, -20), Vec2d( 1,  0), config["max_thrust"] / 8, "top_left")
-        self.__bottom_left_thruster =  Thruster(Vec2d(-20,  20), Vec2d( 1,  0), config["max_thrust"] / 8, "bottom_left")
-        self.__top_right_thruster =    Thruster(Vec2d( 20, -20), Vec2d(-1,  0), config["max_thrust"] / 8, "top_right")
-        self.__bottom_right_thruster = Thruster(Vec2d( 20,  20), Vec2d(-1,  0), config["max_thrust"] / 8, "bottom_right")
-        self.__top_thruster =          Thruster(Vec2d(  0, -20), Vec2d( 0,  1), config["max_thrust"] / 4, "top")
-        self.__bottom_thruster =       Thruster(Vec2d(  0,  20), Vec2d( 0, -1), config["max_thrust"]    , "bottom")
+        self.__top_left_thruster = \
+            Thruster(Vec2d(-20, -20), Vec2d( 1,  0), config["max_thrust"] / 8, "top_left")
+        self.__bottom_left_thruster = \
+            Thruster(Vec2d(-20,  20), Vec2d( 1,  0), config["max_thrust"] / 8, "bottom_left")
+        self.__top_right_thruster = \
+            Thruster(Vec2d( 20, -20), Vec2d(-1,  0), config["max_thrust"] / 8, "top_right")
+        self.__bottom_right_thruster = \
+            Thruster(Vec2d( 20,  20), Vec2d(-1,  0), config["max_thrust"] / 8, "bottom_right")
+        self.__top_thruster = \
+            Thruster(Vec2d(  0, -20), Vec2d( 0,  1), config["max_thrust"] / 4, "top")
+        self.__bottom_thruster = \
+            Thruster(Vec2d(  0,  20), Vec2d( 0, -1), config["max_thrust"]    , "bottom")
         self.__thrusters = [self.__top_left_thruster, self.__top_right_thruster,
                             self.__top_thruster, self.__bottom_thruster,
                             self.__bottom_left_thruster, self.__bottom_right_thruster]
+        self.__direction = Vec2d(0, 0)
+        self.__dir_right = Vec2d(1, 0)
+        self.__dir_backwards = Vec2d(0, 1)
+        self.__turn = 0
+
     def go_forwards(self):
-        self.__bottom_thruster.go()
-    def stop_going_forwards(self):
-        self.__bottom_thruster.stop()
+        self.__direction -= self.__dir_backwards
+
     def go_backwards(self):
-        self.__top_thruster.go()
-    def stop_going_backwards(self):
-        self.__top_thruster.stop()
+        self.__direction += self.__dir_backwards
+
     def go_left(self):
-        self.__top_right_thruster.go()
-        self.__bottom_right_thruster.go()
-    def stop_going_left(self):
-        self.__top_right_thruster.stop()
-        self.__bottom_right_thruster.stop()
+        self.__direction -= self.__dir_right
+
     def go_right(self):
-        self.__top_left_thruster.go()
-        self.__bottom_left_thruster.go()
-    def stop_going_right(self):
-        self.__top_left_thruster.stop()
-        self.__bottom_left_thruster.stop()
+        self.__direction += self.__dir_right
+
     def turn_left(self):
-        self.__top_right_thruster.go()
-        self.__bottom_left_thruster.go()
-    def stop_turning_left(self):
-        self.__top_right_thruster.stop()
-        self.__bottom_left_thruster.stop()
+        self.__turn += 1
+
     def turn_right(self):
-        self.__top_left_thruster.go()
-        self.__bottom_right_thruster.go()
-    def stop_turning_right(self):
-        self.__top_left_thruster.stop()
-        self.__bottom_right_thruster.stop()
-    def stop(self):
-        for t in self.__thrusters:
-            t.stop()
+        self.__turn -= 1
+
+    def stop_all_thrusters(self):
+        """ Stop all the engines. """
+        for thruster in self.__thrusters:
+            thruster.stop()
+
+    def fire_correct_thrusters(self, body):
+        """ Perform logic to determine what engines are firing based on the
+        desired direction. Automatically counteract spin. """
+
+        # By default the engines should be of.
+        self.stop_all_thrusters()
+
+        # X
+        if self.__direction.x > 0:
+            self.__top_left_thruster.go()
+            self.__bottom_left_thruster.go()
+        elif self.__direction.x < 0:
+            self.__top_right_thruster.go()
+            self.__bottom_right_thruster.go()
+
+        #Y
+        if self.__direction.y > 0:
+            self.__top_thruster.go()
+        elif self.__direction.y < 0:
+            self.__bottom_thruster.go()
+
+        # turning thrusters
+        if self.__turn > 0:
+            self.__top_right_thruster.go()
+            self.__bottom_left_thruster.go()
+        elif self.__turn < 0:
+            self.__top_left_thruster.go()
+            self.__bottom_right_thruster.go()
+
+        # Counteract spin automatically.
+        eps = 0.005 # LOLOLOL
+        if (not self.__top_left_thruster.on()) and \
+           (not self.__top_right_thruster.on()) and \
+           (not self.__bottom_left_thruster.on()) and \
+           (not self.__bottom_right_thruster.on()): 
+            if body.angular_velocity > eps:
+                self.__top_right_thruster.go()
+                self.__bottom_left_thruster.go()
+            elif body.angular_velocity < -eps:
+                self.__top_left_thruster.go()
+                self.__bottom_right_thruster.go()
+
     def update(self, dt):
+        """ Override update to switch on right engines and apply their effect."""
+
+        # Cant do much without a body.
         body = self.get_component(Body)
-        if body is not None:
-            for t in self.__thrusters:
-                t.apply(body)
+        if body is None:
+            return
+
+        # Switch the right engines on.
+        self.fire_correct_thrusters(body)
+
+        # Apply physical effect of thrusters.
+        for t in self.__thrusters:
+            t.apply(body)
+
     def thrusters(self):
+        """ Get the engines - useful for e.g. drawing. """
         return self.__thrusters
 
 class WaveSpawner(Component):
