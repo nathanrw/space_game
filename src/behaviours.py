@@ -167,7 +167,6 @@ class LaunchesFighters(EnemyBehaviour):
     def __init__(self, game_object, game_services, config):
         Component.__init__(self, game_object, game_services, config)
         self.spawn_timer = Timer(config["spawn_period"])
-        self.spawn_timer.advance_to_fraction(0.8)
     def update(self, dt):
         if self.spawn_timer.tick(dt):
             self.spawn_timer.reset()

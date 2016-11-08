@@ -239,6 +239,26 @@ class EntityManager(object):
             s.do_on_object_killed()
         self.garbage_collect()
 
+class MapList(object):
+    def __init__(self):
+        self.__map = {}
+    def add(self, key, value):
+        if not key in self.__map:
+            self.__map[key] = []
+        self.__map[key].append(value)
+    def remove(self, key, value=None):
+        if value is not None:
+            if key in self.__map:
+                self.__map[key].remove(value)
+                if len(self.__map[key]) == 0:
+                    del self.__map[key]
+        else:
+            del self.__map[key]
+    def get(self, key):
+        if key in self.__map:
+            return self.__map[key]
+        return []
+
 class ComponentSystem(object):
     """ Manages a set of game object components. It knows how to update the
     components over time, how to get the components out for a particular object,
@@ -248,6 +268,7 @@ class ComponentSystem(object):
         """ Initialise. """
         self.components = []
         self.priority = 0
+        self.object_map = MapList()
 
     def do_on_object_killed(self):
         """ Fire on_object_killed() for components about to go."""
@@ -258,10 +279,12 @@ class ComponentSystem(object):
     def add_component(self, component):
         """ Add a component. """
         self.components.append(component)
+        self.object_map.add((component.game_object, component.__class__), component)
         
     def remove_component(self, component):
         """ Remove a particular component. """
         self.components.remove(component)
+        self.object_map.remove((component.game_object, component.__class__), component)
 
     def get_component(self, game_object, component_type):
         """ Get a single component of a particular type."""
@@ -275,11 +298,7 @@ class ComponentSystem(object):
         
     def get_components(self, game_object, component_type):
         """ Get all components of a particular type attached to the given object. """
-        components = []
-        for c in self.components:
-            if c.game_object == game_object and c.__class__ == component_type:
-                components.append(c)
-        return components
+        return self.object_map.get((game_object, component_type))
     
     def remove_object_components(self, game_object, component_type):
         """ Remove all components of a particular concrete type from an object. """
