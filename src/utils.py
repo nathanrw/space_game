@@ -7,6 +7,7 @@ import pygame
 import sys
 import json
 import os
+import math
 
 from loading_screen import LoadingScreen
 from vector2d import Vec2d
@@ -448,6 +449,12 @@ class Camera(GameObject):
         centre = Vec2d(self.screen.get_size())/2
         return screen + self.position - centre
 
+    def check_bounds_world(self, bbox):
+        if bbox is None: return True
+        self_box = self.screen.get_rect()
+        self_box.center = self.position
+        return bbox.colliderect(self_box)
+
 class Config(object):
     """ A hierarchical data store. """
     
@@ -630,3 +637,12 @@ class Animation(object):
         camera.surface().blit(img, screen_pos)
     def randomise(self):
         self.timer.randomise()
+    def get_max_bounds(self):
+        # Assume all frames the same size. Return biggest rect considering
+        # all possible rotations.
+        rect = self.frames[0].get_rect()
+        size = math.sqrt(rect.width*rect.width + rect.height+rect.height)
+        rect.width = size
+        rect.height = size
+        return rect
+        

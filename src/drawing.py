@@ -14,8 +14,11 @@ class Drawing(ComponentSystem):
         """ Draw the drawables in order of layer. """
         self.components = sorted(self.components, lambda x, y: cmp(x.level, y.level))
         for drawable in self.components:
-            if drawable.visible():
-                drawable.draw(camera)
+            if not drawable.visible():
+                continue
+            if not camera.check_bounds_world(drawable.estimate_bounds()):
+                continue
+            drawable.draw(camera)
 
 class Drawable(Component):
     """ Base class for something that can be drawn. """
@@ -28,6 +31,8 @@ class Drawable(Component):
         pass
     def visible(self):
         return True
+    def estimate_bounds(self):
+        return None
 
 class AnimBodyDrawable(Drawable):
     """ Draws an animation at the position of a body. """
@@ -35,16 +40,20 @@ class AnimBodyDrawable(Drawable):
         Drawable.__init__(self, game_object, game_services, config)
         self.anim = game_services.get_resource_loader().load_animation(config["anim_name"])
         self.kill_on_finished = config.get_or_default("kill_on_finish", False)
+        self.rect = self.anim.get_max_bounds()
     def update(self, dt):
         if self.anim.tick(dt):
             if self.kill_on_finished:
                 self.game_object.kill()
             else:
                 self.anim.reset()
+        self.rect.center = self.get_component(Body).position
     def draw(self, camera):
         body = self.get_component(Body)
         self.anim.orientation = -body.orientation
         self.anim.draw(body.position, camera)
+    def estimate_bounds(self):
+        return self.rect
 
 class ThrustersDrawable(Drawable):
     """ Draw thrusters for an object that has them. """
@@ -87,6 +96,13 @@ class BulletDrawable(Drawable):
     def __init__(self, game_object, game_services, config):
         Drawable.__init__(self, game_object, game_services, config)
         self.image = game_services.get_resource_loader().load_image(config["image_name"])
+    def estimate_bounds(self):
+        rect = self.image.get_rect()
+        size = math.sqrt(rect.width*rect.width+rect.height*rect.height)
+        rect.width = size*2
+        rect.height = size*2
+        rect.center = self.get_component(Body).position
+        return rect
     def draw(self, camera):
         screen = camera.surface()
         player_velocity = Vec2d(0, 0)
