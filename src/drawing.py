@@ -68,7 +68,7 @@ class ThrustersDrawable(Drawable):
             if thruster.thrust() > 0:
                 pos = thruster.world_position(body)
                 dir = thruster.world_direction(body)
-                length = min(max(10, thruster.thrust() / 100.0), 200)
+                length = thruster.thrust() / 500.0
                 poly = Polygon.make_bullet_polygon(pos, pos-(dir*length))
                 poly.draw(camera)
 
