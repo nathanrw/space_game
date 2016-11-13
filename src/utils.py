@@ -464,6 +464,11 @@ class Camera(Component):
         self_box.center = self.position
         return bbox.colliderect(self_box)
 
+    def check_bounds_screen(self, bbox):
+        """ Check whether a screen space bounding box is on the screen. """
+        if bbox is None: return True
+        return self.__screen.get_rect().colliderect(bbox)
+
     def update(self, dt):
         """ Update the screen shake effect. """
         if self.__shake > 0:

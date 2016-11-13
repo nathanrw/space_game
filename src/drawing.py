@@ -77,18 +77,32 @@ class HealthBarDrawable(Drawable):
     def __init__(self, game_object, game_services, config):
         Drawable.__init__(self, game_object, game_services, config)
     def draw(self, camera):
+
+        # Can only draw health bar for body with hitpoints.
         body = self.get_component(Body)
         if body is None:
             return
         hitpoints = self.get_component(Hitpoints)
         if hitpoints is None:
             return
+
+        # Draw health bar if it's on screen. Otherwise draw marker.
         rect = pygame.Rect(0, 0, body.size*2, 6)
-        rect.center = camera.world_to_screen(body.position)
+        rect.center = rect.center = camera.world_to_screen(body.position)
         rect.top = rect.top - (body.size + 10)
-        pygame.draw.rect(camera.surface(), (255, 0, 0), rect)
-        rect.width = int(hitpoints.hp/float(hitpoints.max_hp) * rect.width)
-        pygame.draw.rect(camera.surface(), (0, 255, 0), rect)
+        if camera.check_bounds_screen(rect):
+            pygame.draw.rect(camera.surface(), (255, 0, 0), rect)
+            rect.width = int(hitpoints.hp/float(hitpoints.max_hp) * rect.width)
+            pygame.draw.rect(camera.surface(), (0, 255, 0), rect)
+        else:
+            (w, h) = camera.surface().get_size()
+            rect.width = 5
+            rect.height = 5
+            rect.left = max(5, rect.left)
+            rect.right = min(w-5, rect.right)
+            rect.top = max(5, rect.top)
+            rect.bottom = min(h-5, rect.bottom)
+            pygame.draw.rect(camera.surface(), (255, 0, 0), rect)
 
 class BulletDrawable(Drawable):
     """ A drawable that draws an image aligned with the relative velocity
