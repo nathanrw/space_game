@@ -238,11 +238,6 @@ class Team(Component):
     def team(self):
         return self.config["team"]
 
-class ScreenShake(Component):
-    def __init__(self, game_object, game_services, config):
-        Component.__init__(self, game_object, game_services, config)
-
-
 class Text(Component):
     def __init__(self, game_object, game_services, config):
         Component.__init__(self, game_object, game_services, config)
