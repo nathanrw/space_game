@@ -27,6 +27,9 @@ class GameServices(object):
     """ Functionality required of the game. """
     def __init__(self):
         pass
+    def get_screen(self):
+        """ Get the main drawing surface. """
+        pass
     def get_player(self):
         """ Get the player's game object. """
         pass
@@ -426,34 +429,69 @@ class GameObject(object):
         it stands anything can fiddle with anything. """
         return self.game_services.get_entity_manager().get_components_of_type(self, t)
 
-class Camera(GameObject):
+class Camera(Component):
     """ A camera, which drawing is done in relation to. """
 
-    def __init__(self, screen):
+    def __init__(self, game_object, game_services, config):
         """ Initialise the camera. """
-        GameObject.__init__(self)
-        self.position = Vec2d(0, 0)
-        self.screen = screen
+        Component.__init__(self, game_object, game_services, config)
+        self.__position = Vec2d(0, 0)
+        self.__screen = game_services.get_screen()
+        self.__max_shake = 20
+        self.__damping_factor = 10
+        self.__shake = 0
+        self.__vertical_shake = 0
+        self.__horizontal_shake = 0
 
     def surface(self):
         """ Get the surface drawing will be done on. """
-        return self.screen
+        return self.__screen
 
     def world_to_screen(self, world):
         """ Convert from world coordinates to screen coordinates. """
-        centre = Vec2d(self.screen.get_size())/2
+        centre = Vec2d(self.__screen.get_size())/2
         return centre + world - self.position
 
     def screen_to_world(self, screen):
         """ Convert from screen coordinates to world coordinates. """
-        centre = Vec2d(self.screen.get_size())/2
+        centre = Vec2d(self.__screen.get_size())/2
         return screen + self.position - centre
 
     def check_bounds_world(self, bbox):
+        """ Check whether a world space bounding box is on the screen. """
         if bbox is None: return True
-        self_box = self.screen.get_rect()
+        self_box = self.__screen.get_rect()
         self_box.center = self.position
         return bbox.colliderect(self_box)
+
+    def update(self, dt):
+        """ Update the screen shake effect. """
+        if self.__shake > 0:
+            self.__shake -= dt * self.__damping_factor
+        if self.__shake < 0:
+            self.__shake = 0
+        self.__vertical_shake = (1-2*random.random()) * self.__shake
+        self.__horizontal_shake = (1-2*random.random()) * self.__shake
+
+    def apply_shake(self, shake_factor, position):
+        """ Apply a screen shake effect. """
+        displacement = self.__position - position
+        distance = displacement.length
+        screen_diagonal = (Vec2d(self.__screen.get_size())/2).length
+        max_dist = screen_diagonal * 2
+        amount = max(shake_factor * (1.0 - distance/max_dist), 0)
+        self.__shake = min(self.__shake+amount, self.__max_shake)
+
+    @property
+    def position(self):
+        """ Get the position of the camera, adjusted for shake. """
+        return self.__position + Vec2d(self.__horizontal_shake,
+                                       self.__vertical_shake)
+
+    @position.setter
+    def position(self, value):
+        """ Set the (actual) position of the camera. """
+        self.__position = Vec2d(value)
 
 class Config(object):
     """ A hierarchical data store. """

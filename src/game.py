@@ -26,7 +26,7 @@ import pygame
 from physics import Physics
 from drawing import Drawing
 from behaviours import DamageCollisionHandler
-from utils import GameServices, ResourceLoader, EntityManager
+from utils import GameServices, ResourceLoader, EntityManager, Camera
 from input_handling import InputHandling
 
 class SpaceGameServices(GameServices):
@@ -37,13 +37,16 @@ class SpaceGameServices(GameServices):
     def __init__(self, game):
         self.game = game
 
+    def get_screen(self):
+        return self.game.screen
+
     def get_player(self):
         """ Get the player. """
         return self.game.player
 
     def get_camera(self):
         """ Get the camera. """
-        return self.game.camera
+        return self.game.camera.get_component(Camera)
 
     def get_entity_manager(self):
         """ Return the entity manager. """
@@ -116,17 +119,17 @@ class Game(object):
         
         # Initialise the pygame display.
         pygame.init()
-        screen = pygame.display.set_mode((self.config.get_or_default("screen_width", 1024), 
-                                          self.config.get_or_default("screen_height", 768)))
+        self.screen = pygame.display.set_mode((self.config.get_or_default("screen_width", 1024), 
+                                               self.config.get_or_default("screen_height", 768)))
 
         # Preload certain images.
-        self.resource_loader.preload(screen)
+        self.resource_loader.preload(self.screen)
 
         # Make the camera. Im not 100% sure about this being a game object like any other
         # since it's clearly special - drawing requires one, the player moves it, etc. But
         # at the same time it's convenient to attach the background drawable to it, and we
         # might want to give it physical properties in future. We'll see.
-        self.camera = self.entity_manager.create_game_object("camera.txt", screen)
+        self.camera = self.entity_manager.create_game_object("camera.txt")
 
         # Make the player
         self.player = self.entity_manager.create_game_object("player.txt")
@@ -157,8 +160,8 @@ class Game(object):
             self.entity_manager.update(1.0/fps)
 
             # Draw
-            screen.fill((0, 0, 0))
-            self.drawing.draw(self.camera)
+            self.screen.fill((0, 0, 0))
+            self.drawing.draw(self.camera.get_component(Camera))
             pygame.display.update()
 
             # Maintaim frame rate.

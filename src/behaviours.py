@@ -194,8 +194,12 @@ class KillOnTimer(Component):
 class ExplodesOnDeath(Component):
     """ For objects that spawn an explosion when they die. """
     def on_object_killed(self):
+        body = self.get_component(Body)
+        position = body.position
         explosion = self.create_game_object(self.config["explosion_config"])
-        explosion.get_component(Body).position = Vec2d(self.get_component(Body).position)
+        explosion.get_component(Body).position = position
+        shake_factor = self.config.get_or_default("shake_factor", 1)
+        self.game_services.get_camera().apply_shake(shake_factor, position)
 
 class EndProgramOnDeath(Component):
     """ If the entity this is attached to is destroyed, the program will exit. """
@@ -233,6 +237,11 @@ class Team(Component):
         Component.__init__(self, game_object, game_services, config)
     def team(self):
         return self.config["team"]
+
+class ScreenShake(Component):
+    def __init__(self, game_object, game_services, config):
+        Component.__init__(self, game_object, game_services, config)
+
 
 class Text(Component):
     def __init__(self, game_object, game_services, config):
