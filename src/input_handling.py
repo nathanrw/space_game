@@ -25,6 +25,15 @@ class InputHandler(Component):
 class PlayerInputHandler(InputHandler):
     """ Deals with input to the player's ship. """
 
+    def __init__(self, game_object, game_services, config):
+        InputHandler.__init__(self, game_object, game_services, config)
+
+        pygame.joystick.init()
+        self.js = None
+        if pygame.joystick.get_count() > 0:
+            self.js = pygame.joystick.Joystick(0)
+            self.js.init()
+
     def start_shooting(self, pos):
         """ Start shooting at a particular screen space point. """
         guns = self.get_components(ManuallyShootsBullets)
@@ -75,4 +84,19 @@ class PlayerInputHandler(InputHandler):
             if self.is_shooting():
                 self.start_shooting(Vec2d(e.pos))
                 return True
+        elif e.type == pygame.JOYAXISMOTION:
+            print "axis: ", e.axis
+            pass
+        elif e.type == pygame.JOYBALLMOTION:
+            print "ball: ", e.ball
+            pass
+        elif e.type == pygame.JOYBUTTONDOWN:
+            print "button: ", e.button
+            pass
+        elif e.type == pygame.JOYBUTTONUP:
+            print "button: ", e.button
+            pass
+        elif e.type == pygame.JOYHATMOTION:
+            print "hat: ", e.hat
+            pass
         return False
