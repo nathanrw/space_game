@@ -4,6 +4,7 @@ import pygame
 
 from utils import ComponentSystem, Component
 from behaviours import ManuallyShootsBullets, Thrusters
+from physics import Body
 
 class InputHandling(ComponentSystem):
     """ A system for input handlers: components that know how to deal
@@ -40,6 +41,13 @@ class PlayerInputHandler(InputHandler):
         for g in guns:
             g.start_shooting_screen(pos)
 
+    def start_shooting_forwards(self):
+        """ Start shooting ahead. """
+        guns = self.get_components(ManuallyShootsBullets)
+        for g in guns:
+            g.start_shooting_dir(Vec2d(0, -100))
+        
+
     def stop_shooting(self):
         """ Stop the guns. """
         guns = self.get_components(ManuallyShootsBullets)
@@ -65,6 +73,11 @@ class PlayerInputHandler(InputHandler):
             pygame.K_q: (lambda: thrusters.turn_left(), lambda: thrusters.turn_right()),
             pygame.K_e: (lambda: thrusters.turn_right(), lambda: thrusters.turn_left())
         }
+        jsmap = {
+            0: (lambda: self.start_shooting_forwards(), lambda: self.stop_shooting()),
+            4: (lambda: thrusters.turn_left(), lambda: thrusters.turn_right()),
+            5: (lambda: thrusters.turn_right(), lambda: thrusters.turn_left())
+        }
         player = self.game_object
         if e.type == pygame.KEYDOWN:
             if e.key in kmap:
@@ -85,18 +98,25 @@ class PlayerInputHandler(InputHandler):
                 self.start_shooting(Vec2d(e.pos))
                 return True
         elif e.type == pygame.JOYAXISMOTION:
-            print "axis: ", e.axis
+            print "axis: ", e.axis, e.value
             pass
         elif e.type == pygame.JOYBALLMOTION:
-            print "ball: ", e.ball
+            print "ball: ", e.ball, e.rel
             pass
         elif e.type == pygame.JOYBUTTONDOWN:
             print "button: ", e.button
+            if e.button in jsmap:
+                jsmap[e.button][0]()
+                return True
             pass
         elif e.type == pygame.JOYBUTTONUP:
             print "button: ", e.button
+            if e.button in jsmap:
+                jsmap[e.button][1]()
+                return True
             pass
         elif e.type == pygame.JOYHATMOTION:
-            print "hat: ", e.hat
-            pass
+            print "hat: ", e.hat, e.value
+            thrusters.set_direction(Vec2d(e.value[0], -e.value[1]))
+            return True
         return False

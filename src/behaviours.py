@@ -63,23 +63,34 @@ class ManuallyShootsBullets(Component):
         self.shooting = False
         self.shooting_at = Vec2d(0, 0)
         self.shooting_at_screen = False
+        self.shooting_at_direction = False
         self.shot_timer = 0
+
+    def start_shooting_dir(self, direction):
+        self.shooting = True
+        self.shooting_at = direction
+        self.shooting_at_screen = False
+        self.shooting_at_direction = True
 
     def start_shooting_world(self, at):
         """ Start shooting at a point in world space. """
         self.shooting = True
         self.shooting_at = at
         self.shooting_at_screen = False
+        self.shooting_at_direction = False
 
     def start_shooting_screen(self, at):
         """ Start shooting at a point in screen space. """
         self.start_shooting_world(at)
         self.shooting_at_screen = True
+        self.shooting_at_direction = False
 
     def shooting_at_world(self):
         """ Get the point, in world space, that we are shooting at. """
         if self.shooting_at_screen:
             return self.game_services.get_camera().screen_to_world(self.shooting_at)
+        elif self.shooting_at_direction:
+            return self.get_component(Body).local_to_world(self.shooting_at)
         else:
             return self.shooting_at
 
@@ -310,6 +321,9 @@ class Thrusters(Component):
 
     def go_right(self):
         self.__direction += self.__dir_right
+
+    def set_direction(self, direction):
+        self.__direction = Vec2d(direction)
 
     def turn_left(self):
         self.__turn += 1
