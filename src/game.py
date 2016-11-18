@@ -109,6 +109,42 @@ class Game(object):
         """ Stop the game from running. """
         self.running = False
 
+    def run_update_loop(self):
+        """ Run an update loop. This sets self.running to True and
+        exits when something sets it to false. Note that this is a
+        separate function from run() since we might want a number of
+        update loops - e.g. as a cheap way of having the loading
+        screen use the same code as the rest of the game, or even
+        maybe for implementing different modes (using the call stack
+        to stack them.)"""
+
+        # Main loop.
+        self.running = True
+        fps = 60
+        clock = pygame.time.Clock()
+        while self.running:
+
+            ## Create any queued objects
+            self.entity_manager.create_queued_objects()
+
+            # Input
+            for e in pygame.event.get():
+                if e.type == pygame.QUIT:
+                    self.running = False
+                elif self.input_handling.handle_input(e):
+                    pass
+
+            # Update the systems.
+            self.entity_manager.update(1.0/fps)
+
+            # Draw
+            self.screen.fill((0, 0, 0))
+            self.drawing.draw(self.camera.get_component(Camera))
+            pygame.display.update()
+
+            # Maintaim frame rate.
+            clock.tick(fps)
+
     def run(self):
         """ The game loop. This performs initialisation including setting
         up pygame, and shows a loading screen while certain resources are
@@ -140,32 +176,8 @@ class Game(object):
         # Make it so that bullets can damage things.
         self.physics.add_collision_handler(DamageCollisionHandler())
 
-        # Main loop.
-        self.running = True
-        fps = 60
-        clock = pygame.time.Clock()
-        while self.running:
-
-            ## Create any queued objects
-            self.entity_manager.create_queued_objects()
-
-            # Input
-            for e in pygame.event.get():
-                if e.type == pygame.QUIT:
-                    self.running = False
-                elif self.input_handling.handle_input(e):
-                    pass
-
-            # Update the systems.
-            self.entity_manager.update(1.0/fps)
-
-            # Draw
-            self.screen.fill((0, 0, 0))
-            self.drawing.draw(self.camera.get_component(Camera))
-            pygame.display.update()
-
-            # Maintaim frame rate.
-            clock.tick(fps)
+        # Run the game loop.
+        self.run_update_loop()
 
         # Finalise
         pygame.quit()
