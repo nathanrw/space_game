@@ -1,0 +1,25 @@
+{
+  "components": [
+    { "type": "src.behaviours.Hitpoints",
+      "hp": 500
+    },
+    { "type": "src.physics.Body",
+      "mass": 100,
+      "size": 128
+    },
+    { "type": "src.drawing.AnimBodyDrawable",
+      "anim_name": "enemy_destroyer"
+    },
+    { "type": "src.drawing.HealthBarDrawable" },
+    { "type": "src.behaviours.ExplodesOnDeath",
+      "explosion_config": "explosions/big_explosion.txt"
+    },
+    { "type": "src.behaviours.FollowsPlayer",
+      "desired_distance_to_player": 500,
+      "acceleration": 600
+    },
+    { "type": "src.behaviours.Team",
+      "team": "enemy" },
+    { "type": "src.behaviours.Turrets" }
+  ]
+}

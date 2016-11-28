@@ -158,7 +158,7 @@ class Body(Component):
         # Note: What is the lifetime of the pin joint? What if both bodies are
         # removed from the space? What if we want to remove the pin joint later?
         # Questions for another day.
-        joint = pymunk.constraint.PinJoint(self.body, body.body)
+        joint = pymunk.constraint.PinJoint(self.body, body.body, (0, 0), vec2tup(body.world_to_local(self.position)))
         joint.collide_bodies = False
         self.space.add(joint)
         

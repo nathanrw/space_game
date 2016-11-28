@@ -1,0 +1,25 @@
+{
+  "components": [
+    { "type": "src.behaviours.Hitpoints",
+      "hp": 4
+    },
+    { "type": "src.physics.Body",
+      "mass": 100,
+      "size": 20
+    },
+    { "type": "src.drawing.AnimBodyDrawable",
+      "anim_name": "enemy_turret"
+    },
+    { "type": "src.drawing.HealthBarDrawable" },
+    { "config": "weapons/green_blaster.txt" },
+    { "type": "src.behaviours.AutomaticallyShootsBullets",
+      "fire_period": 10,
+      "burst_period": 3
+    },
+    { "type": "src.behaviours.ExplodesOnDeath",
+      "explosion_config": "explosions/big_explosion.txt"
+    },
+    { "type": "src.behaviours.Team",
+      "team": "enemy" }
+  ]
+}

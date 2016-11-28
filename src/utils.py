@@ -366,9 +366,9 @@ class Component(object):
         one system of a given type."""
         return self.game_object.get_system_by_type(t)
 
-    def create_game_object(self, *args):
+    def create_game_object(self, *args, **kwargs):
         """ Create a new game object with the given config and args. """
-        return self.game_object.create_game_object(*args)
+        return self.game_object.create_game_object(*args, **kwargs)
 
     def get_component(self, t):
         """ Return the component of a given type. Note that eventually this
@@ -420,9 +420,9 @@ class GameObject(object):
         one system of a given type."""
         return self.game_services.get_entity_manager().get_component_system_by_type(t)
 
-    def create_game_object(self, *args):
+    def create_game_object(self, *args, **kwargs):
         """ Create a new game object with the given config and args. """
-        return self.game_services.get_entity_manager().create_game_object(*args)
+        return self.game_services.get_entity_manager().create_game_object(*args, **kwargs)
 
     def get_component(self, t):
         """ Return the components of a given type. Note that eventually this

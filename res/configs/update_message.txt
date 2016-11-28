@@ -6,7 +6,7 @@
           "font_colour": { "red": 255, "green": 255, "blue": 255},
           "blink": 1 },
         { "type": "src.behaviours.KillOnTimer",
-          "lifetime": 10 },
+          "lifetime": 4 },
         { "type": "src.behaviours.Text",
           "text": "Hello, World!" }
     ]
