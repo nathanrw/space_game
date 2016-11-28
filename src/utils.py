@@ -113,6 +113,7 @@ class EntityManager(object):
         # Currently existing objects and queue of objects to create.
         self.objects = []
         self.new_objects = []
+        self.new_parents = []
 
         # System stuff
         self.systems = {}
@@ -135,7 +136,10 @@ class EntityManager(object):
         """ Create objects that have been queued. """
         for o in self.new_objects:
             self.objects.append(o)
-            self.new_objects = []
+        for pair in self.new_parents:
+            pair[0].add_child(pair[1])
+        self.new_objects = []
+        self.new_parents = []
 
     def garbage_collect(self):
         """ Remove all of the objects that have been marked for deletion."""
@@ -143,7 +147,7 @@ class EntityManager(object):
         for s in self.systems_list:
             s.garbage_collect()
 
-    def create_game_object(self, config_name, *args):
+    def create_game_object(self, config_name, *args, **kwargs):
         """ Add a new object. It is initialised, but not added to the game
         right away: that gets done at a certain point in the game loop."""
         loader = self.game_services.get_resource_loader()
@@ -167,6 +171,11 @@ class EntityManager(object):
 
         # Add the object to the creation queue, and return it to the caller.
         self.new_objects.append(obj)
+
+        # If the object needs to be added as a child, remember that.
+        if "parent" in kwargs:
+            self.new_parents.append((kwargs["parent"], obj))
+        
         return obj
     
     def register_component_system(self, system):
@@ -389,6 +398,7 @@ class GameObject(object):
         self.is_garbage = False
         self.config = None
         self.game_services = None
+        self.children = []
 
     def initialise(self, game_services, config):
         """ Initialise the object: create drawables, physics bodies, etc. """
@@ -398,6 +408,8 @@ class GameObject(object):
     def kill(self):
         """ Mark the object for deletion. """
         self.is_garbage = True
+        for child in self.children:
+            child.kill()
 
     def add_component(self, component):
         """ Shortcut to add a component. """
@@ -428,6 +440,10 @@ class GameObject(object):
         dependencies, and it can only get at components of those types. As
         it stands anything can fiddle with anything. """
         return self.game_services.get_entity_manager().get_components_of_type(self, t)
+
+    def add_child(self, obj):
+        """ Add a child game object. """
+        self.children.append(obj)
 
 class Camera(Component):
     """ A camera, which drawing is done in relation to. """

@@ -53,6 +53,45 @@ class FollowsPlayer(EnemyBehaviour):
         force = frac * thrust * direction
         body.force = force
 
+class ShootingAt(object):
+    """ An object that defines a direction in which to shoot. """
+    def __init__(self):
+        pass
+    def direction(self):
+        pass
+
+class ShootingAtScreen(object):
+    """ Shooting at a point in screen space. """
+    def __init__(self, pos, body, camera):
+        self.__pos = pos
+        self.__camera = camera
+        self.__body = body
+    def direction(self):
+        return (self.__camera.screen_to_world(self.__pos) - self.__body.position).normalized()
+
+class ShootingAtWorld(object):
+    """ Shooting at a point in world space. """
+    def __init__(self, pos, body):
+        self.__pos = pos
+        self.__body = body
+    def direction(self):
+        return (self.__pos - self.__body.position).normalized()
+
+class ShootingAtDirection(object):
+    """ Shooting in a particular direction. """
+    def __init__(self, direction):
+        self.__direction = direction
+    def direction(self):
+        return self.__direction
+
+class ShootingAtBody(object):
+    """ Shooting at a body. """
+    def __init__(self, from_body, to_body):
+        self.__from_body = from_body
+        self.__to_body = to_body
+    def direction(self):
+        return (self.__to_body.position - self.__from_body.position).normalized()
+
 class ManuallyShootsBullets(Component):
     """ Something that knows how to spray bullets. Note that this is not a
     game object, it's something game objects can use to share code. """
@@ -60,43 +99,27 @@ class ManuallyShootsBullets(Component):
     def __init__(self, game_object, game_services, config):
         """ Inject dependencies and set up default parameters. """
         Component.__init__(self, game_object, game_services, config)
-        self.shooting = False
-        self.shooting_at = Vec2d(0, 0)
-        self.shooting_at_screen = False
-        self.shooting_at_direction = False
+        self.shooting_at = None
         self.shot_timer = 0
 
     def start_shooting_dir(self, direction):
-        self.shooting = True
-        self.shooting_at = direction
-        self.shooting_at_screen = False
-        self.shooting_at_direction = True
+        self.shooting_at = ShootingAtDirection(direction)
 
     def start_shooting_world(self, at):
         """ Start shooting at a point in world space. """
-        self.shooting = True
-        self.shooting_at = at
-        self.shooting_at_screen = False
-        self.shooting_at_direction = False
+        self.shooting_at = ShootingAtWorld(at, self.get_component(Body))
 
     def start_shooting_screen(self, at):
         """ Start shooting at a point in screen space. """
-        self.start_shooting_world(at)
-        self.shooting_at_screen = True
-        self.shooting_at_direction = False
-
-    def shooting_at_world(self):
-        """ Get the point, in world space, that we are shooting at. """
-        if self.shooting_at_screen:
-            return self.game_services.get_camera().screen_to_world(self.shooting_at)
-        elif self.shooting_at_direction:
-            return self.get_component(Body).local_to_world(self.shooting_at)
-        else:
-            return self.shooting_at
+        self.shooting_at = ShootingAtScreen(at, self.get_component(Body), self.game_services.get_camera())
 
     def stop_shooting(self):
         """ Stop spraying bullets. """
-        self.shooting = False
+        self.shooting_at = None
+
+    @property
+    def shooting(self):
+        return self.shooting_at is not None
 
     def update(self, dt):
         """ Create bullets if shooting. Our rate of fire is governed by a timer. """
@@ -104,8 +127,7 @@ class ManuallyShootsBullets(Component):
             self.shot_timer -= dt
         if self.shooting:
             body = self.get_component(Body)
-            shooting_at_world = self.shooting_at_world()
-            shooting_at_dir = (shooting_at_world - body.position).normalized()
+            shooting_at_dir = self.shooting_at.direction()
             while self.shot_timer <= 0:
                 self.shot_timer += 1.0/self.config["shots_per_second"]
                 bullet = self.create_game_object(self.config["bullet_config"])
@@ -272,7 +294,7 @@ class Thruster(object):
     def world_position(self, body):
         return body.local_to_world(self.__position)
     def world_direction(self, body):
-        return body.local_to_world(self.__direction+self.__position) - body.local_to_world(self.__position)
+        return body.local_dir_to_world(self.__direction)
     def thrust(self):
         return self.__thrust
     def max_thrust(self):
@@ -471,3 +493,50 @@ class WaveSpawner(Component):
     def max_waves(self):
         """ Check whether the player has beaten enough waves. """
         return self.wave == 10
+
+class HardPoint(object):
+    """ A slot that can contain a weapon. """
+
+    def __init__(position):
+        """ Initialise the hardpoint. """
+        self.__position = position
+        self.__weapon = None
+
+    def set_weapon(self, weapon_entity, body_to_add_to):
+        """ Set the weapon, freeing any existing weapon. """
+
+        # If there is already a weapon then we need to delete it.
+        if self.__weapon is not None:
+            self.__weapon.kill()
+
+        # Ok, set the new weapon.
+        self.__weapon = weapon_entity
+
+        # If the weapon has been unset, then our work is done.
+        if self.__weapon is None:
+            return
+
+        # If a new weapon has been added then pin it to our body.
+        weapon_body = self.__weapon.get_component(Body)
+        point = body_to_add_to.local_to_world(self.__position)
+        weapon_body.position = point
+        weapon_body.pin_to(body_to_add_to)
+
+class Turrets(Component):
+
+    def __init__(self, game_object, game_services, config):
+        """ Initialise the turrets. """
+        Component.__init__(self, game_object, game_services, config)
+        self.__hardpoints = [HardPoint(0, 10), HardPoint(0, -10)]
+
+    def num_hardpoints(self):
+        """ Get the number of hardpoints. """
+        return len(self.__hardpoints)
+
+    def set_weapon(hardpoint_index, weapon_config_name):
+        """ Set the weapon on a hardpoint. Note that the weapon is an actual
+        entity, which is set up as a child of the entity this component is
+        attached to. It is assumed to have a Body component, which is pinned
+        to our own Body."""
+        self.__hard_points[hardpoint_index].set_weapon(
+            self.create_game_object(weapon_config_name, parent=self.game_object))

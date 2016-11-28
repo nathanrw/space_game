@@ -141,10 +141,26 @@ class Body(Component):
             return Vec2d(self.body.local_to_world(vec2tup(point)))
         return None
 
+    def local_dir_to_world(self, direction):
+        if self.body is not None:
+            return self.local_to_world(direction) - self.position
+        return None
+
     def apply_force_at_local_point(self, force, point):
         """ Apply a force to the body."""
         if self.body is not None:
             self.body.apply_force_at_local_point(vec2tup(force), vec2tup(point))
+
+    def pin_to(self, body):
+        """ Pin this body to that one. They will become inseparable, and will
+        not collide with one another. They will be able to rotate relative to
+        one another however. """
+        # Note: What is the lifetime of the pin joint? What if both bodies are
+        # removed from the space? What if we want to remove the pin joint later?
+        # Questions for another day.
+        joint = pymunk.constraint.PinJoint(self.body, body.body)
+        joint.collide_bodies = False
+        self.space.add(joint)
         
     @property
     def position(self):
