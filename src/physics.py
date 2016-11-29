@@ -101,8 +101,8 @@ class Body(Component):
         self.__mass = config.get_or_default("mass", 1)
         self.__collideable = config.get_or_default("is_collideable", True)
         self.__body = None
-        self.shape = None
-        self.space = None
+        self.__shape = None
+        self.__space = None
 
     def manager_type(self):
         return Physics
@@ -110,27 +110,27 @@ class Body(Component):
     def create(self, space):
         """ Actually add the body to the simulation. """
         if self.__body is None:
-            self.space = space
+            self.__space = space
             moment = pymunk.moment_for_circle(float(self.__mass), 0, float(self.__size))
             self.__body = pymunk.Body(float(self.__mass), moment)
             self.__body.position = vec2tup(self.__position)
             self.__body.velocity = vec2tup(self.__velocity)
             self.__body.angle = self.__angle_radians
-            self.shape = pymunk.Circle(self.__body, float(self.__size))
-            self.shape.friction = 0.8
-            if self.collideable:
-                self.shape.collision_type = 1
+            self.__shape = pymunk.Circle(self.__body, float(self.__size))
+            self.__shape.friction = 0.8
+            if self.__collideable:
+                self.__shape.collision_type = 1
             else:
-                self.shape.collision_type = 0
-            self.shape.game_body = self
-            self.space.add(self.__body, self.shape)
+                self.__shape.collision_type = 0
+            self.__shape.game_body = self
+            self.__space.add(self.__body, self.__shape)
 
     def destroy(self):
         """ Remove the body from the simulation. """
         if self.__body is not None:
-            self.space.remove(self.__body, self.shape)
+            self.__space.remove(self.__body, self.__shape)
             self.__body = None
-            self.shape = None
+            self.__shape = None
 
     def world_to_local(self, point):
         if self.__body is not None:
@@ -166,7 +166,7 @@ class Body(Component):
             vec2tup(body.world_to_local(self.position))
         )
         joint.collide_bodies = False
-        self.space.add(joint)
+        self.__space.add(joint)
         
     @property
     def position(self):
@@ -198,17 +198,10 @@ class Body(Component):
 
     @property
     def size(self):
-        if self.shape is not None:
-            return self.shape.radius
+        if self.__shape is not None:
+            return self.__shape.radius
         else:
             return self.__size
-
-    @size.setter
-    def size(self, value):
-        if self.shape is not None:
-            self.shape.unsafe_set_radius(float(value))
-        else:
-            self.__size = value
 
     @property
     def mass(self):
@@ -216,14 +209,6 @@ class Body(Component):
             return self.__body.mass
         else:
             return self.__mass
-
-    @mass.setter
-    def mass(self, value):
-        if self.__body is not None:
-            self.__body.mass = float(value)
-        else:
-            self.__mass = value
-
 
     @property
     def force(self):
@@ -248,11 +233,11 @@ class Body(Component):
         if value == self.collideable:
             return
         self.__collideable = value
-        if self.shape is not None:
+        if self.__shape is not None:
             if self.collideable:
-                self.shape.collision_type = 1
+                self.__shape.collision_type = 1
             else:
-                self.shape.collision_type = 0
+                self.__shape.collision_type = 0
 
     @property
     def orientation(self):
