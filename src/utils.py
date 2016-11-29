@@ -140,6 +140,8 @@ class EntityManager(object):
             pair[0].add_child(pair[1])
         self.new_objects = []
         self.new_parents = []
+        for s in self.systems_list:
+            s.create_queued_components()
 
     def garbage_collect(self):
         """ Remove all of the objects that have been marked for deletion."""
@@ -280,6 +282,7 @@ class ComponentSystem(object):
     def __init__(self):
         """ Initialise. """
         self.components = []
+        self.components_to_add = []
         self.priority = 0
         self.object_map = MapList()
 
@@ -288,10 +291,21 @@ class ComponentSystem(object):
         for c in self.components:
             if c.is_garbage():
                 c.on_object_killed()
-        
-    def add_component(self, component):
-        """ Add a component. """
+
+    def create_queued_components(self):
+        """ Create the queued components. """
+        for c in self.components_to_add:
+            self.create_queued_component(c)
+        self.components_to_add = []
+
+    def create_queued_component(self, component):
+        """ Add the queued component. This can perform any final initialisation. """
         self.components.append(component)
+
+    def add_component(self, component):
+        """ Add a component. Note that it won't be created straight away. It
+        will be added to a queue, and created at the start of the next frame. """
+        self.components_to_add.append(component)
         self.object_map.add((component.game_object, component.__class__), component)
         
     def remove_component(self, component):
