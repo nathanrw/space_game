@@ -497,7 +497,7 @@ class WaveSpawner(Component):
 class HardPoint(object):
     """ A slot that can contain a weapon. """
 
-    def __init__(position):
+    def __init__(self, position):
         """ Initialise the hardpoint. """
         self.__position = position
         self.__weapon = None
@@ -527,16 +527,18 @@ class Turrets(Component):
     def __init__(self, game_object, game_services, config):
         """ Initialise the turrets. """
         Component.__init__(self, game_object, game_services, config)
-        self.__hardpoints = [HardPoint(0, 10), HardPoint(0, -10)]
+        self.__hardpoints = [HardPoint(Vec2d(70, 0)), HardPoint(Vec2d(-70, 0))]
+        self.set_weapon(0, "enemies/turret.txt")
+        self.set_weapon(1, "enemies/turret.txt")
 
     def num_hardpoints(self):
         """ Get the number of hardpoints. """
         return len(self.__hardpoints)
 
-    def set_weapon(hardpoint_index, weapon_config_name):
+    def set_weapon(self, hardpoint_index, weapon_config_name):
         """ Set the weapon on a hardpoint. Note that the weapon is an actual
         entity, which is set up as a child of the entity this component is
         attached to. It is assumed to have a Body component, which is pinned
         to our own Body."""
-        self.__hard_points[hardpoint_index].set_weapon(
-            self.create_game_object(weapon_config_name, parent=self.game_object))
+        entity = self.create_game_object(weapon_config_name, parent=self.game_object)
+        self.__hardpoints[hardpoint_index].set_weapon(entity, self.get_component(Body))
