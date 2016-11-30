@@ -465,10 +465,14 @@ class WaveSpawner(Component):
         player_body = player.get_component(Body)
         self.wave += 1
         for i in xrange(self.wave-1):
-            carrier = self.create_game_object("enemies/carrier.txt")
-            carrier.get_component(Body).position = \
-                player_body.position + Vec2d((random.random()*100, random.random()*100))
-            self.spawned.append(carrier)
+            enemy_type = random.choice(("enemies/destroyer.txt",
+                                        "enemies/carrier.txt"))
+            enemy = self.create_game_object(enemy_type)
+            rnd = random.random()
+            x = 1 - rnd*2
+            y = 1 - (1-rnd)*2
+            enemy.get_component(Body).position = player_body.position + Vec2d(x, y)*500
+            self.spawned.append(enemy)
 
     def wave_is_dead(self):
         """ Has the last wave been wiped out? """

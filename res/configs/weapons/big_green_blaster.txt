@@ -1,4 +1,0 @@
-{
-	"deriving": "weapons/green_blaster.txt",
-	"shots_per_second": 50
-}

@@ -13,7 +13,7 @@
     { "type": "src.drawing.HealthBarDrawable" },
     { "config": "weapons/green_blaster.txt" },
     { "type": "src.behaviours.AutomaticallyShootsBullets",
-      "fire_period": 10,
+      "fire_period": 1,
       "burst_period": 3
     },
     { "type": "src.behaviours.ExplodesOnDeath",

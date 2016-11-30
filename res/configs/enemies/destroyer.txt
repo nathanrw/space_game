@@ -5,7 +5,7 @@
     },
     { "type": "src.physics.Body",
       "mass": 100,
-      "size": 128
+      "size": 100
     },
     { "type": "src.drawing.AnimBodyDrawable",
       "anim_name": "enemy_destroyer"
@@ -20,6 +20,9 @@
     },
     { "type": "src.behaviours.Team",
       "team": "enemy" },
-    { "type": "src.behaviours.Turrets" }
+    { "type": "src.behaviours.Turrets" },
+    { "type": "src.behaviours.Thrusters",
+      "max_thrust": 100000 },
+    { "type": "src.drawing.ThrustersDrawable" }
   ]
 }

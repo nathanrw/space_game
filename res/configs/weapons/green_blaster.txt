@@ -1,4 +1,5 @@
 {
-	"deriving": "weapons/red_blaster.txt",
-	"bullet_config": "bullets/green_bullet.txt"
+  "deriving": "weapons/red_blaster.txt",
+  "bullet_config": "bullets/green_bullet.txt",
+  "shots_per_second": 1
 }
