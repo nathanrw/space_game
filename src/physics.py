@@ -94,71 +94,70 @@ class Body(Component):
         """ Initialise the body, attached to the given game object. """
 
         Component.__init__(self, game_object, game_services, config)
-        self.__position = Vec2d(0, 0)
-        self.__velocity = Vec2d(0, 0)
-        self.__angle_radians = 0
-        self.__size = config.get_or_default("size", 5)
-        self.__mass = config.get_or_default("mass", 1)
-        self.__collideable = config.get_or_default("is_collideable", True)
-        self.__body = None
-        self.__shape = None
+
+        # Moment of inertia.
+        moment = pymunk.moment_for_circle(float(config.get_or_default("mass", 1)),
+                                          0,
+                                          config.get_or_default("size", 5))
+
+        # Initialise body and shape.
+        self.__body = pymunk.Body(float(config.get_or_default("mass", 1)), moment)
+        self.__shape = pymunk.Circle(self.__body, float(config.get_or_default("size", 5)))
+        self.__shape.friction = 0.8
+
+        # Collision type for non-collidable bodies.
+        if config.get_or_default("is_collideable", True):
+            self.__shape.collision_type = 1
+        else:
+            self.__shape.collision_type = 0
+
+        # Squirell ourself away inside the shape, so we can map back later. Note
+        # that we're modifying the shape with a new field on the fly here, which
+        # could be seen as a bit hacky, but I think it's fairly legit - it's just
+        # as if we were to derive from pymunk.Shape and extend it, just without all
+        # the code...
+        self.__shape.game_body = self
+
+        # We will need the space eventually.
         self.__space = None
+
+        # Remember joints
+        self.__joints = []
 
     def manager_type(self):
         return Physics
 
     def create(self, space):
         """ Actually add the body to the simulation. """
-        if self.__body is None:
+        if self.__space is None:
             self.__space = space
-            moment = pymunk.moment_for_circle(float(self.__mass), 0, float(self.__size))
-            self.__body = pymunk.Body(float(self.__mass), moment)
-            self.__body.position = vec2tup(self.__position)
-            self.__body.velocity = vec2tup(self.__velocity)
-            self.__body.angle = self.__angle_radians
-            self.__shape = pymunk.Circle(self.__body, float(self.__size))
-            self.__shape.friction = 0.8
-            if self.__collideable:
-                self.__shape.collision_type = 1
-            else:
-                self.__shape.collision_type = 0
-            self.__shape.game_body = self
-            self.__space.add(self.__body, self.__shape)
+            self.__space.add(self.__body, self.__shape, *self.__joints)
 
     def destroy(self):
         """ Remove the body from the simulation. """
-        if self.__body is not None:
-            self.__space.remove(self.__body, self.__shape)
-            self.__body = None
-            self.__shape = None
+        if self.__space is not None:
+            self.__space.remove(self.__body, self.__shape, *self.__joints)
+            self.__space = None
 
     def world_to_local(self, point):
-        if self.__body is not None:
-            return Vec2d(self.__body.world_to_local(vec2tup(point)))
-        return None
+        return Vec2d(self.__body.world_to_local(vec2tup(point)))
 
     def local_to_world(self, point):
-        if self.__body is not None:
-            return Vec2d(self.__body.local_to_world(vec2tup(point)))
-        return None
+        return Vec2d(self.__body.local_to_world(vec2tup(point)))
 
     def local_dir_to_world(self, direction):
-        if self.__body is not None:
-            return self.local_to_world(direction) - self.position
-        return None
+        return self.local_to_world(direction) - self.position
 
     def apply_force_at_local_point(self, force, point):
         """ Apply a force to the body."""
-        if self.__body is not None:
-            self.__body.apply_force_at_local_point(vec2tup(force), vec2tup(point))
+        self.__body.apply_force_at_local_point(vec2tup(force), vec2tup(point))
 
     def pin_to(self, body):
         """ Pin this body to that one. They will become inseparable, and will
         not collide with one another. They will be able to rotate relative to
         one another however. """
-        # Note: What is the lifetime of the pin joint? What if both bodies are
-        # removed from the space? What if we want to remove the pin joint later?
-        # Questions for another day.
+
+        # Setup the joint.
         joint = pymunk.constraint.PinJoint(
             self.__body,
             body.__body,
@@ -166,107 +165,78 @@ class Body(Component):
             vec2tup(body.world_to_local(self.position))
         )
         joint.collide_bodies = False
-        self.__space.add(joint)
+
+        # Remember the joint so it can be added and removed.
+        self.__joints.append(joint)
+
+        # If the body has already been created then add the joint to the simulation.
+        if self.__space:
+            self.__space.add(joint)
         
     @property
     def position(self):
-        if self.__body is not None:
-            return Vec2d(self.__body.position)
-        else:
-            return self.__position
+        return Vec2d(self.__body.position)
 
     @position.setter
     def position(self, value):
-        if self.__body is not None:
-            self.__body.position = vec2tup(value)
-        else:
-            self.__position = value
+        self.__body.position = vec2tup(value)
 
     @property
     def velocity(self):
-        if self.__body is not None:
-            return Vec2d(self.__body.velocity)
-        else:
-            return self.__velocity
+        return Vec2d(self.__body.velocity)
 
     @velocity.setter
     def velocity(self, value):
-        if self.__body is not None:
-            self.__body.velocity = vec2tup(value)
-        else:
-            self.__velocity = value
+        self.__body.velocity = vec2tup(value)
 
     @property
     def size(self):
-        if self.__shape is not None:
-            return self.__shape.radius
-        else:
-            return self.__size
+        return self.__shape.radius
 
     @property
     def mass(self):
-        if self.__body is not None:
-            return self.__body.mass
-        else:
-            return self.__mass
+        return self.__body.mass
 
     @property
     def force(self):
         """ Note: force gets reset with each tick so no point caching it. """
-        if self.__body is not None:
-            return Vec2d( self.__body.force )
-        else:
-            return Vec2d(0, 0)
+        return Vec2d( self.__body.force )
 
     @force.setter
     def force(self, value):
         """ Note: force gets reset with each tick so no point caching it. """
-        if self.__body is not None:
-            self.__body.force = vec2tup(value)
+        self.__body.force = vec2tup(value)
 
     @property
     def collideable(self):
-        return self.__collideable
+        return self.__shape.collision_type == 1
 
     @collideable.setter
     def collideable(self, value):
-        if value == self.collideable:
-            return
-        self.__collideable = value
-        if self.__shape is not None:
-            if self.collideable:
-                self.__shape.collision_type = 1
-            else:
-                self.__shape.collision_type = 0
+        if value:
+            self.__shape.collision_type = 1
+        else:
+            self.__shape.collision_type = 0
 
     @property
     def orientation(self):
         """ Note: Expose degrees because pygame likes degrees. """
-        if self.__body is not None:
-            return math.degrees(self.__body.angle)
-        else:
-            return math.degrees(self.__angle_radians)
+        return math.degrees(self.__body.angle)
 
     @orientation.setter
     def orientation(self, value):
         """ Note: Expose degrees because pygame likes degrees. """
-        if self.__body is not None:
-            self.__body.angle = math.radians(value)
-        else:
-            self.__angle_radians = math.radians(value)
+        self.__body.angle = math.radians(value)
 
     @property
     def angular_velocity(self):
         """ Note: Expose degrees because pygame likes degrees. """
-        if self.__body is not None:
-            return math.degrees(self.__body.angular_velocity)
-        return 0
+        return math.degrees(self.__body.angular_velocity)
 
     @angular_velocity.setter
     def angular_velocity(self, value):
         """ Note: Expose degrees because pygame likes degrees. """
-        if self.__body is not None:
-            self.__body.angular_velocity = math.radians(value)
+        self.__body.angular_velocity = math.radians(value)
 
 class CollisionHandler(object):
     """ A logical collision handler. While physical collision handling is
