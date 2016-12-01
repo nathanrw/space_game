@@ -6,7 +6,7 @@ See utils.py for the overall scheme this fits into.
 
 from vector2d import Vec2d
 from utils import Component, Timer
-from physics import Body, Physics, CollisionHandler
+from physics import Body, Physics, CollisionHandler, CollisionResult
 
 import pygame
 import random
@@ -130,7 +130,7 @@ class ManuallyShootsBullets(Component):
             shooting_at_dir = self.shooting_at.direction()
             while self.shot_timer <= 0:
                 self.shot_timer += 1.0/self.config["shots_per_second"]
-                bullet = self.create_game_object(self.config["bullet_config"])
+                bullet = self.create_game_object(self.config["bullet_config"], parent=self.game_object)
                 muzzle_velocity = shooting_at_dir * self.config["bullet_speed"]
                 spread = self.config["spread"]
                 muzzle_velocity.rotate(random.random() * spread - spread)
@@ -263,7 +263,10 @@ class DamageCollisionHandler(CollisionHandler):
     def __init__(self):
         CollisionHandler.__init__(self, DamageOnContact, Hitpoints)
     def handle_matching_collision(self, dmg, hp):
+        if hp.game_object.is_ancestor(dmg.game_object):
+            return CollisionResult(False, False)
         dmg.apply_damage(hp)
+        return CollisionResult(True, True)
 
 class Team(Component):
     def __init__(self, game_object, game_services, config):

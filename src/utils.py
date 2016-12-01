@@ -413,6 +413,7 @@ class GameObject(object):
         self.config = None
         self.game_services = None
         self.children = []
+        self.parent = None
 
     def initialise(self, game_services, config):
         """ Initialise the object: create drawables, physics bodies, etc. """
@@ -424,6 +425,8 @@ class GameObject(object):
         self.is_garbage = True
         for child in self.children:
             child.kill()
+        if self.parent is not None:
+            self.parent.children.remove(self)
 
     def add_component(self, component):
         """ Shortcut to add a component. """
@@ -457,7 +460,22 @@ class GameObject(object):
 
     def add_child(self, obj):
         """ Add a child game object. """
+        assert obj.parent is None
         self.children.append(obj)
+        obj.parent = self
+
+    def is_descendant(self, obj):
+        """ Is this object descended from that one? """
+        return obj.is_ancestor(self)
+
+    def is_ancestor(self, obj):
+        """ Is that object descended from this one? """
+        if obj == self:
+            return True
+        for c in self.children:
+            if c.is_ancestor(obj):
+                return True
+        return False
 
 class Camera(Component):
     """ A camera, which drawing is done in relation to. """

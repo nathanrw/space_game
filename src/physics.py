@@ -32,8 +32,9 @@ class Physics(ComponentSystem):
             go1 = arbiter.shapes[0].game_body.game_object
             go2 = arbiter.shapes[1].game_body.game_object
             for handler in self.collision_handlers:
-                if handler.handle_collision(go1, go2):
-                    return handler.wants_physical_simulation()
+                result = handler.handle_collision(go1, go2)
+                if result.handled:
+                    return result.wants_physical_simulation
             return True
 
         # Setup our simple pymunk collision handler.
@@ -238,6 +239,11 @@ class Body(Component):
         """ Note: Expose degrees because pygame likes degrees. """
         self.__body.angular_velocity = math.radians(value)
 
+class CollisionResult(object):
+    def __init__(self, handled, wants_physical_simulation):
+        self.handled = handled
+        self.wants_physical_simulation = wants_physical_simulation
+
 class CollisionHandler(object):
     """ A logical collision handler. While physical collision handling is
     dealt with by the physics implementation, game behaviours must be added
@@ -255,19 +261,14 @@ class CollisionHandler(object):
         c2 = o2.get_component(self.t2)
         c3 = o1.get_component(self.t2)
         c4 = o2.get_component(self.t1)
+        # Note: behaviour undefined if both objects have both components. Need
+        # to sort that out.
         if c1 is not None and c2 is not None:
-            self.handle_matching_collision(c1, c2)
-            return True
+            return self.handle_matching_collision(c1, c2)
         elif c3 is not None and c4 is not None:
-            self.handle_matching_collision(c4, c3)
-            return True
-        return False
+            return self.handle_matching_collision(c4, c3)
+        return CollisionResult(False, True)
     
     def handle_matching_collision(self, c1, c2):
         """ These components are colliding, so the game should do something. """
-        pass
-
-    def wants_physical_simulation(self):
-        """ If this returns true then physical as well as logical collision
-        handling will be applied. """
-        return True
+        return CollisionResult(False, True)
