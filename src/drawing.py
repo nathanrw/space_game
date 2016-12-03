@@ -87,10 +87,12 @@ class HealthBarDrawable(Drawable):
             return
 
         # Draw health bar if it's on screen. Otherwise draw marker.
-        rect = pygame.Rect(0, 0, body.size*2, 6)
+        rect = pygame.Rect(0, 0, body.size*2, 12)
         rect.center = rect.center = camera.world_to_screen(body.position)
-        rect.top = rect.top - (body.size + 10)
+        rect.top = rect.top - (body.size*1.2)
         if camera.check_bounds_screen(rect):
+            pygame.draw.rect(camera.surface(), (255, 255, 255), rect)
+            rect.inflate_ip(-4, -4)
             pygame.draw.rect(camera.surface(), (255, 0, 0), rect)
             rect.width = int(hitpoints.hp/float(hitpoints.max_hp) * rect.width)
             pygame.draw.rect(camera.surface(), (0, 255, 0), rect)
