@@ -169,7 +169,9 @@ class EntityManager(object):
             else:
                 component_config = Config(component)
             component_type = self.game_services.lookup_type(component_config["type"])
-            obj.add_component(component_type(obj, self.game_services, component_config))
+            component = component_type(obj, self.game_services, component_config)
+            component.setup(**kwargs)
+            obj.add_component(component)
 
         # Add the object to the creation queue, and return it to the caller.
         self.new_objects.append(obj)
@@ -359,6 +361,10 @@ class Component(object):
         self.game_object = game_object
         self.game_services = game_services
         self.config = config
+
+    def setup(self, **kwargs):
+        """ Do any extra initialisation based on optional arguments. """
+        pass
         
     def manager_type(self):
         """ Return the type of system that should be managing us. """

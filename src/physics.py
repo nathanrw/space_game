@@ -125,6 +125,11 @@ class Body(Component):
         # Remember joints
         self.__joints = []
 
+    def setup(self, **kwargs):
+        """ Allow an initial position to be specified. """
+        if "position" in kwargs:
+            self.position = kwargs["position"]
+
     def manager_type(self):
         return Physics
 
