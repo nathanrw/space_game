@@ -149,7 +149,7 @@ class EntityManager(object):
         for s in self.systems_list:
             s.garbage_collect()
 
-    def create_game_object(self, config_name, *args, **kwargs):
+    def create_game_object(self, config_name, **kwargs):
         """ Add a new object. It is initialised, but not added to the game
         right away: that gets done at a certain point in the game loop."""
         loader = self.game_services.get_resource_loader()
@@ -157,8 +157,7 @@ class EntityManager(object):
 
         # Instantiate the object.
         t = self.game_services.lookup_type(config.get_or_default("type", "src.utils.GameObject"))
-        obj = t(*args)
-        obj.initialise(self.game_services, config)
+        obj = t(self.game_services, config)
 
         # Add components specified in the config.
         components = config.get_or_default("components", [])
@@ -412,20 +411,15 @@ class GameObject(object):
     """ An object in the game. It knows whether it needs to be deleted, and
     has access to object / component creation services. """
 
-    def __init__(self):
+    def __init__(self, game_services, config):
         """ Constructor. Since you don't have access to the game services
         in __init__, more complicated initialisation must be done in
         initialise()."""
         self.is_garbage = False
-        self.config = None
-        self.game_services = None
+        self.config = config
+        self.game_services = game_services
         self.children = []
         self.parent = None
-
-    def initialise(self, game_services, config):
-        """ Initialise the object: create drawables, physics bodies, etc. """
-        self.game_services = game_services
-        self.config = config
 
     def kill(self):
         """ Mark the object for deletion. """
