@@ -90,7 +90,7 @@ class ShootingAtBody(object):
         self.__from_body = from_body
         self.__to_body = to_body
     def direction(self):
-        return (self.__to_body.position - self.__from_body.position).normalized()
+        return (-self.__to_body.position + self.__from_body.position).normalized()
 
 class ManuallyShootsBullets(Component):
     """ Something that knows how to spray bullets. Note that this is not a
@@ -108,6 +108,10 @@ class ManuallyShootsBullets(Component):
     def start_shooting_world(self, at):
         """ Start shooting at a point in world space. """
         self.shooting_at = ShootingAtWorld(at, self.get_component(Body))
+
+    def start_shooting_at_body(self, body):
+        """ Start shooting at a body. """
+        self.shooting_at = ShootingAtBody(body, self.get_component(Body))
 
     def start_shooting_screen(self, at):
         """ Start shooting at a point in screen space. """
@@ -167,7 +171,7 @@ class AutomaticallyShootsBullets(Component):
                 team = body.get_component(Team)
                 if team is not None:
                     return team.team() != self_team.team()
-                return True
+                return False
             closest = self.get_system_by_type(Physics).closest_body_with(
                 body.position,
                 f
@@ -183,14 +187,11 @@ class AutomaticallyShootsBullets(Component):
             if not gun.shooting:
                 if self.fire_timer.tick(dt):
                     self.fire_timer.reset()
-                    gun.start_shooting_world(self.tracking.position)
+                    gun.start_shooting_at_body(self.tracking)
             else:
                 if self.burst_timer.tick(dt):
                     self.burst_timer.reset()
                     gun.stop_shooting()
-                else:
-                    # Maintain aim.
-                    gun.start_shooting_world(self.tracking.position)
 
 class MovesCamera(Component):
     def update(self, dt):
