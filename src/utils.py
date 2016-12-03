@@ -255,6 +255,7 @@ class EntityManager(object):
         self.garbage_collect()
 
 class MapList(object):
+    """ A map from keys to lists of values. """
     def __init__(self):
         self.__map = {}
     def add(self, key, value):
