@@ -1,5 +1,5 @@
 import pygame
-from vector2d import Vec2d
+from pymunk.vec2d import Vec2d
 
 class LoadingScreen(object):
     """ A loading screen to display while the resources are read in. It assumes

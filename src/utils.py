@@ -10,7 +10,7 @@ import os
 import math
 
 from loading_screen import LoadingScreen
-from vector2d import Vec2d
+from pymunk.vec2d import Vec2d
 
 def fromwin(path):
     """Paths serialized on windows have \\ in them, so we need to convert

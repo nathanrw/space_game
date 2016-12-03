@@ -4,7 +4,7 @@ See utils.py for the overall scheme this fits into.
 
 """
 
-from vector2d import Vec2d
+from pymunk.vec2d import Vec2d
 from utils import Component, Timer
 from physics import Body, Physics, CollisionHandler, CollisionResult
 
@@ -133,7 +133,7 @@ class ManuallyShootsBullets(Component):
                 bullet = self.create_game_object(self.config["bullet_config"], parent=self.game_object)
                 muzzle_velocity = shooting_at_dir * self.config["bullet_speed"]
                 spread = self.config["spread"]
-                muzzle_velocity.rotate(random.random() * spread - spread)
+                muzzle_velocity.rotate_degrees(random.random() * spread - spread)
                 bullet_body = bullet.get_component(Body)
                 bullet_body.velocity = body.velocity + muzzle_velocity
                 separation = body.size+bullet_body.size+1
@@ -208,7 +208,7 @@ class LaunchesFighters(EnemyBehaviour):
         for i in xrange(self.config["num_fighters"]):
             direction = self.towards_player()
             spread = self.config["takeoff_spread"]
-            direction.rotate(spread*random.random()-spread/2.0)
+            direction.rotate_degrees(spread*random.random()-spread/2.0)
             child = self.create_game_object(self.config["fighter_config"])
             body = self.get_component(Body)
             child_body = child.get_component(Body)

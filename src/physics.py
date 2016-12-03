@@ -1,13 +1,7 @@
-from vector2d import Vec2d
-
 from utils import *
 
 import pymunk
 import math
-
-def vec2tup(vec):
-    """ Convert a vector defining the get operator into a tuple. """
-    return (vec[0], vec[1])
 
 class Physics(ComponentSystem):
     """ Physics system. It's now implemented using pymunk, but that fact should
@@ -146,17 +140,17 @@ class Body(Component):
             self.__space = None
 
     def world_to_local(self, point):
-        return Vec2d(self.__body.world_to_local(vec2tup(point)))
+        return self.__body.world_to_local(point)
 
     def local_to_world(self, point):
-        return Vec2d(self.__body.local_to_world(vec2tup(point)))
+        return self.__body.local_to_world(point)
 
     def local_dir_to_world(self, direction):
         return self.local_to_world(direction) - self.position
 
     def apply_force_at_local_point(self, force, point):
         """ Apply a force to the body."""
-        self.__body.apply_force_at_local_point(vec2tup(force), vec2tup(point))
+        self.__body.apply_force_at_local_point(force, point)
 
     def pin_to(self, body):
         """ Pin this body to that one. They will become inseparable, and will
@@ -168,7 +162,7 @@ class Body(Component):
             self.__body,
             body.__body,
             (0, 0),
-            vec2tup(body.world_to_local(self.position))
+            body.world_to_local(self.position)
         )
         joint.collide_bodies = False
 
@@ -181,19 +175,19 @@ class Body(Component):
         
     @property
     def position(self):
-        return Vec2d(self.__body.position)
+        return self.__body.position
 
     @position.setter
     def position(self, value):
-        self.__body.position = vec2tup(value)
+        self.__body.position = value
 
     @property
     def velocity(self):
-        return Vec2d(self.__body.velocity)
+        return self.__body.velocity
 
     @velocity.setter
     def velocity(self, value):
-        self.__body.velocity = vec2tup(value)
+        self.__body.velocity = value
 
     @property
     def size(self):
@@ -206,12 +200,12 @@ class Body(Component):
     @property
     def force(self):
         """ Note: force gets reset with each tick so no point caching it. """
-        return Vec2d( self.__body.force )
+        return self.__body.force
 
     @force.setter
     def force(self, value):
         """ Note: force gets reset with each tick so no point caching it. """
-        self.__body.force = vec2tup(value)
+        self.__body.force = value
 
     @property
     def collideable(self):

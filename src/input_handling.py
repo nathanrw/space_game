@@ -1,4 +1,4 @@
-from vector2d import Vec2d
+from pymunk.vec2d import Vec2d
 
 import pygame
 
