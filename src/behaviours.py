@@ -134,7 +134,9 @@ class ManuallyShootsBullets(Component):
             shooting_at_dir = self.shooting_at.direction()
             while self.shot_timer <= 0:
                 self.shot_timer += 1.0/self.config["shots_per_second"]
-                bullet = self.create_game_object(self.config["bullet_config"], parent=self.game_object)
+                bullet = self.create_game_object(self.config["bullet_config"],
+                                                 parent=self.game_object,
+                                                 team=self.get_component(Team).get_team())
                 muzzle_velocity = shooting_at_dir * self.config["bullet_speed"]
                 spread = self.config["spread"]
                 muzzle_velocity.rotate_degrees(random.random() * spread - spread)
@@ -166,12 +168,12 @@ class AutomaticallyShootsBullets(Component):
             # Find the closest object we don't like.
             self_team = self.get_component(Team)
             def f(body):
-                if self_team is None:
-                    return True
                 team = body.get_component(Team)
-                if team is not None:
-                    return team.team() != self_team.team()
-                return False
+                if self_team is None:
+                    return False
+                if team is None:
+                    return False
+                return not team.on_same_team(self_team)
             closest = self.get_system_by_type(Physics).closest_body_with(
                 body.position,
                 f
@@ -210,7 +212,8 @@ class LaunchesFighters(EnemyBehaviour):
             direction = self.towards_player()
             spread = self.config["takeoff_spread"]
             direction.rotate_degrees(spread*random.random()-spread/2.0)
-            child = self.create_game_object(self.config["fighter_config"])
+            child = self.create_game_object(self.config["fighter_config"],
+                                            team=self.get_component(Team).get_team())
             body = self.get_component(Body)
             child_body = child.get_component(Body)
             child_body.velocity = body.velocity + direction * self.config["takeoff_speed"]
@@ -272,8 +275,16 @@ class DamageCollisionHandler(CollisionHandler):
 class Team(Component):
     def __init__(self, game_object, game_services, config):
         Component.__init__(self, game_object, game_services, config)
-    def team(self):
-        return self.config["team"]
+        self.__team = config.get_or_none("team")
+    def setup(self, **kwargs):
+        if "team" in kwargs:
+            self.__team = kwargs["team"]
+    def get_team(self):
+        return self.__team
+    def set_team(self, team):
+        self.__team = team
+    def on_same_team(self, that):
+        return self.__team == None or that.__team == None or self.__team == that.__team
 
 class Text(Component):
     def __init__(self, game_object, game_services, config):
@@ -475,7 +486,9 @@ class WaveSpawner(Component):
             x = 1 - rnd*2
             y = 1 - (1-rnd)*2
             enemy_position = player_body.position + Vec2d(x, y)*500
-            self.spawned.append(self.create_game_object(enemy_type, position=enemy_position))
+            self.spawned.append(self.create_game_object(enemy_type,
+                                                        position=enemy_position,
+                                                        team="enemy"))
 
     def wave_is_dead(self):
         """ Has the last wave been wiped out? """
@@ -547,5 +560,7 @@ class Turrets(Component):
         entity, which is set up as a child of the entity this component is
         attached to. It is assumed to have a Body component, which is pinned
         to our own Body."""
-        entity = self.create_game_object(weapon_config_name, parent=self.game_object)
+        entity = self.create_game_object(weapon_config_name,
+                                         parent=self.game_object,
+                                         team=self.get_component(Team).get_team())
         self.__hardpoints[hardpoint_index].set_weapon(entity, self.get_component(Body))

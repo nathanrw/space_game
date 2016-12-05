@@ -1,5 +1,6 @@
 {
   "components": [
+    { "type": "src.behaviours.Team"},
     { "type": "src.behaviours.Hitpoints",
       "hp": 50
     },
@@ -18,8 +19,6 @@
     },
     { "type": "src.behaviours.ExplodesOnDeath",
       "explosion_config": "explosions/big_explosion.txt"
-    },
-    { "type": "src.behaviours.Team",
-      "team": "enemy" }
+    }
   ]
 }

@@ -1,5 +1,6 @@
 {
   "components": [
+    { "type": "src.behaviours.Team"},
     { "type": "src.behaviours.Hitpoints",
       "hp": 4
     },
@@ -22,8 +23,6 @@
     { "type": "src.behaviours.FollowsPlayer",
       "desired_distance_to_player": 500,
       "acceleration": 600
-    },
-    { "type": "src.behaviours.Team",
-      "team": "enemy" }
+    }
   ]
 }

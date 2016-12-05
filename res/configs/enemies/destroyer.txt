@@ -18,8 +18,7 @@
       "desired_distance_to_player": 500,
       "acceleration": 600
     },
-    { "type": "src.behaviours.Team",
-      "team": "enemy" },
+    { "type": "src.behaviours.Team"},
     { "type": "src.behaviours.Turrets" },
     { "type": "src.behaviours.Thrusters",
       "max_thrust": 100000 },
