@@ -19,7 +19,16 @@
       "acceleration": 600
     },
     { "type": "src.behaviours.Team"},
-    { "type": "src.behaviours.Turrets" },
+    { "type": "src.behaviours.Turrets",
+      "hardpoints": [
+        { "x": -70,
+	  "y": 0,
+	  "weapon_config": "enemies/turret.txt" },
+	{ "x": 70,
+	  "y": 0,
+	  "weapon_config": "enemies/turret.txt" }
+      ]
+    },
     { "type": "src.behaviours.Thrusters",
       "max_thrust": 100000 },
     { "type": "src.drawing.ThrustersDrawable" }

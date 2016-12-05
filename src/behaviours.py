@@ -547,9 +547,16 @@ class Turrets(Component):
     def __init__(self, game_object, game_services, config):
         """ Initialise the turrets. """
         Component.__init__(self, game_object, game_services, config)
-        self.__hardpoints = [HardPoint(Vec2d(70, 0)), HardPoint(Vec2d(-70, 0))]
-        self.set_weapon(0, "enemies/turret.txt")
-        self.set_weapon(1, "enemies/turret.txt")
+        self.__hardpoints = []
+        hardpoints = config.get_or_default("hardpoints", [])
+        for hp in hardpoints:
+            if not "x" in hp or not "y" in hp:
+                continue
+            self.__hardpoints.append(HardPoint(Vec2d(hp["x"], hp["y"])))
+            weapon_config = "enemies/turret.txt"
+            if "weapon_config" in hp:
+                weapon_config = hp["weapon_config"]
+            self.set_weapon(len(self.__hardpoints)-1, weapon_config)
 
     def num_hardpoints(self):
         """ Get the number of hardpoints. """
