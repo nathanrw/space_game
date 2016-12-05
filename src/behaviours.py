@@ -127,23 +127,46 @@ class ManuallyShootsBullets(Component):
 
     def update(self, dt):
         """ Create bullets if shooting. Our rate of fire is governed by a timer. """
+
+        # Count down to shootin.
         if self.shot_timer > 0:
             self.shot_timer -= dt
+
+        # If we're shooting, let's shoot some bullets!
         if self.shooting:
+
+            # These will be the same for each shot, so get them here...
             body = self.get_component(Body)
             shooting_at_dir = self.shooting_at.direction()
+
+            # If it's time, shoot a bullet and rest the timer. Note that
+            # we can shoot more than one bullet in a time step if we have
+            # a high enough rate of fire.
             while self.shot_timer <= 0:
+
+                # Update the timer.
                 self.shot_timer += 1.0/self.config["shots_per_second"]
-                bullet = self.create_game_object(self.config["bullet_config"],
-                                                 parent=self.game_object,
-                                                 team=self.get_component(Team).get_team())
+
+                # Can't spawn bullets if there's nowhere to put them!
+                if body is None:
+                    continue
+
+                # Position the bullet somewhere sensible.
+                separation = body.size*2
+                bullet_position = Vec2d(body.position) + shooting_at_dir * separation
+
+                # Work out the muzzle velocity.
                 muzzle_velocity = shooting_at_dir * self.config["bullet_speed"]
                 spread = self.config["spread"]
                 muzzle_velocity.rotate_degrees(random.random() * spread - spread)
-                bullet_body = bullet.get_component(Body)
-                bullet_body.velocity = body.velocity + muzzle_velocity
-                separation = body.size+bullet_body.size+1
-                bullet_body.position = Vec2d(body.position) + shooting_at_dir * separation
+                bullet_velocity = body.velocity+muzzle_velocity
+
+                # Create the bullet.
+                self.create_game_object(self.config["bullet_config"],
+                                        parent=self.game_object,
+                                        team=self.get_component(Team).get_team(),
+                                        position=bullet_position,
+                                        velocity=bullet_velocity)
 
 class AutomaticallyShootsBullets(Component):
     """ Something that shoots bullets at something else. """
@@ -540,6 +563,7 @@ class HardPoint(object):
         weapon_body = self.__weapon.get_component(Body)
         point = body_to_add_to.local_to_world(self.__position)
         weapon_body.position = point
+        weapon_body.velocity = body_to_add_to.velocity
         weapon_body.pin_to(body_to_add_to)
 
 class Turrets(Component):

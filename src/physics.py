@@ -123,6 +123,8 @@ class Body(Component):
         """ Allow an initial position to be specified. """
         if "position" in kwargs:
             self.position = kwargs["position"]
+        if "velocity" in kwargs:
+            self.velocity = kwargs["velocity"]
 
     def manager_type(self):
         return Physics

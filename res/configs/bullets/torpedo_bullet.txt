@@ -1,10 +1,5 @@
 {
   "components": [
-    { "config": "weapons/torpedo_blaster.txt" },
-    { "type": "src.behaviours.AutomaticallyShootsBullets",
-      "fire_period": 0.1,
-      "burst_period": 0.5
-    },
     { "type": "src.physics.Body",
       "mass": 10,
       "size": 10
@@ -22,6 +17,13 @@
       "explosion_config": "explosions/big_explosion.txt"
     },
     { "type": "src.behaviours.Team",
-      "team": "player" }
+      "team": "player" },
+    { "type": "src.behaviours.Turrets",
+      "hardpoints": [
+        { "x": 0,
+	  "y": 0,
+	  "weapon_config": "enemies/turret.txt" }
+      ]
+    }
   ]
 }
