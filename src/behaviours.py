@@ -185,8 +185,13 @@ class AutomaticallyShootsBullets(Component):
         body = self.get_component(Body)
         gun = self.get_component(ManuallyShootsBullets)
 
+        # Ensure the object we're tracking still exists.
+        if self.tracking is not None:
+            if self.tracking.is_garbage():
+                self.tracking = None
+
         # Update tracking.
-        if not self.tracking:
+        if self.tracking is None:
 
             # Find the closest object we don't like.
             self_team = self.get_component(Team)
@@ -204,10 +209,14 @@ class AutomaticallyShootsBullets(Component):
             if closest:
                 self.tracking = closest
 
-        # Update aim.
-        if self.tracking:
-            if self.tracking.is_garbage():
-                self.tracking = None
+        # Point at the object we're tracking. Note that in future it would be
+        # good for this to be physically simulated, but for now we just hack
+        # it in...
+        if body is not None and self.tracking is not None:
+            direction = (self.tracking.position - body.position).normalized()
+            body.orientation = 90 + direction.angle_degrees
+
+        # Shoot at the object we're tracking.
         if self.tracking:
             if not gun.shooting:
                 if self.fire_timer.tick(dt):
