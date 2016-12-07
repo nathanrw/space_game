@@ -22,7 +22,7 @@
       "hardpoints": [
         { "x": 0,
 	  "y": 0,
-	  "weapon_config": "enemies/turret.txt" }
+	  "weapon_config": "enemies/torpedo_turret.txt" }
       ]
     }
   ]
