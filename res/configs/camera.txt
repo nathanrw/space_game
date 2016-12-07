@@ -2,6 +2,6 @@
     "components": [
         { "type": "src.drawing.BackgroundDrawable",
 	  "image_name": "res/images/star--background-seamless-repeating9.jpg"},
-	{ "type": "src.utils.Camera" }
+	{ "type": "src.behaviours.Camera" }
     ]
 }

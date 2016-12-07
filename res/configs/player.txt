@@ -16,7 +16,6 @@
     { "type": "src.behaviours.ExplodesOnDeath",
       "explosion_config": "explosions/big_explosion.txt"
     },
-    { "type": "src.behaviours.MovesCamera" },
     { "type": "src.input_handling.PlayerInputHandler" },
     { "type": "src.behaviours.Team",
       "team": "player" },

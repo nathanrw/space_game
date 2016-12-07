@@ -227,10 +227,6 @@ class AutomaticallyShootsBullets(Component):
                     self.burst_timer.reset()
                     gun.stop_shooting()
 
-class MovesCamera(Component):
-    def update(self, dt):
-        self.game_services.get_camera().position = Vec2d(self.get_component(Body).position)
-
 class LaunchesFighters(EnemyBehaviour):
     def __init__(self, game_object, game_services, config):
         Component.__init__(self, game_object, game_services, config)
@@ -604,3 +600,90 @@ class Turrets(Component):
                                          parent=self.game_object,
                                          team=self.get_component(Team).get_team())
         self.__hardpoints[hardpoint_index].set_weapon(entity, self.get_component(Body))
+
+class Camera(Component):
+    """ A camera, which drawing is done in relation to. """
+
+    def __init__(self, game_object, game_services, config):
+        """ Initialise the camera. """
+        Component.__init__(self, game_object, game_services, config)
+        self.__position = Vec2d(0, 0)
+        self.__screen = game_services.get_screen()
+        self.__max_shake = 20
+        self.__damping_factor = 10
+        self.__shake = 0
+        self.__vertical_shake = 0
+        self.__horizontal_shake = 0
+        self.__tracking = None
+
+    def track(self, game_object):
+        """ Make the camera follow a particular game object. """
+        self.__tracking = game_object
+
+    def surface(self):
+        """ Get the surface drawing will be done on. """
+        return self.__screen
+
+    def world_to_screen(self, world):
+        """ Convert from world coordinates to screen coordinates. """
+        centre = Vec2d(self.__screen.get_size())/2
+        return centre + world - self.position
+
+    def screen_to_world(self, screen):
+        """ Convert from screen coordinates to world coordinates. """
+        centre = Vec2d(self.__screen.get_size())/2
+        return screen + self.position - centre
+
+    def check_bounds_world(self, bbox):
+        """ Check whether a world space bounding box is on the screen. """
+        if bbox is None: return True
+        self_box = self.__screen.get_rect()
+        self_box.center = self.position
+        return bbox.colliderect(self_box)
+
+    def check_bounds_screen(self, bbox):
+        """ Check whether a screen space bounding box is on the screen. """
+        if bbox is None: return True
+        return self.__screen.get_rect().colliderect(bbox)
+
+    def update(self, dt):
+        """ Update the camera. """
+
+        # If the object we're tracking has been killed then forget about it.
+        if self.__tracking.is_garbage:
+            self.__tracking = None
+
+        # Move the camera to track the body. Note that we could do something
+        # more complex e.g. interpolate the positions, but this is good enough
+        # for now.
+        tracking_body = self.__tracking.get_component(Body)
+        if tracking_body is not None:
+            self.__position = tracking_body.position
+
+        # Calculate the screen shake effect.
+        if self.__shake > 0:
+            self.__shake -= dt * self.__damping_factor
+        if self.__shake < 0:
+            self.__shake = 0
+        self.__vertical_shake = (1-2*random.random()) * self.__shake
+        self.__horizontal_shake = (1-2*random.random()) * self.__shake
+
+    def apply_shake(self, shake_factor, position):
+        """ Apply a screen shake effect. """
+        displacement = self.__position - position
+        distance = displacement.length
+        screen_diagonal = (Vec2d(self.__screen.get_size())/2).length
+        max_dist = screen_diagonal * 2
+        amount = max(shake_factor * (1.0 - distance/max_dist), 0)
+        self.__shake = min(self.__shake+amount, self.__max_shake)
+
+    @property
+    def position(self):
+        """ Get the position of the camera, adjusted for shake. """
+        return self.__position + Vec2d(self.__horizontal_shake,
+                                       self.__vertical_shake)
+
+    @position.setter
+    def position(self, value):
+        """ Set the (actual) position of the camera. """
+        self.__position = Vec2d(value)

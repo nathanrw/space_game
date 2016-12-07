@@ -25,8 +25,8 @@ import pygame
 
 from physics import Physics
 from drawing import Drawing
-from behaviours import DamageCollisionHandler
-from utils import GameServices, ResourceLoader, EntityManager, Camera
+from behaviours import DamageCollisionHandler, Camera
+from utils import GameServices, ResourceLoader, EntityManager
 from input_handling import InputHandling
 
 class SpaceGameServices(GameServices):
@@ -169,6 +169,9 @@ class Game(object):
 
         # Make the player
         self.player = self.entity_manager.create_game_object("player.txt")
+
+        # Make the camera follow the player.
+        self.camera.get_component(Camera).track(self.player)
 
         # Create the wave spawner.
         self.wave_spawner = self.entity_manager.create_game_object("wave_spawner.txt")
