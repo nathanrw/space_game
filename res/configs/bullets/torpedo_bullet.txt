@@ -16,14 +16,17 @@
     { "type": "src.behaviours.ExplodesOnDeath",
       "explosion_config": "explosions/big_explosion.txt"
     },
-    { "type": "src.behaviours.Team",
-      "team": "player" },
+    { "type": "src.behaviours.Team" },
     { "type": "src.behaviours.Turrets",
       "hardpoints": [
         { "x": 0,
 	  "y": 0,
 	  "weapon_config": "enemies/torpedo_turret.txt" }
       ]
-    }
+    },
+    { "type": "src.behaviours.Tracking" },
+    { "type": "src.behaviours.FollowsTracked",
+      "desired_distance_to_player": 0.1,
+      "acceleration": 30000 }
   ]
 }
