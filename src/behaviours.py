@@ -11,30 +11,17 @@ from physics import Body, Physics, CollisionHandler, CollisionResult
 import pygame
 import random
         
-class EnemyBehaviour(Component):
-    def towards_player(self):
-        """ Get the direction towards the player. """
-        player = self.game_services.get_player()
-        if player.is_garbage:
-            return Vec2d(0, 1)
-        player_pos = player.get_component(Body).position
-        displacement = player_pos - self.get_component(Body).position
-        direction = displacement.normalized()
-        return direction
-
-class FollowsPlayer(EnemyBehaviour):
-    def __init__(self, game_object, game_services, config):
-        EnemyBehaviour.__init__(self, game_object, game_services, config)
+class FollowsTracked(Component):
 
     def update(self, dt):
+        """ Follows the tracked body. """
 
-        # accelerate towards the player and tries to match velocities when close
-        player = self.game_services.get_player()
-        if player.is_garbage:
+        body = self.get_component(Body)
+        player_body = self.get_component(Tracking).get_tracked()
+
+        if body is None or player_body is None:
             return
         
-        body = self.get_component(Body)
-        player_body = player.get_component(Body)
         displacement = player_body.position - body.position
         rvel = player_body.velocity - body.velocity
         target_dist = self.config["desired_distance_to_player"]
@@ -168,30 +155,46 @@ class ManuallyShootsBullets(Component):
                                         position=bullet_position,
                                         velocity=bullet_velocity)
 
-class AutomaticallyShootsBullets(Component):
-    """ Something that shoots bullets at something else. """
+class Tracking(Component):
+    """ Tracks something on the opposite team. """
+
+    # Note: Camera does a kind of tracking, but with an explicitly
+    # specified object, not the closest object on the other team. If
+    # the concept of multiple tracking behaviours were introduced, the
+    # camera could use the Tracking component.
 
     def __init__(self, game_object, game_services, config):
-        """ Initialise. """
         Component.__init__(self, game_object, game_services, config)
-        self.fire_timer = Timer(config["fire_period"])
-        self.fire_timer.advance_to_fraction(0.8)
-        self.burst_timer = Timer(config["burst_period"])
-        self.tracking = None
+        self.__tracked_body = None
+
+    def get_tracked(self):
+        """ Get the tracked body. """
+        if self.__tracked_body is not None:
+            if self.__tracked_body.is_garbage():
+                self.__tracked_body = None
+        return self.__tracked_body
+
+    def reset_tracking(self):
+        """ Stop tracking the current body and find something else. """
+        self.__tracked_body = None
+
+    def towards_tracked(self):
+        """ Get the direction towards the tracked body. """
+        body = self.get_tracked()
+        if body is None:
+            return Vec2d(0, 1)
+        return (body.position - self.get_component(Body).position).normalized()
 
     def update(self, dt):
-        """ Update the shooting bullet. """
-
-        body = self.get_component(Body)
-        gun = self.get_component(ManuallyShootsBullets)
+        """ Update the tracking. """
 
         # Ensure the object we're tracking still exists.
-        if self.tracking is not None:
-            if self.tracking.is_garbage():
-                self.tracking = None
+        if self.__tracked_body is not None:
+            if self.__tracked_body.is_garbage():
+                self.__tracked_body = None
 
         # Update tracking.
-        if self.tracking is None:
+        if self.__tracked_body is None:
 
             # Find the closest object we don't like.
             self_team = self.get_component(Team)
@@ -203,31 +206,51 @@ class AutomaticallyShootsBullets(Component):
                     return False
                 return not team.on_same_team(self_team)
             closest = self.get_system_by_type(Physics).closest_body_with(
-                body.position,
+                self.get_component(Body).position,
                 f
             )
             if closest:
-                self.tracking = closest
+                self.__tracked_body = closest
+
+class AutomaticallyShootsBullets(Component):
+    """ Something that shoots bullets at something else. """
+
+    def __init__(self, game_object, game_services, config):
+        """ Initialise. """
+        Component.__init__(self, game_object, game_services, config)
+        self.fire_timer = Timer(config["fire_period"])
+        self.fire_timer.advance_to_fraction(0.8)
+        self.burst_timer = Timer(config["burst_period"])
+
+    def update(self, dt):
+        """ Update the shooting bullet. """
+
+        body = self.get_component(Body)
+        gun = self.get_component(ManuallyShootsBullets)
+        tracking = self.get_component(Tracking)
+        tracked_body = tracking.get_tracked()
+
+        # Not much we can do if no bodies...
+        if body is None or tracked_body is None:
+            return
 
         # Point at the object we're tracking. Note that in future it would be
         # good for this to be physically simulated, but for now we just hack
         # it in...
-        if body is not None and self.tracking is not None:
-            direction = (self.tracking.position - body.position).normalized()
-            body.orientation = 90 + direction.angle_degrees
+        direction = (tracked_body.position - body.position).normalized()
+        body.orientation = 90 + direction.angle_degrees
 
         # Shoot at the object we're tracking.
-        if self.tracking:
-            if not gun.shooting:
-                if self.fire_timer.tick(dt):
-                    self.fire_timer.reset()
-                    gun.start_shooting_at_body(self.tracking)
-            else:
-                if self.burst_timer.tick(dt):
-                    self.burst_timer.reset()
-                    gun.stop_shooting()
+        if not gun.shooting:
+            if self.fire_timer.tick(dt):
+                self.fire_timer.reset()
+                gun.start_shooting_at_body(tracked_body)
+        else:
+            if self.burst_timer.tick(dt):
+                self.burst_timer.reset()
+                gun.stop_shooting()
 
-class LaunchesFighters(EnemyBehaviour):
+class LaunchesFighters(Component):
     def __init__(self, game_object, game_services, config):
         Component.__init__(self, game_object, game_services, config)
         self.spawn_timer = Timer(config["spawn_period"])
@@ -237,7 +260,7 @@ class LaunchesFighters(EnemyBehaviour):
             self.spawn()
     def spawn(self):
         for i in xrange(self.config["num_fighters"]):
-            direction = self.towards_player()
+            direction = self.get_component(Tracking).towards_tracked()
             spread = self.config["takeoff_spread"]
             direction.rotate_degrees(spread*random.random()-spread/2.0)
             child = self.create_game_object(self.config["fighter_config"],
@@ -656,9 +679,9 @@ class Camera(Component):
         # Move the camera to track the body. Note that we could do something
         # more complex e.g. interpolate the positions, but this is good enough
         # for now.
-        tracking_body = self.__tracking.get_component(Body)
-        if tracking_body is not None:
-            self.__position = tracking_body.position
+        tracked_body = self.__tracking.get_component(Body)
+        if tracked_body is not None:
+            self.__position = tracked_body.position
 
         # Calculate the screen shake effect.
         if self.__shake > 0:

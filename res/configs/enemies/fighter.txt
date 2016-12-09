@@ -1,6 +1,7 @@
 {
   "components": [
     { "type": "src.behaviours.Team"},
+    { "type": "src.behaviours.Tracking"},
     { "type": "src.behaviours.Hitpoints",
       "hp": 4
     },
@@ -20,7 +21,7 @@
     { "type": "src.behaviours.ExplodesOnDeath",
       "explosion_config": "explosions/big_explosion.txt"
     },
-    { "type": "src.behaviours.FollowsPlayer",
+    { "type": "src.behaviours.FollowsTracked",
       "desired_distance_to_player": 500,
       "acceleration": 600
     }

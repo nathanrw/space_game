@@ -1,6 +1,7 @@
 {
   "components": [
     { "type": "src.behaviours.Team"},
+    { "type": "src.behaviours.Tracking"},
     { "type": "src.behaviours.Hitpoints",
       "hp": 50
     },
