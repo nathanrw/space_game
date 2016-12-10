@@ -263,12 +263,11 @@ class LaunchesFighters(Component):
             direction = self.get_component(Tracking).towards_tracked()
             spread = self.config["takeoff_spread"]
             direction.rotate_degrees(spread*random.random()-spread/2.0)
-            child = self.create_game_object(self.config["fighter_config"],
-                                            team=self.get_component(Team).get_team())
             body = self.get_component(Body)
-            child_body = child.get_component(Body)
-            child_body.velocity = body.velocity + direction * self.config["takeoff_speed"]
-            child_body.position = Vec2d(body.position)
+            child = self.create_game_object(self.config["fighter_config"],
+                                            team=self.get_component(Team).get_team(),
+                                            position=body.position,
+                                            velocity=body.velocity + direction * self.config["takeoff_speed"])
 
 class KillOnTimer(Component):
     """ For objects that should be destroyed after a limited time. """
@@ -283,11 +282,11 @@ class ExplodesOnDeath(Component):
     """ For objects that spawn an explosion when they die. """
     def on_object_killed(self):
         body = self.get_component(Body)
-        position = body.position
-        explosion = self.create_game_object(self.config["explosion_config"])
-        explosion.get_component(Body).position = position
+        explosion = self.create_game_object(self.config["explosion_config"],
+                                            position=body.position,
+                                            velocity=body.velocity)
         shake_factor = self.config.get_or_default("shake_factor", 1)
-        self.game_services.get_camera().apply_shake(shake_factor, position)
+        self.game_services.get_camera().apply_shake(shake_factor, body.position)
 
 class EndProgramOnDeath(Component):
     """ If the entity this is attached to is destroyed, the program will exit. """
