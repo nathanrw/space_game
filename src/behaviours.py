@@ -339,7 +339,7 @@ class Team(Component):
 class Text(Component):
     def __init__(self, game_object, game_services, config):
         Component.__init__(self, game_object, game_services, config)
-        self.text = config.get_or_default("Hello, world!")
+        self.text = config.get_or_default("text", "Hello, world!")
     def setup(self, **kwargs):
         Component.setup(self, **kwargs)
         if "text" in kwargs:
