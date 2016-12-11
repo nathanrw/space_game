@@ -457,7 +457,7 @@ class Thrusters(Component):
             self.__bottom_right_thruster.go()
 
         # Counteract spin automatically.
-        eps = 0.005 # LOLOLOL
+        eps = 10 # LOLOLOL
         if (not self.__top_left_thruster.on()) and \
            (not self.__top_right_thruster.on()) and \
            (not self.__bottom_left_thruster.on()) and \
