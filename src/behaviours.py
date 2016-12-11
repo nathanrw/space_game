@@ -339,7 +339,11 @@ class Team(Component):
 class Text(Component):
     def __init__(self, game_object, game_services, config):
         Component.__init__(self, game_object, game_services, config)
-        self.text = "Hello, world!"
+        self.text = config.get_or_default("Hello, world!")
+    def setup(self, **kwargs):
+        Component.setup(self, **kwargs)
+        if "text" in kwargs:
+            self.text = kwargs["text"]
 
 class Thruster(object):
     def __init__(self, position, direction, max_thrust, name):
@@ -503,12 +507,10 @@ class WaveSpawner(Component):
             return
         elif self.player_is_dead() or self.max_waves():
             self.done = True
-            message = self.create_game_object("endgame_message.txt")
-            message_text = message.get_component(Text)
+            txt = "GAME OVER"
             if self.max_waves():
-                message_text.text = "VICTORY"
-            else:
-                message_text.text = "GAME OVER"
+                txt = "VICTORY"
+            message = self.create_game_object("endgame_message.txt", text=txt)
 
         # If the wave is dead and we're not yet preparing (which displays a timed message) then
         # start preparing a wave.
@@ -547,9 +549,8 @@ class WaveSpawner(Component):
 
     def prepare_for_wave(self):
         """ Prepare for a wave. """
-        from drawing import TextDrawable # nasty: avoid circular dependency.
-        self.message = self.create_game_object("update_message.txt")
-        self.message.get_component(Text).text = "WAVE %s PREPARING" % self.wave
+        self.message = self.create_game_object("update_message.txt",
+                                               text="WAVE %s PREPARING" % self.wave)
 
     def prepared_to_spawn(self):
         """ Check whether the wave is ready. """
