@@ -655,7 +655,10 @@ class Animation(object):
     def draw(self, world_pos, camera):
         img = self.frames[self.timer.pick_index(len(self.frames))]
         if (self.orientation != 0):
-            img = img = pygame.transform.rotate(img, self.orientation)
+            img = pygame.transform.rotate(img, self.orientation)
+        if (camera.zoom != 1):
+            size = Vec2d(img.get_size())*camera.zoom
+            img = pygame.transform.scale(img, (int(size[0]), int(size[1])))
         screen_pos = camera.world_to_screen(world_pos) - Vec2d(img.get_rect().center)
         camera.surface().blit(img, screen_pos)
     def randomise(self):

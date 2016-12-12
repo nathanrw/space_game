@@ -638,6 +638,7 @@ class Camera(Component):
         self.__vertical_shake = 0
         self.__horizontal_shake = 0
         self.__tracking = None
+        self.__zoom = 1
 
     def track(self, game_object):
         """ Make the camera follow a particular game object. """
@@ -650,17 +651,19 @@ class Camera(Component):
     def world_to_screen(self, world):
         """ Convert from world coordinates to screen coordinates. """
         centre = Vec2d(self.__screen.get_size())/2
-        return centre + world - self.position
+        return self.__zoom * (world - self.position) + centre
 
     def screen_to_world(self, screen):
         """ Convert from screen coordinates to world coordinates. """
         centre = Vec2d(self.__screen.get_size())/2
-        return screen + self.position - centre
+        return (screen + self.position) / self.__zoom - centre
 
     def check_bounds_world(self, bbox):
         """ Check whether a world space bounding box is on the screen. """
         if bbox is None: return True
         self_box = self.__screen.get_rect()
+        self_box.width /= self.__zoom
+        self_box.height /= self.__zoom
         self_box.center = self.position
         return bbox.colliderect(self_box)
 
@@ -710,3 +713,14 @@ class Camera(Component):
     def position(self, value):
         """ Set the (actual) position of the camera. """
         self.__position = Vec2d(value)
+
+    @property
+    def zoom(self):
+        """ Get the zoom level. """
+        return self.__zoom
+
+    @zoom.setter
+    def zoom(self, value):
+        """ Set the zoom level. """
+        if value > 0:
+            self.__zoom = value

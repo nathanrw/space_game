@@ -129,6 +129,9 @@ class BulletDrawable(Drawable):
         relative_velocity = body.velocity - player_velocity
         rotation = relative_velocity.angle_degrees
         rotated = pygame.transform.rotate(self.image, 90 - rotation + 180)
+        if camera.zoom != 1:
+            size = Vec2d(rotated.get_size())*camera.zoom
+            rotated = pygame.transform.scale(rotated, (int(size[0]), int(size[1])))
         pos = camera.world_to_screen(body.position) - Vec2d(rotated.get_rect().center)
         screen.blit(rotated, pos)
 

@@ -59,19 +59,30 @@ class PlayerInputHandler(InputHandler):
         guns = self.get_components(ManuallyShootsBullets)
         return guns[0].shooting
 
+    def zoom_in(self):
+        """ Zoom the camera in."""
+        self.game_services.get_camera().zoom += 0.1
+
+    def zoom_out(self):
+        """ Zoom the camera out. """
+        self.game_services.get_camera().zoom -= 0.1
+
     def handle_input(self, e):
         if InputHandler.handle_input(self, e):
             return True
         thrusters = self.get_component(Thrusters)
         if thrusters is None:
             return False
+        def nothing(): pass
         kmap = {
             pygame.K_w: (lambda: thrusters.go_forwards(), lambda: thrusters.go_backwards()),
             pygame.K_a: (lambda: thrusters.go_left(), lambda: thrusters.go_right()),
             pygame.K_s: (lambda: thrusters.go_backwards(), lambda: thrusters.go_forwards()),
             pygame.K_d: (lambda: thrusters.go_right(), lambda: thrusters.go_left()),
             pygame.K_q: (lambda: thrusters.turn_left(), lambda: thrusters.turn_right()),
-            pygame.K_e: (lambda: thrusters.turn_right(), lambda: thrusters.turn_left())
+            pygame.K_e: (lambda: thrusters.turn_right(), lambda: thrusters.turn_left()),
+            pygame.K_t: (nothing, lambda: self.zoom_in()),
+            pygame.K_g: (nothing, lambda: self.zoom_out())
         }
         jsmap = {
             0: (lambda: self.start_shooting_forwards(), lambda: self.stop_shooting()),
