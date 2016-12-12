@@ -656,7 +656,7 @@ class Camera(Component):
     def screen_to_world(self, screen):
         """ Convert from screen coordinates to world coordinates. """
         centre = Vec2d(self.__screen.get_size())/2
-        return (screen + self.position) / self.__zoom - centre
+        return (screen - centre) / self.__zoom + self.position
 
     def check_bounds_world(self, bbox):
         """ Check whether a world space bounding box is on the screen. """
