@@ -423,11 +423,19 @@ class GameObject(object):
 
     def kill(self):
         """ Mark the object for deletion. """
-        self.is_garbage = True
-        for child in self.children:
-            child.kill()
-        if self.parent is not None:
-            self.parent.children.remove(self)
+        # Note: I'm not sure whether objects being kill()ed twice should
+        # count as a bug. I was getting exceptions in physics engine
+        # callbacks due to this happening. Checking whether the object
+        # is garbage before doing the business solves the problem - but
+        # it could be I've just "fixed the symptom." I'm treating it as
+        # not a bug, since kill() is a "public" API and I don't think it
+        # makes sense to have the caller check is_garbage before calling it.
+        if not self.is_garbage:
+            self.is_garbage = True
+            for child in self.children:
+                child.kill()
+            if self.parent is not None:
+                self.parent.children.remove(self)
 
     def add_component(self, component):
         """ Shortcut to add a component. """
