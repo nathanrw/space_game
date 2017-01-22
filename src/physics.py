@@ -205,8 +205,8 @@ class Body(Component):
     def compute_correct_thrusters(self, direction, turn):
         """ Perform logic to determine what engines are firing based on the
         desired direction. Automatically counteract spin. We cope with an
-        arbitrary configuration of thrusters through use of a constraint
-        solver.
+        arbitrary configuration of thrusters through use of a mathematical
+        optimisation algorithm (scipy.optimize.minimize.)
 
         Variables: t0, t1, t2, ...
         Function: g . f where
@@ -248,24 +248,7 @@ class Body(Component):
             T0 <= TMAX0, T1 <= TMAX1, Tn <= TMAXn
 
         In my implementation here, the vector T0..n is the input array for a
-        function to be minimised.  Since we care about both the torque and the
-        force, it looks like we need to combine the two objectives somehow in
-        our fitness function - I've not yet done this.  At the moment, we minimise
-        a function that returns the negation of the amount of force in the desired
-        direction.
-
-        Eventually, the function should also:
-
-          1) Optimise torque so the ship will turn. (Is a higher torque always
-             good, what if it's too much?
-
-          2) Counteract spin when the desired torque is 0 (so actually the
-             resultant torque will be non-0. It's just that it's hard to do
-             this by hand.
-
-             Actually it might be possible to have this logic 1 level up from
-             here, and just have the calling code determine whether it wants
-             to counteract spin and pass in the desired torque.
+        function to be minimised.
 
         Note that this function is very slow. Some sort of caching scheme will be
         a must - and it would be good to share identical configurations between
@@ -275,8 +258,11 @@ class Body(Component):
 
         """
 
-        # fitness function:
         def f(thrusts):
+            """ Objective function. Determine the resultant force and torque on
+            the body, and then apply heuristics (absolute guesswork!!) to determine
+            the fitness. We can then use a minimisation algorithm to optimise the
+            thruster configuration. """
 
             # Calculate the resultant force and moment from applying all thrusters.
             resultant_force = Vec2d(0, 0);
@@ -286,15 +272,15 @@ class Body(Component):
                 resultant_force += self.__thrusters[i].force_with_thrust(thrust)
                 resultant_moment += self.__thrusters[i].moment_with_thrust(thrust)
 
-            # project force dir onto desired dir (dot product) ?
             # We want to maximise the force in the direction in which we want to
             # be thrusting.
-            force_in_desired_direction = direction.normalized().dot(resultant_force)
+            force_objective = direction.normalized().dot(resultant_force)
 
-            return -force_in_desired_direction
-            
-            # how to compare moments?
-            # how to combine?
+            # We want to maximise the torque in the direction we want.
+            moment_objective = numpy.sign(turn) * resultant_moment
+
+            # We negate the values because we want to *minimise*
+            return -force_objective -moment_objective
             
         # Initial array of values.
         thrusts = numpy.zeros(len(self.__thrusters))

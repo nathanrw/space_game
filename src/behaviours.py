@@ -393,15 +393,24 @@ class Thrusters(Component):
         self.__turn -= 1
 
     def update(self, dt):
-        """ Override update to switch on right engines and apply their effect."""
+        """ Update the engines, and automatically counteract spin."""
 
         # Cant do much without a body.
         body = self.get_component(Body)
         if body is None:
             return
 
+        # Automatically counteract spin.
+        turn = self.__turn
+        if turn == 0 and self.__direction.x == 0:
+            eps = 10 # LOLOLOL
+            if body.angular_velocity > eps:
+                turn = -1
+            elif body.angular_velocity < -eps:
+                turn = 1
+
         # Fire the right thrusters on the body.
-        body.fire_correct_thrusters(self.__direction, self.__turn)
+        body.fire_correct_thrusters(self.__direction, turn)
 
 class WaveSpawner(Component):
     """ Spawns waves of enemies. """
