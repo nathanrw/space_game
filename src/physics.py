@@ -213,6 +213,66 @@ class Body(Component):
                   f(t0, t1, t2, ...) -> (acceleration, moment)
                   g(acceleration, moment) -> distance from desired (accel, moment)
         Constraint: t0min <= t0 <= t0max, ...
+
+        Note: there may be a better way of solving this problem, I
+        don't know. I will try to state the problem clearly here so
+        that a better solution might present itself:
+
+        Note: notation a little odd in the following:
+
+        We have a set of N thrusters, (Tn, Dn, Pn, TMAXn), where "Tn" is
+        the thruster's current (scalar) thrust, Pn is its position,
+        and FMAXn is the maximum thrust it can exert. Dn is the direction
+        of thrust, so the force currently being exerted, Fn, is Tn*Dn.
+
+        The acceleration due to a given thruster:
+
+            An = m * Fn
+
+        where m is the mass of the body.
+
+        The centre of mass is the origin O.
+
+        The torque due to a given thruster is therefore
+
+            Qn = |Pn| * norm(orth(Pn)) * Fn.
+
+        The resultant force on the body, F', is F0+F1+...+Fn
+
+        The resultant torque on the body, Q', is Q0+Q1+...+Qn
+
+        The following constraints are in effect:
+
+            T0 >= 0, T1 >= 0, ..., Tn >= 0
+
+            T0 <= TMAX0, T1 <= TMAX1, Tn <= TMAXn
+
+        In my implementation here, the vector T0..n is the input array for a
+        function to be minimised.  Since we care about both the torque and the
+        force, it looks like we need to combine the two objectives somehow in
+        our fitness function - I've not yet done this.  At the moment, we minimise
+        a function that returns the negation of the amount of force in the desired
+        direction.
+
+        Eventually, the function should also:
+
+          1) Optimise torque so the ship will turn. (Is a higher torque always
+             good, what if it's too much?
+
+          2) Counteract spin when the desired torque is 0 (so actually the
+             resultant torque will be non-0. It's just that it's hard to do
+             this by hand.
+
+             Actually it might be possible to have this logic 1 level up from
+             here, and just have the calling code determine whether it wants
+             to counteract spin and pass in the desired torque.
+
+        Note that this function is very slow. Some sort of caching scheme will be
+        a must - and it would be good to share identical configurations between
+        entities.
+
+        I don't know whether there is an analytical solution to this problem.
+
         """
 
         # fitness function:
