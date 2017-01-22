@@ -64,8 +64,8 @@ class ThrustersDrawable(Drawable):
         thrusters = self.get_component(Thrusters)
         if body is None or thrusters is None:
             return
-        for thruster in thrusters.thrusters():
-            if thruster.thrust() > 0:
+        for thruster in body.thrusters():
+            if thruster.on():
                 pos = thruster.world_position(body)
                 dir = thruster.world_direction(body)
                 length = thruster.thrust() / 500.0

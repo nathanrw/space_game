@@ -3,6 +3,9 @@ from utils import *
 import pymunk
 import math
 
+import numpy
+import scipy.optimize
+
 class Physics(ComponentSystem):
     """ Physics system. It's now implemented using pymunk, but that fact should
         not leak out of this file! Game objects that need to be simulated should
@@ -119,6 +122,10 @@ class Body(Component):
         # Remember joints
         self.__joints = []
 
+        # A body can have thrusters attached to it.
+        self.__thrusters = []
+        self.__thruster_configurations = {}
+
     def setup(self, **kwargs):
         """ Allow an initial position to be specified. """
         if "position" in kwargs:
@@ -174,6 +181,89 @@ class Body(Component):
         # If the body has already been created then add the joint to the simulation.
         if self.__space:
             self.__space.add(joint)
+
+    def add_thruster(self, thruster):
+        """ Add a thruster to the body. """
+        self.__thrusters.append(thruster)
+
+    def update(self, dt):
+        """ Update the body. """
+        Component.update(self, dt)
+        # Apply physical effect of thrusters.
+        for t in self.__thrusters:
+            t.apply(self)
+
+    def thrusters(self):
+        """ Get the engines - useful for e.g. drawing. """
+        return self.__thrusters
+
+    def stop_all_thrusters(self):
+        """ Stop all the engines. """
+        for thruster in self.__thrusters:
+            thruster.stop()
+
+    def compute_correct_thrusters(self, direction, turn):
+        """ Perform logic to determine what engines are firing based on the
+        desired direction. Automatically counteract spin. We cope with an
+        arbitrary configuration of thrusters through use of a constraint
+        solver.
+
+        Variables: t0, t1, t2, ...
+        Function: g . f where
+                  f(t0, t1, t2, ...) -> (acceleration, moment)
+                  g(acceleration, moment) -> distance from desired (accel, moment)
+        Constraint: t0min <= t0 <= t0max, ...
+        """
+
+        # fitness function:
+        def f(thrusts):
+
+            # Calculate the resultant force and moment from applying all thrusters.
+            resultant_force = Vec2d(0, 0);
+            resultant_moment = 0
+            for i in xrange(0, len(thrusts)):
+                thrust = float(thrusts[i])
+                resultant_force += self.__thrusters[i].force_with_thrust(thrust)
+                resultant_moment += self.__thrusters[i].moment_with_thrust(thrust)
+
+            # project force dir onto desired dir (dot product) ?
+            # We want to maximise the force in the direction in which we want to
+            # be thrusting.
+            force_in_desired_direction = direction.normalized().dot(resultant_force)
+
+            return -force_in_desired_direction
+            
+            # how to compare moments?
+            # how to combine?
+            
+        # Initial array of values.
+        thrusts = numpy.zeros(len(self.__thrusters))
+
+        # Thrust bounds.
+        thrust_bounds = [(0, thruster.max_thrust()) for thruster in self.__thrusters]
+
+        # Optimise the thruster values.
+        return scipy.optimize.minimize(f, thrusts, method="TNC", bounds=thrust_bounds)
+
+    def fire_correct_thrusters(self, direction, torque):
+        """ Perform logic to determine what engines are firing based on the
+        desired direction. Automatically counteract spin. """
+
+        # By default the engines should be of.
+        self.stop_all_thrusters()
+
+        # Come up with a dictionary key.
+        key = (direction.x, direction.y, torque)
+
+        # Ensure a configuration exists for this input.
+        if not key in self.__thruster_configurations:
+            self.__thruster_configurations[key] = \
+                self.compute_correct_thrusters(direction, torque)
+
+        # Get the cached configuration.
+        result = self.__thruster_configurations[key]
+        for i in xrange(0, len(result.x)):
+            self.__thrusters[i].go(float(result.x[i]))
         
     @property
     def position(self):
@@ -273,3 +363,62 @@ class CollisionHandler(object):
     def handle_matching_collision(self, c1, c2):
         """ These components are colliding, so the game should do something. """
         return CollisionResult(False, True)
+
+class Thruster(object):
+    """ The logical definition of a thruster on a Body. """
+    
+    def __init__(self, position, direction, max_thrust):
+        """ Initialise the thruster's parameters. """
+        self.__position = position
+        self.__direction = direction
+        self.__max_thrust = max_thrust
+        self.__thrust = 0
+
+    def go(self, thrust=None):
+        """ Set the thrust. """
+        if thrust is None:
+            thrust = self.__max_thrust
+        self.__thrust = min(thrust, self.__max_thrust)
+
+    def stop(self):
+        """ Stop the thruster. """
+        self.__thrust = 0
+
+    def apply(self, body):
+        """ Apply the thruster's force to a body. """
+        if self.__thrust > 0:
+            force = self.force_with_thrust(self.__thrust)
+            body.apply_force_at_local_point(force, self.__position)
+
+    def force_with_thrust(self, thrust):
+        """ Given a thrust amount, get the force of the thruster in its
+        direction of thrust. """
+        return self.__direction * thrust
+
+    def moment_with_thrust(self, thrust):
+        """ Given a thrust amount, get the resulting torque. """
+        # moment = r * F
+        # where r = distance, and F is force in normal direction.
+        f = self.force_with_thrust(thrust)
+        normal_direction = self.__position.perpendicular_normal()
+        return self.__position.length * normal_direction.dot(f)
+
+    def world_position(self, body):
+        """ Get the world-space position of the thruster. """
+        return body.local_to_world(self.__position)
+
+    def world_direction(self, body):
+        """ Get the world-space direction of thrust. """
+        return body.local_dir_to_world(self.__direction)
+
+    def thrust(self):
+        """ Get the current scalar thrust amount. """
+        return self.__thrust
+
+    def max_thrust(self):
+        """ Get the maximum scalar thrust amount. """
+        return self.__max_thrust
+
+    def on(self):
+        """ Is the thruster firing? """
+        return self.__thrust > 0

@@ -6,13 +6,10 @@ See utils.py for the overall scheme this fits into.
 
 from pymunk.vec2d import Vec2d
 from utils import Component, Timer
-from physics import Body, Physics, CollisionHandler, CollisionResult
+from physics import Body, Physics, CollisionHandler, CollisionResult, Thruster
 
 import pygame
 import random
-
-import numpy
-import scipy.optimize
         
 class FollowsTracked(Component):
 
@@ -348,39 +345,6 @@ class Text(Component):
         if "text" in kwargs:
             self.text = kwargs["text"]
 
-class Thruster(object):
-    def __init__(self, position, direction, max_thrust):
-        self.__position = position
-        self.__direction = direction
-        self.__max_thrust = max_thrust
-        self.__thrust = 0
-    def go(self, thrust=None):
-        if thrust is None:
-            thrust = self.__max_thrust
-        self.__thrust = min(thrust, self.__max_thrust)
-    def stop(self):
-        self.__thrust = 0
-    def apply(self, body):
-        if self.__thrust > 0:
-            force = self.force_with_thrust(self.__thrust)
-            body.apply_force_at_local_point(force, self.__position)
-    def force_with_thrust(self, thrust):
-        return self.__direction * thrust
-    def moment_with_thrust(self, thrust):
-        # dist from centre of mass * force. Might have misremembered this
-        # equation. Should check.
-        return self.__position.length * thrust
-    def world_position(self, body):
-        return body.local_to_world(self.__position)
-    def world_direction(self, body):
-        return body.local_dir_to_world(self.__direction)
-    def thrust(self):
-        return self.__thrust
-    def max_thrust(self):
-        return self.__max_thrust
-    def on(self):
-        return self.__thrust > 0
-
 class Thrusters(Component):
     """ Thruster component. This allows an entity with a body to move itself.
     Eventually I intend to have the thrusters be configurable, but for now its
@@ -389,18 +353,23 @@ class Thrusters(Component):
     def __init__(self, game_object, game_services, config):
         """ Initialise - set up the enginges. """
         Component.__init__(self, game_object, game_services, config)
-        self.__thrusters = [
-            Thruster(Vec2d(-20, -20), Vec2d( 1,  0), config["max_thrust"] / 8),
-            Thruster(Vec2d(-20,  20), Vec2d( 1,  0), config["max_thrust"] / 8),
-            Thruster(Vec2d( 20, -20), Vec2d(-1,  0), config["max_thrust"] / 8),
-            Thruster(Vec2d( 20,  20), Vec2d(-1,  0), config["max_thrust"] / 8),
-            Thruster(Vec2d(  0, -20), Vec2d( 0,  1), config["max_thrust"] / 4),
-            Thruster(Vec2d(  0,  20), Vec2d( 0, -1), config["max_thrust"]    )
-        ]
         self.__direction = Vec2d(0, 0)
         self.__dir_right = Vec2d(1, 0)
         self.__dir_backwards = Vec2d(0, 1)
         self.__turn = 0
+
+    def setup(self, **kwargs):
+        Component.setup(self, **kwargs)
+
+        # Note: this is hard coded for now, but in future we could specify the
+        # thruster layout in the config.
+        body = self.get_component(Body)
+        body.add_thruster(Thruster(Vec2d(-20, -20), Vec2d( 1,  0), self.config["max_thrust"] / 8))
+        body.add_thruster(Thruster(Vec2d(-20,  20), Vec2d( 1,  0), self.config["max_thrust"] / 8))
+        body.add_thruster(Thruster(Vec2d( 20, -20), Vec2d(-1,  0), self.config["max_thrust"] / 8))
+        body.add_thruster(Thruster(Vec2d( 20,  20), Vec2d(-1,  0), self.config["max_thrust"] / 8))
+        body.add_thruster(Thruster(Vec2d(  0, -20), Vec2d( 0,  1), self.config["max_thrust"] / 4))
+        body.add_thruster(Thruster(Vec2d(  0,  20), Vec2d( 0, -1), self.config["max_thrust"]    ))
 
     def go_forwards(self):
         self.__direction -= self.__dir_backwards
@@ -423,66 +392,6 @@ class Thrusters(Component):
     def turn_right(self):
         self.__turn -= 1
 
-    def stop_all_thrusters(self):
-        """ Stop all the engines. """
-        for thruster in self.__thrusters:
-            thruster.stop()
-
-    def compute_correct_thrusters(self, direction, turn):
-        """ Perform logic to determine what engines are firing based on the
-        desired direction. Automatically counteract spin. We cope with an
-        arbitrary configuration of thrusters through use of a constraint
-        solver.
-
-        Variables: t0, t1, t2, ...
-        Function: g . f where
-                  f(t0, t1, t2, ...) -> (acceleration, moment)
-                  g(acceleration, moment) -> distance from desired (accel, moment)
-        Constraint: t0min <= t0 <= t0max, ...
-        """
-        # fitness function:
-        def f(thrusts):
-
-            # Calculate the resultant force and moment from applying all thrusters.
-            resultant_force = Vec2d(0, 0);
-            resultant_moment = 0
-            for i in xrange(0, len(thrusts)):
-                thrust = float(thrusts[i])
-                resultant_force += self.__thrusters[i].force_with_thrust(thrust)
-                resultant_moment += self.__thrusters[i].moment_with_thrust(thrust)
-
-            # project force dir onto desired dir (dot product) ?
-            # We want to maximise the force in the direction in which we want to
-            # be thrusting.
-            force_in_desired_direction = direction.normalized().dot(resultant_force)
-
-            return -force_in_desired_direction
-            
-            # how to compare moments?
-            # how to combine?
-            
-        # Initial array of values.
-        thrusts = numpy.zeros(len(self.__thrusters))
-
-        # Thrust bounds.
-        thrust_bounds = [(0, thruster.max_thrust()) for thruster in self.__thrusters]
-
-        # Optimise the thruster values.
-        return scipy.optimize.minimize(f, thrusts, method="TNC", bounds=thrust_bounds)
-
-    def fire_correct_thrusters(self, body):
-        """ Perform logic to determine what engines are firing based on the
-        desired direction. Automatically counteract spin. """
-
-        # By default the engines should be of.
-        self.stop_all_thrusters()
-
-        # Apply the correct thrusters.
-        result = self.compute_correct_thrusters(self.__direction, self.__turn)
-        for i in xrange(0, len(result.x)):
-            self.__thrusters[i].go(float(result.x[i]))
-
-
     def update(self, dt):
         """ Override update to switch on right engines and apply their effect."""
 
@@ -491,16 +400,8 @@ class Thrusters(Component):
         if body is None:
             return
 
-        # Switch the right engines on.
-        self.fire_correct_thrusters(body)
-
-        # Apply physical effect of thrusters.
-        for t in self.__thrusters:
-            t.apply(body)
-
-    def thrusters(self):
-        """ Get the engines - useful for e.g. drawing. """
-        return self.__thrusters
+        # Fire the right thrusters on the body.
+        body.fire_correct_thrusters(self.__direction, self.__turn)
 
 class WaveSpawner(Component):
     """ Spawns waves of enemies. """
