@@ -23,7 +23,7 @@
     },
     { "type": "src.behaviours.FollowsTracked",
       "desired_distance_to_player": 500,
-      "acceleration": 600
+      "acceleration": 3500
     }
   ]
 }
