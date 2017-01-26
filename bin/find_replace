@@ -1,0 +1,4 @@
+#!/bin/bash
+
+grep -rl --exclude-dir .git --include "*.py" "$1" . | \
+  xargs -i@ sed -i "s/$1/$2/g" @
