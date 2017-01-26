@@ -156,7 +156,7 @@ class EntityManager(object):
         config = loader.load_config_file(config_name)
 
         # Instantiate the object.
-        t = self.game_services.lookup_type(config.get_or_default("type", "src.utils.GameObject"))
+        t = self.game_services.lookup_type(config.get_or_default("type", "src.utils.Entity"))
         obj = t(self.game_services, config)
 
         # Add components specified in the config.
@@ -348,7 +348,7 @@ class ComponentSystem(object):
 
 # You will notice some overlap between game objects and components e.g.
 # create_game_object(), get_system_by_type(). I think eventually everything
-# in GameObject apart from is_garbage() i.e. config and game services will
+# in Entity apart from is_garbage() i.e. config and game services will
 # move completely into components. Currently all that derived game objects
 # do is initialise() themselves with different components.
 
@@ -407,7 +407,7 @@ class Component(object):
         it stands anything can fiddle with anything. """
         return self.game_object.get_components(t)
 
-class GameObject(object):
+class Entity(object):
     """ An object in the game. It knows whether it needs to be deleted, and
     has access to object / component creation services. """
 
