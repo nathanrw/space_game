@@ -23,7 +23,7 @@ In order to run "Space game," you will need the following packages installed:
 * Python 2.7
 * pygame
 * pymunk
-* scipy
+* scipy / numpy
 
 Controls
 --------
