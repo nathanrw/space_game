@@ -431,11 +431,20 @@ class GameObject(object):
         # not a bug, since kill() is a "public" API and I don't think it
         # makes sense to have the caller check is_garbage before calling it.
         if not self.is_garbage:
+
+            # Set the garbage flag.
             self.is_garbage = True
-            for child in self.children:
+
+            # Kill all of our children. Note that we copy the list because
+            # killing a child removes it from the parent.
+            children = self.children[:]
+            for child in children:
                 child.kill()
+
+            # If we are a child, break the link with our parent.
             if self.parent is not None:
                 self.parent.children.remove(self)
+            self.parent = None
 
     def add_component(self, component):
         """ Shortcut to add a component. """
