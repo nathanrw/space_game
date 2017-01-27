@@ -4,7 +4,7 @@ pipe_grep_to=tee
 extra_grep_args=
 
 if [ "$3" == '--make-it-so' ]; then
-  pipe_grep_to="xargs -i@ sed -i \"s/$1/$2/g\" @"
+  pipe_grep_to="xargs -i@ sed -i s/$1/$2/g @"
   extra_grep_args=-l
 fi
 

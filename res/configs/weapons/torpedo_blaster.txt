@@ -1,4 +1,4 @@
 {
-	"deriving": "weapons/red_blaster.txt",
+	"derive_from": "weapons/red_blaster.txt",
 	"shots_per_second": 25
 }

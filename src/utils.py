@@ -531,7 +531,7 @@ class Config(object):
             print "Probably either the file doesn't exist, or you forgot a comma!"
             print "**************************************************************"
             bail() # Bail - we might be in the physics thread which ignores exceptions
-        parent_filename = self.__get("deriving")
+        parent_filename = self.__get("derive_from")
         if parent_filename is not None:
             self.parent = Config()
             self.parent.load(parent_filename)
