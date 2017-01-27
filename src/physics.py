@@ -8,7 +8,7 @@ import scipy.optimize
 
 class Physics(ComponentSystem):
     """ Physics system. It's now implemented using pymunk, but that fact should
-        not leak out of this file! Game objects that need to be simulated should
+        not leak out of this file! Entitys that need to be simulated should
         be given Body components which will be managed by a Physics system. """
 
     def __init__(self):
@@ -16,7 +16,7 @@ class Physics(ComponentSystem):
         ComponentSystem.__init__(self)
         
         # List of collision handlers. These operate in terms of types of
-        # game object. We implement them using a pymunk collision handler.
+        # entity. We implement them using a pymunk collision handler.
         self.collision_handlers = []
 
         # The pymunk space.
@@ -82,14 +82,14 @@ class Physics(ComponentSystem):
         return best_yet
 
 class Body(Component):
-    """ Physical body attached to a game object. Note that it's implemented
+    """ Physical body attached to a entity. Note that it's implemented
     in terms of pymunk now. It will need to change since we're currently
     using pymunk in a pretty horrendous way: this was to preserve the original
     interface while integrating pymunk. But we should stop mucking around with
     position / velocity / size (!) and use forces instead. """
     
     def __init__(self, entity, game_services, config):
-        """ Initialise the body, attached to the given game object. """
+        """ Initialise the body, attached to the given entity. """
 
         Component.__init__(self, entity, game_services, config)
 
@@ -384,7 +384,7 @@ class CollisionResult(object):
 class CollisionHandler(object):
     """ A logical collision handler. While physical collision handling is
     dealt with by the physics implementation, game behaviours must be added
-    by adding instances of this matching game object types. """
+    by adding instances of this matching entity types. """
     
     def __init__(self, t1, t2):
         """ Initialise with a pair of types. """

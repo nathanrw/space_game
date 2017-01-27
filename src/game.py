@@ -9,7 +9,7 @@ can be separated. The implementation of physics and the implementation of
 drawing know nothing about one another, for instance. This is a work in progress
 though. I'd like to make it realise this ideal more.
 
-Game object creation is data-driven. Entities are defined in configuration
+Entity creation is data-driven. Entities are defined in configuration
 .txt files containing json data; these live under res/configs.
 
 Things I would like to work on now:
@@ -30,7 +30,7 @@ from utils import GameServices, ResourceLoader, EntityManager
 from input_handling import InputHandling
 
 class SpaceGameServices(GameServices):
-    """ The services exposed to the game objects. This is separate from
+    """ The services exposed to the entitys. This is separate from
     the game class itself to try and keep control of the interface - since
     this is basically global state you can get at from anywhere. """
     
@@ -67,7 +67,7 @@ class Game(object):
     def __init__(self):
         """ Initialise the game systems. """
 
-        # Services exposed to the game objects.
+        # Services exposed to the entitys.
         self.game_services = SpaceGameServices(self)
 
         # The resource loader.
@@ -161,7 +161,7 @@ class Game(object):
         # Preload certain images.
         self.resource_loader.preload(self.screen)
 
-        # Make the camera. Im not 100% sure about this being a game object like any other
+        # Make the camera. Im not 100% sure about this being a entity like any other
         # since it's clearly special - drawing requires one, the player moves it, etc. But
         # at the same time it's convenient to attach the background drawable to it, and we
         # might want to give it physical properties in future. We'll see.

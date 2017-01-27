@@ -1,4 +1,4 @@
-""" Object behaviours for the game and game objects composed out of them.
+""" Object behaviours for the game and entitys composed out of them.
 
 See utils.py for the overall scheme this fits into.
 
@@ -81,7 +81,7 @@ class ShootingAtBody(object):
 
 class ManuallyShootsBullets(Component):
     """ Something that knows how to spray bullets. Note that this is not a
-    game object, it's something game objects can use to share code. """
+    entity, it's something entitys can use to share code. """
 
     def __init__(self, entity, game_services, config):
         """ Inject dependencies and set up default parameters. """
@@ -565,7 +565,7 @@ class Camera(Component):
         self.__zoom = 1
 
     def track(self, entity):
-        """ Make the camera follow a particular game object. """
+        """ Make the camera follow a particular entity. """
         self.__tracking = entity
 
     def surface(self):

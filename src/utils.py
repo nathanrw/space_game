@@ -1,5 +1,5 @@
 """ Basic building blocks of the game infrastructure. This includes a scheme
-for assembly game objects from components, a system for loading game object
+for assembly entitys from components, a system for loading entity
 configuration from json data files, and other utilities. """
 
 import random
@@ -31,7 +31,7 @@ class GameServices(object):
         """ Get the main drawing surface. """
         pass
     def get_player(self):
-        """ Get the player's game object. """
+        """ Get the player's entity. """
         pass
     def get_camera(self):
         """ Get the camera. """
@@ -47,7 +47,7 @@ class GameServices(object):
         pass
     def lookup_type(self, class_path):
         """ Lookup a class by string name so that it can be dynamically
-        instantiated. This is used for component and game object creation.
+        instantiated. This is used for component and entity creation.
         This implementation has been pinched from an answer on stack overflow:
         http://stackoverflow.com/questions/16696225/dynamically-\
         instantiate-object-of-the-python-class-similar-to-php-new-classname"""
@@ -202,7 +202,7 @@ class EntityManager(object):
 
     def add_component(self, component):
         """ Add a component to the appropriate managing system. Note that the component
-        knows what game object it is attached to. """
+        knows what entity it is attached to. """
 
         # See comment above.
         if not component.__class__ in self.component_type_mapping:
@@ -228,13 +228,13 @@ class EntityManager(object):
         return None
 
     def remove_component_by_concrete_type(self, entity, component_type):
-        """ Remove all components of the given ***concrete*** type from the game object. """
+        """ Remove all components of the given ***concrete*** type from the entity. """
         system = self.get_system_by_component_type(component_type)
         if system is not None:
             system.remove_object_components(entity, component_type)
 
     def get_component_of_type(self, entity, t):
-        """ Get the component of a particular type on a particular game object.
+        """ Get the component of a particular type on a particular entity.
         Note: this will crash if the object has more than one component of this
         type."""
         system = self.get_system_by_component_type(t)
@@ -242,7 +242,7 @@ class EntityManager(object):
             return system.get_component(entity, t)
 
     def get_components_of_type(self, entity, t):
-        """ Get the components of a particular type on a particular game object. """
+        """ Get the components of a particular type on a particular entity. """
         system = self.get_system_by_component_type(t)
         if system is not None:
             return system.get_components(entity, t)
@@ -277,7 +277,7 @@ class MapList(object):
         return []
 
 class ComponentSystem(object):
-    """ Manages a set of game object components. It knows how to update the
+    """ Manages a set of entity components. It knows how to update the
     components over time, how to get the components out for a particular object,
     and how to remove components when their objects are dead. """
 
@@ -319,7 +319,7 @@ class ComponentSystem(object):
         """ Get a single component of a particular type."""
         components = self.get_components(entity, component_type)
         if len(components) > 1:
-            raise Exception("Expected there to be either 0 or 1 components attached to game object.")
+            raise Exception("Expected there to be either 0 or 1 components attached to entity.")
         elif len(components) == 1:
             return components[0]
         else:
@@ -346,14 +346,14 @@ class ComponentSystem(object):
         for component in self.components:
             component.update(dt)
 
-# You will notice some overlap between game objects and components e.g.
+# You will notice some overlap between entitys and components e.g.
 # create_entity(), get_system_by_type(). I think eventually everything
 # in Entity apart from is_garbage() i.e. config and game services will
-# move completely into components. Currently all that derived game objects
+# move completely into components. Currently all that derived entitys
 # do is initialise() themselves with different components.
 
 class Component(object):
-    """ A game object component. """
+    """ A entity component. """
     
     def __init__(self, entity, game_services, config):
         """ Initialise the component. """
@@ -387,7 +387,7 @@ class Component(object):
         return self.entity.get_system_by_type(t)
 
     def create_entity(self, *args, **kwargs):
-        """ Create a new game object with the given config and args. """
+        """ Create a new entity with the given config and args. """
         return self.entity.create_entity(*args, **kwargs)
 
     def get_component(self, t):
@@ -456,7 +456,7 @@ class Entity(object):
         return self.game_services.get_entity_manager().get_component_system_by_type(t)
 
     def create_entity(self, *args, **kwargs):
-        """ Create a new game object with the given config and args. """
+        """ Create a new entity with the given config and args. """
         return self.game_services.get_entity_manager().create_entity(*args, **kwargs)
 
     def get_component(self, t):
@@ -477,7 +477,7 @@ class Entity(object):
         return self.game_services.get_entity_manager().get_components_of_type(self, t)
 
     def add_child(self, obj):
-        """ Add a child game object. """
+        """ Add a child entity. """
         assert obj.parent is None
         self.children.append(obj)
         obj.parent = self

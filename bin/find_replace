@@ -1,4 +1,10 @@
 #!/bin/bash
 
-grep -rl --exclude-dir .git --include "*.py" "$1" . | \
-  xargs -i@ sed -i "s/$1/$2/g" @
+if [ "$3" == '--make-it-so' ]; then
+  # Do find and replace on files containing the string.
+  grep -rl --exclude-dir .git --include "*.py" "$1" . | \
+    xargs -i@ sed -i "s/$1/$2/g" @
+else
+  # Do a grep for the string.
+  grep -r --exclude-dir .git --include "*.py" "$1" 
+fi
