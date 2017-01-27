@@ -26,8 +26,8 @@ class Physics(ComponentSystem):
         # own body into the pymunk shape. Which we have: see Body(). Here
         # we try each handler in turn till we find one that is compatible.
         def collide_begin(arbiter, space, data):
-            go1 = arbiter.shapes[0].game_body.game_object
-            go2 = arbiter.shapes[1].game_body.game_object
+            go1 = arbiter.shapes[0].game_body.entity
+            go2 = arbiter.shapes[1].game_body.entity
             for handler in self.collision_handlers:
                 result = handler.handle_collision(go1, go2)
                 if result.handled:
@@ -88,10 +88,10 @@ class Body(Component):
     interface while integrating pymunk. But we should stop mucking around with
     position / velocity / size (!) and use forces instead. """
     
-    def __init__(self, game_object, game_services, config):
+    def __init__(self, entity, game_services, config):
         """ Initialise the body, attached to the given game object. """
 
-        Component.__init__(self, game_object, game_services, config)
+        Component.__init__(self, entity, game_services, config)
 
         # Moment of inertia.
         moment = pymunk.moment_for_circle(float(config.get_or_default("mass", 1)),

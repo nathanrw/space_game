@@ -83,9 +83,9 @@ class ManuallyShootsBullets(Component):
     """ Something that knows how to spray bullets. Note that this is not a
     game object, it's something game objects can use to share code. """
 
-    def __init__(self, game_object, game_services, config):
+    def __init__(self, entity, game_services, config):
         """ Inject dependencies and set up default parameters. """
-        Component.__init__(self, game_object, game_services, config)
+        Component.__init__(self, entity, game_services, config)
         self.shooting_at = None
         self.shot_timer = 0
 
@@ -149,8 +149,8 @@ class ManuallyShootsBullets(Component):
                 bullet_velocity = body.velocity+muzzle_velocity
 
                 # Create the bullet.
-                self.create_game_object(self.config["bullet_config"],
-                                        parent=self.game_object,
+                self.create_entity(self.config["bullet_config"],
+                                        parent=self.entity,
                                         team=self.get_component(Team).get_team(),
                                         position=bullet_position,
                                         velocity=bullet_velocity)
@@ -163,8 +163,8 @@ class Tracking(Component):
     # the concept of multiple tracking behaviours were introduced, the
     # camera could use the Tracking component.
 
-    def __init__(self, game_object, game_services, config):
-        Component.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
         self.__tracked_body = None
 
     def get_tracked(self):
@@ -215,9 +215,9 @@ class Tracking(Component):
 class AutomaticallyShootsBullets(Component):
     """ Something that shoots bullets at something else. """
 
-    def __init__(self, game_object, game_services, config):
+    def __init__(self, entity, game_services, config):
         """ Initialise. """
-        Component.__init__(self, game_object, game_services, config)
+        Component.__init__(self, entity, game_services, config)
         self.fire_timer = Timer(config["fire_period"])
         self.fire_timer.advance_to_fraction(0.8)
         self.burst_timer = Timer(config["burst_period"])
@@ -251,8 +251,8 @@ class AutomaticallyShootsBullets(Component):
                 gun.stop_shooting()
 
 class LaunchesFighters(Component):
-    def __init__(self, game_object, game_services, config):
-        Component.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
         self.spawn_timer = Timer(config["spawn_period"])
     def update(self, dt):
         if self.spawn_timer.tick(dt):
@@ -264,25 +264,25 @@ class LaunchesFighters(Component):
             spread = self.config["takeoff_spread"]
             direction.rotate_degrees(spread*random.random()-spread/2.0)
             body = self.get_component(Body)
-            child = self.create_game_object(self.config["fighter_config"],
+            child = self.create_entity(self.config["fighter_config"],
                                             team=self.get_component(Team).get_team(),
                                             position=body.position,
                                             velocity=body.velocity + direction * self.config["takeoff_speed"])
 
 class KillOnTimer(Component):
     """ For objects that should be destroyed after a limited time. """
-    def __init__(self, game_object, game_services, config):
-        Component.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
         self.lifetime = Timer(config["lifetime"])
     def update(self, dt):
         if self.lifetime.tick(dt):
-            self.game_object.kill()
+            self.entity.kill()
 
 class ExplodesOnDeath(Component):
     """ For objects that spawn an explosion when they die. """
     def on_object_killed(self):
         body = self.get_component(Body)
-        explosion = self.create_game_object(self.config["explosion_config"],
+        explosion = self.create_entity(self.config["explosion_config"],
                                             position=body.position,
                                             velocity=body.velocity)
         shake_factor = self.config.get_or_default("shake_factor", 1)
@@ -294,21 +294,21 @@ class EndProgramOnDeath(Component):
         self.game_services.end_game()
 
 class Hitpoints(Component):
-    def __init__(self, game_object, game_services, config):
-        Component.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
         self.hp = self.config["hp"]
         self.max_hp = self.config["hp"] # Rendundant, but code uses this.
 
     def receive_damage(self, amount):
         self.hp -= amount
         if self.hp <= 0:
-            self.game_object.kill()
+            self.entity.kill()
 
 class DamageOnContact(Component):
     def apply_damage(self, hitpoints):
         """ Apply damage to an object we've hit. """
         if self.config.get_or_default("destroy_on_hit", True):
-            self.game_object.kill()
+            self.entity.kill()
         if hitpoints is not None:
             hitpoints.receive_damage(self.config["damage"])
 
@@ -317,14 +317,14 @@ class DamageCollisionHandler(CollisionHandler):
     def __init__(self):
         CollisionHandler.__init__(self, DamageOnContact, Hitpoints)
     def handle_matching_collision(self, dmg, hp):
-        if hp.game_object.is_ancestor(dmg.game_object):
+        if hp.entity.is_ancestor(dmg.entity):
             return CollisionResult(False, False)
         dmg.apply_damage(hp)
         return CollisionResult(True, True)
 
 class Team(Component):
-    def __init__(self, game_object, game_services, config):
-        Component.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
         self.__team = config.get_or_none("team")
     def setup(self, **kwargs):
         if "team" in kwargs:
@@ -337,8 +337,8 @@ class Team(Component):
         return self.__team == None or that.__team == None or self.__team == that.__team
 
 class Text(Component):
-    def __init__(self, game_object, game_services, config):
-        Component.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
         self.text = config.get_or_default("text", "Hello, world!")
     def setup(self, **kwargs):
         Component.setup(self, **kwargs)
@@ -350,9 +350,9 @@ class Thrusters(Component):
     Eventually I intend to have the thrusters be configurable, but for now its
     hard coded."""
 
-    def __init__(self, game_object, game_services, config):
+    def __init__(self, entity, game_services, config):
         """ Initialise - set up the enginges. """
-        Component.__init__(self, game_object, game_services, config)
+        Component.__init__(self, entity, game_services, config)
         self.__direction = Vec2d(0, 0)
         self.__dir_right = Vec2d(1, 0)
         self.__dir_backwards = Vec2d(0, 1)
@@ -415,8 +415,8 @@ class Thrusters(Component):
 class WaveSpawner(Component):
     """ Spawns waves of enemies. """
 
-    def __init__(self, game_object, game_services, config):
-        Component.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
         self.wave = 1
         self.spawned = []
         self.message = None
@@ -434,7 +434,7 @@ class WaveSpawner(Component):
             txt = "GAME OVER"
             if self.max_waves():
                 txt = "VICTORY"
-            message = self.create_game_object("endgame_message.txt", text=txt)
+            message = self.create_entity("endgame_message.txt", text=txt)
 
         # If the wave is dead and we're not yet preparing (which displays a timed message) then
         # start preparing a wave.
@@ -462,7 +462,7 @@ class WaveSpawner(Component):
             x = 1 - rnd*2
             y = 1 - (1-rnd)*2
             enemy_position = player_body.position + Vec2d(x, y)*500
-            self.spawned.append(self.create_game_object(enemy_type,
+            self.spawned.append(self.create_entity(enemy_type,
                                                         position=enemy_position,
                                                         team="enemy"))
 
@@ -473,7 +473,7 @@ class WaveSpawner(Component):
 
     def prepare_for_wave(self):
         """ Prepare for a wave. """
-        self.message = self.create_game_object("update_message.txt",
+        self.message = self.create_entity("update_message.txt",
                                                text="WAVE %s PREPARING" % self.wave)
 
     def prepared_to_spawn(self):
@@ -520,9 +520,9 @@ class HardPoint(object):
 
 class Turrets(Component):
 
-    def __init__(self, game_object, game_services, config):
+    def __init__(self, entity, game_services, config):
         """ Initialise the turrets. """
-        Component.__init__(self, game_object, game_services, config)
+        Component.__init__(self, entity, game_services, config)
         self.__hardpoints = []
         hardpoints = config.get_or_default("hardpoints", [])
         for hp in hardpoints:
@@ -543,17 +543,17 @@ class Turrets(Component):
         entity, which is set up as a child of the entity this component is
         attached to. It is assumed to have a Body component, which is pinned
         to our own Body."""
-        entity = self.create_game_object(weapon_config_name,
-                                         parent=self.game_object,
+        entity = self.create_entity(weapon_config_name,
+                                         parent=self.entity,
                                          team=self.get_component(Team).get_team())
         self.__hardpoints[hardpoint_index].set_weapon(entity, self.get_component(Body))
 
 class Camera(Component):
     """ A camera, which drawing is done in relation to. """
 
-    def __init__(self, game_object, game_services, config):
+    def __init__(self, entity, game_services, config):
         """ Initialise the camera. """
-        Component.__init__(self, game_object, game_services, config)
+        Component.__init__(self, entity, game_services, config)
         self.__position = Vec2d(0, 0)
         self.__screen = game_services.get_screen()
         self.__max_shake = 20
@@ -564,9 +564,9 @@ class Camera(Component):
         self.__tracking = None
         self.__zoom = 1
 
-    def track(self, game_object):
+    def track(self, entity):
         """ Make the camera follow a particular game object. """
-        self.__tracking = game_object
+        self.__tracking = entity
 
     def surface(self):
         """ Get the surface drawing will be done on. """

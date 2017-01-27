@@ -22,8 +22,8 @@ class Drawing(ComponentSystem):
 
 class Drawable(Component):
     """ Base class for something that can be drawn. """
-    def __init__(self, game_object, game_services, config):
-        Component.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
         self.level = 0
     def manager_type(self):
         return Drawing
@@ -36,15 +36,15 @@ class Drawable(Component):
 
 class AnimBodyDrawable(Drawable):
     """ Draws an animation at the position of a body. """
-    def __init__(self, game_object, game_services, config):
-        Drawable.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Drawable.__init__(self, entity, game_services, config)
         self.anim = game_services.get_resource_loader().load_animation(config["anim_name"])
         self.kill_on_finished = config.get_or_default("kill_on_finish", False)
         self.rect = self.anim.get_max_bounds()
     def update(self, dt):
         if self.anim.tick(dt):
             if self.kill_on_finished:
-                self.game_object.kill()
+                self.entity.kill()
             else:
                 self.anim.reset()
         self.rect.center = self.get_component(Body).position
@@ -57,8 +57,8 @@ class AnimBodyDrawable(Drawable):
 
 class ThrustersDrawable(Drawable):
     """ Draw thrusters for an object that has them. """
-    def __init__(self, game_object, game_services, config):
-        Drawable.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Drawable.__init__(self, entity, game_services, config)
     def draw(self, camera):
         body = self.get_component(Body)
         thrusters = self.get_component(Thrusters)
@@ -74,8 +74,8 @@ class ThrustersDrawable(Drawable):
 
 class HealthBarDrawable(Drawable):
     """ Draws a health bar above a body. """
-    def __init__(self, game_object, game_services, config):
-        Drawable.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Drawable.__init__(self, entity, game_services, config)
     def draw(self, camera):
 
         # Can only draw health bar for body with hitpoints.
@@ -109,8 +109,8 @@ class HealthBarDrawable(Drawable):
 class BulletDrawable(Drawable):
     """ A drawable that draws an image aligned with the relative velocity
     of a body to the player """
-    def __init__(self, game_object, game_services, config):
-        Drawable.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Drawable.__init__(self, entity, game_services, config)
         self.image = game_services.get_resource_loader().load_image(config["image_name"])
     def estimate_bounds(self):
         rect = self.image.get_rect()
@@ -140,9 +140,9 @@ class TextDrawable(Drawable):
     drawable, it gets stored in a Text component. This means that logic code doesn't need
     to mess with the drawable. """
 
-    def __init__(self, game_object, game_services, config):
+    def __init__(self, entity, game_services, config):
         """Load the font."""
-        Drawable.__init__(self, game_object, game_services, config)
+        Drawable.__init__(self, entity, game_services, config)
         self.__font = game_services.get_resource_loader().load_font(config["font_name"], config["font_size"])
         self.__small_font = game_services.get_resource_loader().load_font(config["font_name"], 14)
         colour_dict = config["font_colour"]
@@ -219,8 +219,8 @@ class TextDrawable(Drawable):
 
 class BackgroundDrawable(Drawable):
     """ A drawable for a scrolling background. """
-    def __init__(self, game_object, game_services, config):
-        Drawable.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        Drawable.__init__(self, entity, game_services, config)
         self.image = game_services.get_resource_loader().load_image(config["image_name"])
         self.level = -999
     def draw(self, camera):

@@ -26,8 +26,8 @@ class InputHandler(Component):
 class PlayerInputHandler(InputHandler):
     """ Deals with input to the player's ship. """
 
-    def __init__(self, game_object, game_services, config):
-        InputHandler.__init__(self, game_object, game_services, config)
+    def __init__(self, entity, game_services, config):
+        InputHandler.__init__(self, entity, game_services, config)
 
         pygame.joystick.init()
         self.js = None
@@ -89,7 +89,7 @@ class PlayerInputHandler(InputHandler):
             4: (lambda: thrusters.turn_left(), lambda: thrusters.turn_right()),
             5: (lambda: thrusters.turn_right(), lambda: thrusters.turn_left())
         }
-        player = self.game_object
+        player = self.entity
         if e.type == pygame.KEYDOWN:
             if e.key in kmap:
                 kmap[e.key][0]()

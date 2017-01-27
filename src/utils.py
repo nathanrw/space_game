@@ -149,7 +149,7 @@ class EntityManager(object):
         for s in self.systems_list:
             s.garbage_collect()
 
-    def create_game_object(self, config_name, **kwargs):
+    def create_entity(self, config_name, **kwargs):
         """ Add a new object. It is initialised, but not added to the game
         right away: that gets done at a certain point in the game loop."""
         loader = self.game_services.get_resource_loader()
@@ -227,25 +227,25 @@ class EntityManager(object):
             return system
         return None
 
-    def remove_component_by_concrete_type(self, game_object, component_type):
+    def remove_component_by_concrete_type(self, entity, component_type):
         """ Remove all components of the given ***concrete*** type from the game object. """
         system = self.get_system_by_component_type(component_type)
         if system is not None:
-            system.remove_object_components(game_object, component_type)
+            system.remove_object_components(entity, component_type)
 
-    def get_component_of_type(self, game_object, t):
+    def get_component_of_type(self, entity, t):
         """ Get the component of a particular type on a particular game object.
         Note: this will crash if the object has more than one component of this
         type."""
         system = self.get_system_by_component_type(t)
         if system is not None:
-            return system.get_component(game_object, t)
+            return system.get_component(entity, t)
 
-    def get_components_of_type(self, game_object, t):
+    def get_components_of_type(self, entity, t):
         """ Get the components of a particular type on a particular game object. """
         system = self.get_system_by_component_type(t)
         if system is not None:
-            return system.get_components(game_object, t)
+            return system.get_components(entity, t)
 
     def update(self, dt):
         """ Update all of the systems in priority order. """
@@ -308,16 +308,16 @@ class ComponentSystem(object):
         """ Add a component. Note that it won't be created straight away. It
         will be added to a queue, and created at the start of the next frame. """
         self.components_to_add.append(component)
-        self.object_map.add((component.game_object, component.__class__), component)
+        self.object_map.add((component.entity, component.__class__), component)
         
     def remove_component(self, component):
         """ Remove a particular component. """
         self.components.remove(component)
-        self.object_map.remove((component.game_object, component.__class__), component)
+        self.object_map.remove((component.entity, component.__class__), component)
 
-    def get_component(self, game_object, component_type):
+    def get_component(self, entity, component_type):
         """ Get a single component of a particular type."""
-        components = self.get_components(game_object, component_type)
+        components = self.get_components(entity, component_type)
         if len(components) > 1:
             raise Exception("Expected there to be either 0 or 1 components attached to game object.")
         elif len(components) == 1:
@@ -325,13 +325,13 @@ class ComponentSystem(object):
         else:
             return None
         
-    def get_components(self, game_object, component_type):
+    def get_components(self, entity, component_type):
         """ Get all components of a particular type attached to the given object. """
-        return self.object_map.get((game_object, component_type))
+        return self.object_map.get((entity, component_type))
     
-    def remove_object_components(self, game_object, component_type):
+    def remove_object_components(self, entity, component_type):
         """ Remove all components of a particular concrete type from an object. """
-        components = self.get_components(game_object, component_type)
+        components = self.get_components(entity, component_type)
         for c in components:
             self.remove_component(c)
 
@@ -347,7 +347,7 @@ class ComponentSystem(object):
             component.update(dt)
 
 # You will notice some overlap between game objects and components e.g.
-# create_game_object(), get_system_by_type(). I think eventually everything
+# create_entity(), get_system_by_type(). I think eventually everything
 # in Entity apart from is_garbage() i.e. config and game services will
 # move completely into components. Currently all that derived game objects
 # do is initialise() themselves with different components.
@@ -355,9 +355,9 @@ class ComponentSystem(object):
 class Component(object):
     """ A game object component. """
     
-    def __init__(self, game_object, game_services, config):
+    def __init__(self, entity, game_services, config):
         """ Initialise the component. """
-        self.game_object = game_object
+        self.entity = entity
         self.game_services = game_services
         self.config = config
 
@@ -371,7 +371,7 @@ class Component(object):
     
     def is_garbage(self):
         """ Is our entity dead? """
-        return self.game_object.is_garbage
+        return self.entity.is_garbage
     
     def update(self, dt):
         """ Update the component. """
@@ -384,11 +384,11 @@ class Component(object):
     def get_system_by_type(self, t):
         """ Get the system of type "t". Note that there should not be more than
         one system of a given type."""
-        return self.game_object.get_system_by_type(t)
+        return self.entity.get_system_by_type(t)
 
-    def create_game_object(self, *args, **kwargs):
+    def create_entity(self, *args, **kwargs):
         """ Create a new game object with the given config and args. """
-        return self.game_object.create_game_object(*args, **kwargs)
+        return self.entity.create_entity(*args, **kwargs)
 
     def get_component(self, t):
         """ Return the component of a given type. Note that eventually this
@@ -398,14 +398,14 @@ class Component(object):
 
         Note: this will crash if the object contains more than one component
         of this type. """
-        return self.game_object.get_component(t)
+        return self.entity.get_component(t)
 
     def get_components(self, t):
         """ Return the components of a given type. Note that eventually this
         should be restricted such that a component has a formal list of
         dependencies, and it can only get at components of those types. As
         it stands anything can fiddle with anything. """
-        return self.game_object.get_components(t)
+        return self.entity.get_components(t)
 
 class Entity(object):
     """ An object in the game. It knows whether it needs to be deleted, and
@@ -455,9 +455,9 @@ class Entity(object):
         one system of a given type."""
         return self.game_services.get_entity_manager().get_component_system_by_type(t)
 
-    def create_game_object(self, *args, **kwargs):
+    def create_entity(self, *args, **kwargs):
         """ Create a new game object with the given config and args. """
-        return self.game_services.get_entity_manager().create_game_object(*args, **kwargs)
+        return self.game_services.get_entity_manager().create_entity(*args, **kwargs)
 
     def get_component(self, t):
         """ Return the components of a given type. Note that eventually this
