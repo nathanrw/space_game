@@ -1,10 +1,13 @@
 #!/bin/bash
 
+pipe_grep_to=tee
+extra_grep_args=
+
 if [ "$3" == '--make-it-so' ]; then
-  # Do find and replace on files containing the string.
-  grep -rl --exclude-dir .git --include "*.py" "$1" . | \
-    xargs -i@ sed -i "s/$1/$2/g" @
-else
-  # Do a grep for the string.
-  grep -r --exclude-dir .git --include "*.py" "$1" 
+  pipe_grep_to="xargs -i@ sed -i \"s/$1/$2/g\" @"
+  extra_grep_args=-l
 fi
+
+grep $extra_grep_args -r --exclude-dir .git \
+                         --include "*.py" \
+                         --include "*.txt" "$1" | $pipe_grep_to
