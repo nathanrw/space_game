@@ -1,5 +1,0 @@
-{
-  "screen_width": 1024,
-  "screen_height": 768,
-  "minimise_image_loading": 1
-}
