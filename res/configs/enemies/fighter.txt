@@ -24,6 +24,9 @@
     { "type": "src.behaviours.FollowsTracked",
       "desired_distance_to_player": 500,
       "acceleration": 3500
-    }
+    },
+    { "type": "src.behaviours.Thrusters",
+      "max_thrust": 100000 },
+    { "type": "src.drawing.ThrustersDrawable" }
   ]
 }
