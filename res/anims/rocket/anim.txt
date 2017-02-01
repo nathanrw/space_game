@@ -1,0 +1,6 @@
+{
+  "name_base": "rocket",
+  "num_frames": 1,
+  "extension": ".png",
+  "period": 1
+}

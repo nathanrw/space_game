@@ -10,7 +10,6 @@
     { "type": "src.drawing.AnimBodyDrawable",
       "anim_name": "enemy_destroyer"
     },
-    { "type": "src.drawing.HealthBarDrawable" },
     { "type": "src.behaviours.ExplodesOnDeath",
       "explosion_config": "explosions/big_explosion.txt"
     },
@@ -31,7 +30,6 @@
       ]
     },
     { "type": "src.behaviours.Thrusters",
-      "max_thrust": 100000 },
-    { "type": "src.drawing.ThrustersDrawable" }
+      "max_thrust": 100000 }
   ]
 }

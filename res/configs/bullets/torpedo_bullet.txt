@@ -7,8 +7,8 @@
     { "type": "src.behaviours.KillOnTimer",
       "lifetime": 2
     },
-    { "type": "src.drawing.BulletDrawable",
-      "image_name": "res/images/rocket.png"
+    { "type": "src.drawing.AnimBodyDrawable",
+      "anim_name": "rocket"
     },
     { "type": "src.behaviours.DamageOnContact",
       "damage": 5
@@ -29,7 +29,6 @@
       "desired_distance_to_player": 0.1,
       "acceleration": 30000 },
     { "type": "src.behaviours.Thrusters",
-      "max_thrust": 100000 },
-    { "type": "src.drawing.ThrustersDrawable" }
+      "max_thrust": 100000 }
   ]
 }

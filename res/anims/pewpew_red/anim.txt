@@ -1,0 +1,6 @@
+{
+  "name_base": "pewpew_red",
+  "num_frames": 1,
+  "extension": ".png",
+  "period": 1
+}

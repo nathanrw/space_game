@@ -7,8 +7,8 @@
     { "type": "src.behaviours.KillOnTimer",
       "lifetime": 2
     },
-    { "type": "src.drawing.BulletDrawable",
-      "image_name": "res/images/pewpewgreen.png"
+    { "type": "src.drawing.AnimBodyDrawable",
+      "anim_name": "pewpew_green"
     },
     { "type": "src.behaviours.DamageOnContact",
       "damage": 1

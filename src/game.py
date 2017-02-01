@@ -179,6 +179,9 @@ class Game(object):
         # Make it so that bullets can damage things.
         self.physics.add_collision_handler(DamageCollisionHandler())
 
+        # Set the scrolling background.
+        self.drawing.set_background("res/images/star--background-seamless-repeating9.jpg")
+
         # Run the game loop.
         self.run_update_loop()
 

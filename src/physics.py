@@ -132,6 +132,8 @@ class Body(Component):
             self.position = kwargs["position"]
         if "velocity" in kwargs:
             self.velocity = kwargs["velocity"]
+            if self.velocity.length > 0:
+                self.orientation = self.velocity.normalized().get_angle_degrees()+90
 
     def manager_type(self):
         return Physics

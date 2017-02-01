@@ -10,7 +10,6 @@
     { "type": "src.drawing.AnimBodyDrawable",
       "anim_name": "player_ship"
     },
-    { "type": "src.drawing.HealthBarDrawable" },
     { "config": "weapons/torpedo_gun.txt" },
     { "config": "weapons/red_blaster.txt" },
     { "type": "src.behaviours.ExplodesOnDeath",
@@ -20,7 +19,6 @@
     { "type": "src.behaviours.Team",
       "team": "player" },
     { "type": "src.behaviours.Thrusters",
-      "max_thrust": 100000 },
-    { "type": "src.drawing.ThrustersDrawable" }
+      "max_thrust": 100000 }
   ]
 }

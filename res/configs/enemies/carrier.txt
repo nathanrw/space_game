@@ -19,7 +19,6 @@
     { "type": "src.drawing.AnimBodyDrawable",
       "anim_name": "enemy_ship"
     },
-    { "type": "src.drawing.HealthBarDrawable" },
     { "type": "src.behaviours.ExplodesOnDeath",
       "explosion_config": "explosions/big_explosion.txt"
     },
@@ -28,7 +27,6 @@
       "acceleration": 3500
     },
     { "type": "src.behaviours.Thrusters",
-      "max_thrust": 100000 },
-    { "type": "src.drawing.ThrustersDrawable" }
+      "max_thrust": 100000 }
   ]
 }

@@ -183,6 +183,7 @@ class EntityManager(object):
     
     def register_component_system(self, system):
         """ Register a component system. """
+        system.setup(self.game_services)
         self.systems[system.__class__] = system
         self.systems_list.append(system) # Note: could just insert at right place.
         self.systems_list = sorted(
@@ -287,6 +288,9 @@ class ComponentSystem(object):
         self.components_to_add = []
         self.priority = 0
         self.object_map = MapList()
+
+    def setup(self, game_services):
+        self.game_services = game_services
 
     def do_on_object_killed(self):
         """ Fire on_object_killed() for components about to go."""
