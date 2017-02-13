@@ -95,7 +95,7 @@ class PlayerInputHandler(InputHandler):
                 kmap[e.key][0]()
                 return True
             # probably a bit of a messy way to do this, but I couldn't figure out how else... Hmm.
-            elif e.key = pygame.K_ESCAPE
+            elif e.key == pygame.K_ESCAPE:
                 pygame.quit()
                 self.resource_loader.save_preload()
         elif e.type == pygame.KEYUP:
