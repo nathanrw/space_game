@@ -1,24 +1,15 @@
 {
-  "components": [
-    { "type": "src.behaviours.Team"},
-    { "type": "src.behaviours.Hitpoints",
+  "derive_from": "enemies/base_enemy.txt",
+  "components": {
+    "src.behaviours.Hitpoints": {
       "hp": 50
     },
-    { "type": "src.physics.Body",
+    "src.physics.Body": {
       "mass": 100,
       "size": 20
     },
-    { "type": "src.drawing.AnimBodyDrawable",
+    "src.drawing.AnimBodyDrawable": {
       "anim_name": "enemy_turret"
-    },
-    { "config": "weapons/green_blaster.txt" },
-    { "type": "src.behaviours.Tracking" },
-    { "type": "src.behaviours.AutomaticallyShootsBullets",
-      "fire_period": 1,
-      "burst_period": 3
-    },
-    { "type": "src.behaviours.ExplodesOnDeath",
-      "explosion_config": "explosions/big_explosion.txt"
     }
-  ]
+  }
 }

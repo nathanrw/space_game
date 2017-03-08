@@ -165,7 +165,7 @@ class Game(object):
         # since it's clearly special - drawing requires one, the player moves it, etc. But
         # at the same time it's convenient to attach the background drawable to it, and we
         # might want to give it physical properties in future. We'll see.
-        self.camera = self.entity_manager.create_entity("camera.txt")
+        self.camera = self.entity_manager.create_entity_with(Camera)
 
         # Make the player
         self.player = self.entity_manager.create_entity("player.txt")
@@ -174,7 +174,7 @@ class Game(object):
         self.camera.get_component(Camera).track(self.player)
 
         # Create the wave spawner.
-        self.wave_spawner = self.entity_manager.create_entity("wave_spawner.txt")
+        self.wave_spawner = self.entity_manager.create_entity_with(WaveSpawner)
 
         # Make it so that bullets can damage things.
         self.physics.add_collision_handler(DamageCollisionHandler())
@@ -187,6 +187,3 @@ class Game(object):
 
         # Finalise
         pygame.quit()
-
-        # Save a list of images to preload next time.
-        self.resource_loader.save_preload()

@@ -90,7 +90,7 @@ class Timer(object):
         self.timer = 0
         self.period = period
     def advance_to_fraction(self, frac):
-        self.timer += self.period * frac
+        self.timer = self.period * frac
     def tick(self, dt):
         self.timer += dt
         return self.expired()
@@ -149,25 +149,30 @@ class EntityManager(object):
         for s in self.systems_list:
             s.garbage_collect()
 
-    def create_entity(self, config_name, **kwargs):
+    def create_entity(self, config_name=None, **kwargs):
         """ Add a new object. It is initialised, but not added to the game
         right away: that gets done at a certain point in the game loop."""
+
         loader = self.game_services.get_resource_loader()
-        config = loader.load_config_file(config_name)
+
+        # load the config if specified.
+        config = None
+        if config_name is not None:
+            if isinstance(config_name, Config):
+                config = config_name
+            else:
+                config = loader.load_config_file(config_name)
+        else:
+            config = Config()
 
         # Instantiate the object.
         t = self.game_services.lookup_type(config.get_or_default("type", "src.utils.Entity"))
-        obj = t(self.game_services, config)
+        obj = t(self.game_services)
 
         # Add components specified in the config.
-        components = config.get_or_default("components", [])
-        for component in components:
-            component_config = None
-            if "config" in component:
-                component_config = loader.load_config_file(component["config"])
-            else:
-                component_config = Config(component)
-            component_type = self.game_services.lookup_type(component_config["type"])
+        components = config.get_or_default("components", Config())
+        for (component, component_config) in components:
+            component_type = self.game_services.lookup_type(component)
             component = component_type(obj, self.game_services, component_config)
             component.setup(**kwargs)
             obj.add_component(component)
@@ -229,24 +234,16 @@ class EntityManager(object):
         return None
 
     def remove_component_by_concrete_type(self, entity, component_type):
-        """ Remove all components of the given ***concrete*** type from the entity. """
+        """ Remove the component of the given ***concrete*** type from the entity. """
         system = self.get_system_by_component_type(component_type)
         if system is not None:
-            system.remove_object_components(entity, component_type)
+            system.remove_object_component(entity, component_type)
 
     def get_component_of_type(self, entity, t):
-        """ Get the component of a particular type on a particular entity.
-        Note: this will crash if the object has more than one component of this
-        type."""
+        """ Get the component of a particular type on a particular entity. """
         system = self.get_system_by_component_type(t)
         if system is not None:
             return system.get_component(entity, t)
-
-    def get_components_of_type(self, entity, t):
-        """ Get the components of a particular type on a particular entity. """
-        system = self.get_system_by_component_type(t)
-        if system is not None:
-            return system.get_components(entity, t)
 
     def update(self, dt):
         """ Update all of the systems in priority order. """
@@ -255,27 +252,6 @@ class EntityManager(object):
         for s in self.systems_list:
             s.do_on_object_killed()
         self.garbage_collect()
-
-class MapList(object):
-    """ A map from keys to lists of values. """
-    def __init__(self):
-        self.__map = {}
-    def add(self, key, value):
-        if not key in self.__map:
-            self.__map[key] = []
-        self.__map[key].append(value)
-    def remove(self, key, value=None):
-        if value is not None:
-            if key in self.__map:
-                self.__map[key].remove(value)
-                if len(self.__map[key]) == 0:
-                    del self.__map[key]
-        else:
-            del self.__map[key]
-    def get(self, key):
-        if key in self.__map:
-            return self.__map[key]
-        return []
 
 class ComponentSystem(object):
     """ Manages a set of entity components. It knows how to update the
@@ -287,7 +263,7 @@ class ComponentSystem(object):
         self.components = []
         self.components_to_add = []
         self.priority = 0
-        self.object_map = MapList()
+        self.object_map = {}
 
     def setup(self, game_services):
         self.game_services = game_services
@@ -311,33 +287,31 @@ class ComponentSystem(object):
     def add_component(self, component):
         """ Add a component. Note that it won't be created straight away. It
         will be added to a queue, and created at the start of the next frame. """
+        key = (component.entity, component.__class__)
+        assert not key in self.object_map
         self.components_to_add.append(component)
-        self.object_map.add((component.entity, component.__class__), component)
+        self.object_map[key] = component
         
     def remove_component(self, component):
         """ Remove a particular component. """
         self.components.remove(component)
-        self.object_map.remove((component.entity, component.__class__), component)
+        key = (component.entity, component.__class__)
+        assert key in self.object_map
+        del self.object_map[key]
 
     def get_component(self, entity, component_type):
         """ Get a single component of a particular type."""
-        components = self.get_components(entity, component_type)
-        if len(components) > 1:
-            raise Exception("Expected there to be either 0 or 1 components attached to entity.")
-        elif len(components) == 1:
-            return components[0]
+        key = (entity, component_type)
+        if key in self.object_map:
+            return self.object_map[key]
         else:
             return None
-        
-    def get_components(self, entity, component_type):
-        """ Get all components of a particular type attached to the given object. """
-        return self.object_map.get((entity, component_type))
     
-    def remove_object_components(self, entity, component_type):
-        """ Remove all components of a particular concrete type from an object. """
-        components = self.get_components(entity, component_type)
-        for c in components:
-            self.remove_component(c)
+    def remove_object_component(self, entity, component_type):
+        """ Remove the component of a particular concrete type from an object. """
+        component = self.get_component(entity, component_type)
+        if component is not None:
+            self.remove_component(component)
 
     def garbage_collect(self):
         """ Remove all dead components. """
@@ -415,12 +389,11 @@ class Entity(object):
     """ An object in the game. It knows whether it needs to be deleted, and
     has access to object / component creation services. """
 
-    def __init__(self, game_services, config):
+    def __init__(self, game_services):
         """ Constructor. Since you don't have access to the game services
         in __init__, more complicated initialisation must be done in
         initialise()."""
         self.is_garbage = False
-        self.config = config
         self.game_services = game_services
         self.children = []
         self.parent = None
@@ -501,48 +474,61 @@ class Entity(object):
 
 class Config(object):
     """ A hierarchical data store. """
-    
-    def __init__(self, wrap=None):
+
+    def __init__(self, a_dict=None):
         """ Initialise an empty data store, or a wrapping one if a dictionary
         is provided."""
-        self.parent = None
-        self.data = {}
-        self.filename = None
-        self.child_path = None
 
-        if wrap is not None:
-            self.data = wrap
+        # If this node is not a leaf, then this will contain the data
+        # that defines the child nodes.
+        self.__data = {}
 
-    def create_child(self, path):
-        """ Create a config wrapping a child node. """
-        cfg = Config()
-        cfg.parent = self.parent
-        cfg.data = self.data
-        cfg.filename = self.filename
-        cfg.child_path = path
-        return cfg
-        
+        # If this node is a leaf, then this will contain its value.
+        self.__value = None
+
+        # If this tree was read from a file, this will be the filename.
+        self.__filename = None
+
+        # Name of the parent file.
+        self.__parent_filename = None
+
+        # If data specified, build a config.
+        if a_dict is not None:
+            self.__data = self.__build_config_dict(a_dict).__data
+
     def load(self, filename):
-        """ Load data from a file. Remember the file so we can save it later. """
-        self.filename = os.path.join("res/configs/", filename)
-        print "Loading config: ", self.filename
+        """ Load data from a file. Remember the file so we can save it later.
+
+        If there is an error loading the file, noisily abort the program - it's
+        probably a silly mistake that needs fixing. And config loading can
+        happen inside physics callbacks, wherein exceptions get ignored for
+        some reason!
+
+        If the file contains a 'derive_from' key then load a parent config
+        recursively until there is no more derivation. """
+
+        self.__filename = os.path.join("res/configs", filename)
+
+        # Try to load the config from the file.
+        print "Loading config: ", self.__filename
+        data = {}
         try:
-            self.data = json.load(open(self.filename, "r"))
+            data = json.load(open(self.__filename, "r"))
         except Exception, e:
             print e
             print "**************************************************************"
-            print "ERROR LOADING CONFIG FILE: ", self.filename
+            print "ERROR LOADING CONFIG FILE: ", self.__filename
             print "Probably either the file doesn't exist, or you forgot a comma!"
             print "**************************************************************"
             bail() # Bail - we might be in the physics thread which ignores exceptions
-        parent_filename = self.__get("derive_from")
-        if parent_filename is not None:
-            self.parent = Config()
-            self.parent.load(parent_filename)
-            
+
+        # Transform the data into a Config tree.
+        self.__data = self.__build_config_dict(data).__data
+
     def save(self):
         """ Save to our remembered filename. """
-        json.dump(self.data, open(self.filename, "w"), indent=4, separators=(',', ': '))
+        data = self.__config_to_dict()
+        json.dump(data, open(self.__filename, "w"), indent=4, separators=(',', ': '))
 
     def __getitem__(self, key):
         """ Get some data out. """
@@ -550,39 +536,116 @@ class Config(object):
         if got is None:
             print "**************************************************************"
             print "ERROR READING CONFIG ATTRIBUTE: %s" % key
-            print "CONFIG FILE: %s" % self.filename
+            print "CONFIG FILE: %s" % self.__filename
             print "It's probably not been added to the file, or there is a bug."
             print "**************************************************************"
             bail() # Bail - we might be in the physics thread which ignores exceptions
         return got
+
+    def __iter__(self):
+        """ Iterate the key-value pairs in the config. """
+        if self.__data is not None:
+            for key in self.__data:
+                yield key
         
     def get_or_default(self, key, default):
         """ Get some data out. """
-        got = self.get_or_none(key)
-        if got is None:
-            return default
+        ret = self.__get(key)
+        if ret is not None:
+            return ret
         else:
-            return got
+            return default
 
     def get_or_none(self, key):
         """ Get some data, or None if it isnt found. """
-        if self.child_path is not None:
-            key = self.child_path + "." + key
-        got = self.__get(key)
-        if got is None and self.parent is not None:
-            got = self.parent.get_or_none(key)
-        return got
+        return self.__get(key)
 
     def __get(self, key):
         """ Retrieve some data from our data store."""
+        ret = self.__get_config(key)
+        if ret is not None:
+            if ret.__value is not None:
+                return ret.__value
+        return ret
+
+    def __get_config(self, key):
+        """ Retrieve some data from our data store."""
         try:
             tokens = key.split(".")
-            ret = self.data
+            ret = self
             for tok in tokens:
-                ret = ret[tok]
+                ret = ret.__data[tok]
             return ret
         except:
             return None
+
+    def __build_config_dict(self, data):
+        """ Build a config tree from a dictionary or leaf value. """
+
+        # Use a temporary config.
+        ret = Config()
+
+        # Determine what sort of data we have
+        is_dict = False
+        try:
+            for key in data:
+                value = data[key]
+                pass
+            is_dict = True
+        except:
+            pass
+
+        # Build config based on input type.
+        if is_dict:
+
+            # Build the tree.
+            for key in data:
+                value = data[key]
+                ret.__data[key] = self.__build_config_dict(value)
+
+            # If there is a parent config then load and merge it in.
+            if "derive_from" in data:
+
+                # Load the parent config
+                ret.__parent_filename = data["derive_from"]
+                parent = Config()
+                parent.load(ret.__parent_filename)
+
+                # Merge the config we just built with our parent.
+                tmp = Config()
+                tmp.__data = ret.__data
+                parent.__merge_in(tmp)
+                ret.__data = parent.__data
+                
+                # Remove the 'derive_from' entry as it has been dealt with.
+                del ret.__data["derive_from"]
+        else:
+            ret.__value = data
+
+        return ret
+
+    def __merge_in(self, config):
+        """ Overlay another config onto ourself. """
+        if config.__value is not None:
+            self.__value = config.__value
+            return
+        for key in config.__data:
+            child = config.__data[key]
+            self_child = self.__get_config(key)
+            if self_child is not None:
+                self_child.__merge_in(child)
+            else:
+                self.__data[key] = child
+
+    def __config_to_dict(self):
+        """ Turn the config tree into a plain dictionary. """
+        if self.__value is not None:
+            return self.__value
+        ret = {}
+        for key in self.__data:
+            child = self.__data[key]
+            ret[key] = child.__config_to_dict()
+        return ret
 
 class ResourceLoader(object):
     """ A resource loader - loads and caches resources which can be requested by the game. """
@@ -594,29 +657,22 @@ class ResourceLoader(object):
         self.fonts = {}
         self.configs = {}
         self.minimise_image_loading = False
-        self.preload_name = None
 
     def preload(self, screen):
         """ Preload certain resources to reduce game stutter. """
-        self.preload_name = "preload.txt"
-        if self.minimise_image_loading:
-            self.preload_name = "preload_min.txt"
-        if os.path.isfile(self.preload_name):
-            filenames = json.load(open(self.preload_name, "r"))
-            loading = LoadingScreen(len(filenames), screen)
-            for filename in filenames:
-                self.load_image(filename)
-                loading.increment()
 
-    def save_preload(self):
-        """ Save a list of what to preload next time. """
-        if self.preload_name is not None and not os.path.isfile(self.preload_name):
-            json.dump(
-                self.images.keys(),
-                open(self.preload_name, "w"),
-                indent=4,
-                separators=(',', ': ')
-            )
+        # List all animation frames.
+        anims = self.__list_animations()
+        images = []
+        for anim in anims:
+            anim = self.__load_animation_definition(anim)
+            images += anim["frames"]
+
+        # Read in the frames.
+        loading = LoadingScreen(len(filenames), screen)
+        for filename in images:
+            self.load_image(filename)
+            loading.increment()
 
     def load_font(self, filename, size):
         """ Load a font from the file system. """
@@ -632,24 +688,36 @@ class ResourceLoader(object):
             print "Loaded image: %s" % filename
         return self.images[filename]
 
+    def __list_animations(self):
+        """ List all of the available animations. """
+        anims = []
+        for fname in os.listdir("res/anims"):
+            if os.path.isdir(fname) and os.path.isfile(os.path.join(fname, "anim.txt")):
+                anims.append(os.path.basename(fname))
+        return anims
+
+    def __load_animation_definition(self, name):
+        """ Load the definition of an animation, included the names of all
+        frames. """
+        fname = os.path.join(os.path.join("res/anims", name), "anim.txt")
+        anim = json.load(open(fname))
+        anim["frames"] = []
+        for i in range(anim["num_frames"]):
+            # If we want to load faster disable loading too many anims...
+            if self.minimise_image_loading and anim["num_frames"] > 10 and i % 10 != 0:
+                continue
+            padded = (4-len(str(i)))*"0" + str(i)
+            img_name = anim["name_base"] + padded + anim["extension"]
+            img_filename = os.path.join(os.path.dirname(fname), img_name)
+            anim["frames"].append(img_filename)
+        return anim
+
     def load_animation(self, filename):
         """ Load an animation from the filesystem. """
         if not filename in self.animations:
-            fname = os.path.join(os.path.join("res/anims", filename), "anim.txt")
-            anim = json.load(open(fname))
-            name_base = anim["name_base"]
-            num_frames = anim["num_frames"]
-            extension = anim["extension"]
-            period = anim["period"]
-            frames = []
-            for i in range(num_frames):
-                # If we want to load faster disable loading too many anims...
-                if self.minimise_image_loading and num_frames > 10 and i % 10 != 0:
-                    continue
-                padded = (4-len(str(i)))*"0" + str(i)
-                img_filename = os.path.join(os.path.dirname(fname), name_base + padded + extension)
-                frames.append(self.load_image(img_filename))
-            self.animations[filename] = (frames, period)
+            anim = self.__load_animation_definition(filename)
+            frames = [self.load_image(x) for x in anim["frames"]]
+            self.animations[filename] = (frames, anim["period"])
             print "Loaded animation: %s" % filename
         (frames, period) = self.animations[filename]
         return Animation(frames, period)
@@ -688,8 +756,7 @@ class Animation(object):
         # Assume all frames the same size. Return biggest rect considering
         # all possible rotations.
         rect = self.frames[0].get_rect()
-        size = math.sqrt(rect.width*rect.width + rect.height+rect.height)
+        size = math.sqrt(rect.width*rect.width + rect.height*rect.height)
         rect.width = size
         rect.height = size
         return rect
-        

@@ -79,9 +79,56 @@ class ShootingAtBody(object):
     def direction(self):
         return (-self.__to_body.position + self.__from_body.position).normalized()
 
-class ManuallyShootsBullets(Component):
-    """ Something that knows how to spray bullets. Note that this is not a
-    entity, it's something entitys can use to share code. """
+class Weapons(Component):
+    """ An entity with the 'weapons' component manages a set of child entities
+    which have the 'weapon' component. """
+
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+
+        # Initialise the weapons.
+        self.__weapons = []
+        weapons = config.get_or_default("weapons", [])
+        for weapon_config in weapons:
+            self.__weapons.append(self.create_entity(weapon, parent=self.entity))
+
+        # Set the current weapon.
+        self.__current_weapon = -1
+        if len(self.__weapons) > 0:
+            self.__current_weapon = 0
+
+    def get_weapon(self):
+        """ Get the weapon component of our sub-entity. """
+        if self.__current_weapon < 0:
+            return None
+        return self.__weapons[self.__current_weapon].get_component(Weapon)
+
+    def next_weapon(self):
+        """ Cycle to the next weapon. """
+        if self.__current_weapon < 0:
+            return
+        self.__current_weapon = (self.__current_weapon+1)%len(self.__weapons)
+
+    def prev_weapon(self):
+        """ Cycle to the previous weapon. """
+        if self.__current_weapon < 0:
+            return
+        self.__current_weapon = (self.__current_weapon-1)%len(self.__weapons)
+
+class Weapon(Component):
+    """ Something that knows how to spray bullets.
+
+    A weapon is intended to be a component on an entity that represents
+    the weapon-entity.  This should be a child of the entity that 'has' a
+    weapon.  It is the parent entity that needs to have a position in space
+    etc.  So you have
+
+    e0 (player) <-------- e1 (weapon)
+    ^                     ^
+    |                     |
+    Body                  Weapon
+    ...                   ...
+    """
 
     def __init__(self, entity, game_services, config):
         """ Inject dependencies and set up default parameters. """
@@ -89,20 +136,30 @@ class ManuallyShootsBullets(Component):
         self.shooting_at = None
         self.shot_timer = 0
 
+    def __get_body(self):
+        """ Get the body of the entity with the weapon. """
+        assert self.entity.parent is not None
+        return self.entity.parent.get_component(Body)
+
+    def __get_team(self):
+        """ Get the team our parent is on. """
+        assert self.entity.parent is not None
+        return self.entity.parent.get_component(Team)
+
     def start_shooting_dir(self, direction):
         self.shooting_at = ShootingAtDirection(direction)
 
     def start_shooting_world(self, at):
         """ Start shooting at a point in world space. """
-        self.shooting_at = ShootingAtWorld(at, self.get_component(Body))
+        self.shooting_at = ShootingAtWorld(at, self.__get_body())
 
     def start_shooting_at_body(self, body):
         """ Start shooting at a body. """
-        self.shooting_at = ShootingAtBody(body, self.get_component(Body))
+        self.shooting_at = ShootingAtBody(body, self.__get_body())
 
     def start_shooting_screen(self, at):
         """ Start shooting at a point in screen space. """
-        self.shooting_at = ShootingAtScreen(at, self.get_component(Body), self.game_services.get_camera())
+        self.shooting_at = ShootingAtScreen(at, self.__get_body(), self.game_services.get_camera())
 
     def stop_shooting(self):
         """ Stop spraying bullets. """
@@ -123,7 +180,7 @@ class ManuallyShootsBullets(Component):
         if self.shooting:
 
             # These will be the same for each shot, so get them here...
-            body = self.get_component(Body)
+            body = self.__get_body()
             shooting_at_dir = self.shooting_at.direction()
 
             # If it's time, shoot a bullet and rest the timer. Note that
@@ -151,7 +208,7 @@ class ManuallyShootsBullets(Component):
                 # Create the bullet.
                 self.create_entity(self.config["bullet_config"],
                                         parent=self.entity,
-                                        team=self.get_component(Team).get_team(),
+                                        team=self.__get_team(),
                                         position=bullet_position,
                                         velocity=bullet_velocity)
 
@@ -226,7 +283,7 @@ class AutomaticallyShootsBullets(Component):
         """ Update the shooting bullet. """
 
         body = self.get_component(Body)
-        gun = self.get_component(ManuallyShootsBullets)
+        gun = self.get_component(Weapon)
         tracking = self.get_component(Tracking)
         tracked_body = tracking.get_tracked()
 

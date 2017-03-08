@@ -1,7 +1,10 @@
 {
-  "type": "src.behaviours.ManuallyShootsBullets",
-  "shots_per_second": 2,
-  "bullet_config": "bullets/red_bullet.txt",
-  "bullet_speed": 2000,
-  "spread": 10
+  "components": {
+    "src.behaviours.ManuallyShootsBullets": {
+      "shots_per_second": 2,
+      "bullet_config": "bullets/red_bullet.txt",
+      "bullet_speed": 2000,
+      "spread": 10
+    }
+  }
 }

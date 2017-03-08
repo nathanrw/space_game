@@ -1,4 +1,0 @@
-{
-  "derive_from": "explosions/explosion_drawable.txt",
-  "anim_name": "red_explosion"
-}

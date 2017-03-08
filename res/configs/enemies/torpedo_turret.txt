@@ -1,24 +1,10 @@
 {
-  "components": [
-    { "type": "src.behaviours.Team"},
-    { "type": "src.behaviours.Tracking"},
-    { "type": "src.behaviours.Hitpoints",
-      "hp": 50
-    },
-    { "type": "src.physics.Body",
-      "mass": 100,
-      "size": 20
-    },
-    { "type": "src.drawing.AnimBodyDrawable",
-      "anim_name": "enemy_turret"
-    },
-    { "config": "weapons/torpedo_blaster.txt" },
-    { "type": "src.behaviours.AutomaticallyShootsBullets",
+  "derive_from": "enemies/turret.txt",
+  "components": {
+    "src.behaviours.AutomaticallyShootsBullets": {
       "fire_period": 1,
-      "burst_period": 3
-    },
-    { "type": "src.behaviours.ExplodesOnDeath",
-      "explosion_config": "explosions/big_explosion.txt"
+      "burst_period": 3,
+      "weapon": "weapons/torpedo_blaster.txt"
     }
-  ]
+  }
 }

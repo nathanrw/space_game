@@ -1,4 +1,0 @@
-{
-  "type": "src.physics.Body",
-  "is_collideable":0
-}

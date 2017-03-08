@@ -1,34 +1,34 @@
 {
-  "components": [
-    { "type": "src.physics.Body",
+  "derive_from": "bullets/base_bullet.txt"
+  "components": {
+    "src.physics.Body": {
       "mass": 10,
       "size": 10
     },
-    { "type": "src.behaviours.KillOnTimer",
-      "lifetime": 2
-    },
-    { "type": "src.drawing.AnimBodyDrawable",
+    "src.drawing.AnimBodyDrawable": {
       "anim_name": "rocket"
     },
-    { "type": "src.behaviours.DamageOnContact",
+    "src.behaviours.DamageOnContact": {
       "damage": 5
     },
-    { "type": "src.behaviours.ExplodesOnDeath",
+    "src.behaviours.ExplodesOnDeath": {
       "explosion_config": "explosions/big_explosion.txt"
     },
-    { "type": "src.behaviours.Team" },
-    { "type": "src.behaviours.Turrets",
+    "src.behaviours.Team": {},
+    "src.behaviours.Turrets": {
       "hardpoints": [
         { "x": 0,
 	  "y": 0,
 	  "weapon_config": "enemies/torpedo_turret.txt" }
       ]
     },
-    { "type": "src.behaviours.Tracking" },
-    { "type": "src.behaviours.FollowsTracked",
+    "src.behaviours.Tracking": {}
+    "src.behaviours.FollowsTracked": {
       "desired_distance_to_player": 0.1,
-      "acceleration": 30000 },
-    { "type": "src.behaviours.Thrusters",
-      "max_thrust": 100000 }
+      "acceleration": 30000
+    },
+    "src.behaviours.Thrusters": {
+      "max_thrust": 100000
+    }
   ]
 }

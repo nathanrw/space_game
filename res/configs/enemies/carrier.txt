@@ -1,32 +1,22 @@
 {
-  "components": [
-    { "type": "src.behaviours.Team"},
-    { "type": "src.behaviours.Tracking" },
-    { "type": "src.behaviours.LaunchesFighters",
+  "derive_from": "enemies/base_enemy.txt"
+  "components": {
+    "src.behaviours.LaunchesFighters": {
       "spawn_period": 10,
       "takeoff_speed": 700,
       "takeoff_spread": 30,
       "num_fighters": 10,
       "fighter_config": "enemies/fighter.txt"
     },
-    { "type": "src.behaviours.Hitpoints",
+    "src.behaviours.Hitpoints": {
       "hp": 50
     },
-    { "type": "src.physics.Body",
+    "src.physics.Body": {
       "mass": 100,
       "size": 64
     },
-    { "type": "src.drawing.AnimBodyDrawable",
+    "src.drawing.AnimBodyDrawable": {
       "anim_name": "enemy_ship"
-    },
-    { "type": "src.behaviours.ExplodesOnDeath",
-      "explosion_config": "explosions/big_explosion.txt"
-    },
-    { "type": "src.behaviours.FollowsTracked",
-      "desired_distance_to_player": 500,
-      "acceleration": 3500
-    },
-    { "type": "src.behaviours.Thrusters",
-      "max_thrust": 100000 }
-  ]
+    }
+  }
 }
