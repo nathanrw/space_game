@@ -1,6 +1,8 @@
 Space Game
 ==========
 
+NOTE: It's currently in pieces (i.e. not really working). 
+
 A space game written in Python.
 
 ![A screenshot](screenshot.png?raw=true "Screenshot")
