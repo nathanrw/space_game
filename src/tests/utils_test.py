@@ -284,7 +284,7 @@ class ConfigTest(unittest.TestCase):
         assert c4["wibble"] == "wobble"
 
         # Derivation should work. The path is rooted on res/configs.
-        c5 = Config({"derive_from": "player.txt"})
+        c5 = Config({"derive_from": "enemies/destroyer.txt"})
 
         # Should remove the derive from entry
         assert c5.get_or_default("derive_from", "fred") == "fred"
@@ -294,10 +294,10 @@ class ConfigTest(unittest.TestCase):
 
     def test_load(self):
         c1 = Config()
-        c1.load("player.txt")
+        c1.load("enemies/destroyer.txt")
         components = c1["components"]
         drawable = components["src.drawing.AnimBodyDrawable"]
-        assert drawable["anim_name"] == "player_ship"
+        assert drawable["anim_name"] == "enemy_destroyer"
         
     def test_save(self):
         # Need to create temporary output dir then clean it up

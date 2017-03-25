@@ -1,5 +1,5 @@
 {
-  "derive_from": "enemies/base_enemy.txt"
+  "derive_from": "enemies/base_enemy.txt",
   "components": {
     "src.behaviours.LaunchesFighters": {
       "spawn_period": 10,

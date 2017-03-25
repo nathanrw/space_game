@@ -1,13 +1,17 @@
 {
-    "components": [
-        { "type": "src.drawing.TextDrawable",
-          "font_name": "res/fonts/nasdaqer/NASDAQER.ttf",
-          "font_size": 62,
-          "font_colour": { "red": 255, "green": 255, "blue": 255} },
-        { "type": "src.behaviours.KillOnTimer",
-          "lifetime": 10 },
-        { "type": "src.behaviours.Text",
-          "text": "Hello, World!" },
-        { "type": "src.behaviours.EndProgramOnDeath" }
-    ]
+  "components": {
+    "src.drawing.TextDrawable": {
+      "font_name": "res/fonts/nasdaqer/NASDAQER.ttf",
+      "font_size": 62,
+      "font_colour": { "red": 255, "green": 255, "blue": 255}
+    },
+    "src.behaviours.KillOnTimer": {
+      "lifetime": 10
+    },
+    "src.behaviours.Text": {
+      "text": "Hello, World!"
+    },
+    "src.behaviours.EndProgramOnDeath": {
+    }
+  }
 }

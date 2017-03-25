@@ -1,5 +1,5 @@
 {
-  "derive_from": "base_enemy",
+  "derive_from": "enemies/base_enemy.txt",
   "components": {
     "src.behaviours.Hitpoints": {
       "hp": 4

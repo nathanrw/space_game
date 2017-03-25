@@ -1,24 +1,24 @@
 {
-  "components": [
-    { "type": "src.behaviours.Hitpoints",
+  "components": {
+    "src.behaviours.Hitpoints": {
       "hp": 100
     },
-    { "type": "src.physics.Body",
+    "src.physics.Body": {
       "mass": 100,
       "size": 20
     },
-    { "type": "src.drawing.AnimBodyDrawable",
+    "src.drawing.AnimBodyDrawable": {
       "anim_name": "player_ship"
     },
-    { "config": "weapons/torpedo_gun.txt" },
-    { "config": "weapons/red_blaster.txt" },
-    { "type": "src.behaviours.ExplodesOnDeath",
+    "src.behaviours.ExplodesOnDeath": {
       "explosion_config": "explosions/big_explosion.txt"
     },
-    { "type": "src.input_handling.PlayerInputHandler" },
-    { "type": "src.behaviours.Team",
-      "team": "player" },
-    { "type": "src.behaviours.Thrusters",
-      "max_thrust": 100000 }
-  ]
+    "src.input_handling.PlayerInputHandler": {},
+    "src.behaviours.Team": {
+      "team": "player"
+    },
+    "src.behaviours.Thrusters": {
+      "max_thrust": 100000
+    }
+  }
 }

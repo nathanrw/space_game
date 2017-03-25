@@ -25,7 +25,7 @@ import pygame
 
 from physics import Physics
 from drawing import Drawing
-from behaviours import DamageCollisionHandler, Camera
+from behaviours import DamageCollisionHandler, Camera, WaveSpawner
 from utils import GameServices, ResourceLoader, EntityManager
 from input_handling import InputHandling
 

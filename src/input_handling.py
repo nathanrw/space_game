@@ -3,7 +3,7 @@ from pymunk.vec2d import Vec2d
 import pygame
 
 from utils import ComponentSystem, Component
-from behaviours import ManuallyShootsBullets, Thrusters
+from behaviours import Weapons, Weapon, Thrusters
 from physics import Body
 
 class InputHandling(ComponentSystem):
@@ -37,27 +37,43 @@ class PlayerInputHandler(InputHandler):
 
     def start_shooting(self, pos):
         """ Start shooting at a particular screen space point. """
-        guns = self.get_components(ManuallyShootsBullets)
-        for g in guns:
-            g.start_shooting_screen(pos)
+        weapons = self.get_component(Weapons)
+        if weapons is None:
+            return
+        weapon = weapons.get_weapon()
+        if weapon is None:
+            return
+        weapon.start_shooting_screen(pos)
 
     def start_shooting_forwards(self):
         """ Start shooting ahead. """
-        guns = self.get_components(ManuallyShootsBullets)
-        for g in guns:
-            g.start_shooting_dir(Vec2d(0, -100))
-        
+        weapons = self.get_component(Weapons)
+        if weapons is None:
+            return
+        weapon = weapons.get_weapon()
+        if weapon is None:
+            return
+        weapon.start_shooting_dir(Vec2d(0, -100))
 
     def stop_shooting(self):
         """ Stop the guns. """
-        guns = self.get_components(ManuallyShootsBullets)
-        for g in guns:
-            g.stop_shooting()
+        weapons = self.get_component(Weapons)
+        if weapons is None:
+            return
+        weapon = weapons.get_weapon()
+        if weapon is None:
+            return
+        weapon.stop_shooting()
 
     def is_shooting(self):
         """ Are the guns firing? If one is they both are. """
-        guns = self.get_components(ManuallyShootsBullets)
-        return guns[0].shooting
+        weapons = self.get_component(Weapons)
+        if weapons is None:
+            return False
+        weapon = weapons.get_weapon()
+        if weapon is None:
+            return False
+        return weapon.shooting
 
     def zoom_in(self):
         """ Zoom the camera in."""

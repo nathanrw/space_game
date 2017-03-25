@@ -285,10 +285,12 @@ class AutomaticallyShootsBullets(Component):
         body = self.get_component(Body)
         gun = self.get_component(Weapon)
         tracking = self.get_component(Tracking)
+        if tracking is None:
+            return
         tracked_body = tracking.get_tracked()
 
         # Not much we can do if no bodies...
-        if body is None or tracked_body is None:
+        if gun is None or body is None or tracked_body is None:
             return
 
         # Point at the object we're tracking. Note that in future it would be

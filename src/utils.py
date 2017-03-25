@@ -8,6 +8,7 @@ import sys
 import json
 import os
 import math
+import collections
 
 from loading_screen import LoadingScreen
 from pymunk.vec2d import Vec2d
@@ -149,6 +150,15 @@ class EntityManager(object):
         for s in self.systems_list:
             s.garbage_collect()
 
+    def create_entity_with(self, *types, **kwargs):
+        """ Create a new entity with a given list of components. """
+        entity = self.create_entity()
+        for t in types:
+            component = t(entity, self.game_services, Config())
+            component.setup(**kwargs)
+            entity.add_component(component)
+        return entity
+
     def create_entity(self, config_name=None, **kwargs):
         """ Add a new object. It is initialised, but not added to the game
         right away: that gets done at a certain point in the game loop."""
@@ -171,7 +181,8 @@ class EntityManager(object):
 
         # Add components specified in the config.
         components = config.get_or_default("components", Config())
-        for (component, component_config) in components:
+        for component in components:
+            component_config = components[component]
             component_type = self.game_services.lookup_type(component)
             component = component_type(obj, self.game_services, component_config)
             component.setup(**kwargs)
@@ -378,12 +389,9 @@ class Component(object):
         of this type. """
         return self.entity.get_component(t)
 
-    def get_components(self, t):
-        """ Return the components of a given type. Note that eventually this
-        should be restricted such that a component has a formal list of
-        dependencies, and it can only get at components of those types. As
-        it stands anything can fiddle with anything. """
-        return self.entity.get_components(t)
+    def get_children_with_component(self, t):
+        """ Get each (direct) child entity with a given component type. """
+        return self.entity.get_children_with_component(t)
 
 class Entity(object):
     """ An object in the game. It knows whether it needs to be deleted, and
@@ -446,12 +454,11 @@ class Entity(object):
         of this type. """
         return self.game_services.get_entity_manager().get_component_of_type(self, t)
 
-    def get_components(self, t):
-        """ Return the components of a given type. Note that eventually this
-        should be restricted such that a component has a formal list of
-        dependencies, and it can only get at components of those types. As
-        it stands anything can fiddle with anything. """
-        return self.game_services.get_entity_manager().get_components_of_type(self, t)
+    def get_children_with_component(self, t):
+        """ Get each (direct) child entity with a given component type. """
+        for entity in self.children:
+            if entity.get_component(t) is not None:
+                yield entity
 
     def add_child(self, obj):
         """ Add a child entity. """
@@ -481,7 +488,7 @@ class Config(object):
 
         # If this node is not a leaf, then this will contain the data
         # that defines the child nodes.
-        self.__data = {}
+        self.__data = collections.OrderedDict()
 
         # If this node is a leaf, then this will contain its value.
         self.__value = None
@@ -511,7 +518,7 @@ class Config(object):
 
         # Try to load the config from the file.
         print "Loading config: ", self.__filename
-        data = {}
+        data = collections.OrderedDict()
         try:
             data = json.load(open(self.__filename, "r"))
         except Exception, e:
@@ -527,14 +534,19 @@ class Config(object):
 
     def save(self):
         """ Save to our remembered filename. """
+        self.save_as(self.__filename)
+
+    def save_as(self, filename):
+        """ Save to given filename. """
         data = self.__config_to_dict()
-        json.dump(data, open(self.__filename, "w"), indent=4, separators=(',', ': '))
+        json.dump(data, open(filename, "w"), indent=4, separators=(',', ': '))
 
     def __getitem__(self, key):
         """ Get some data out. """
         got = self.get_or_none(key)
         if got is None:
             print "**************************************************************"
+            print self.__data
             print "ERROR READING CONFIG ATTRIBUTE: %s" % key
             print "CONFIG FILE: %s" % self.__filename
             print "It's probably not been added to the file, or there is a bug."
@@ -570,13 +582,9 @@ class Config(object):
 
     def __get_config(self, key):
         """ Retrieve some data from our data store."""
-        try:
-            tokens = key.split(".")
-            ret = self
-            for tok in tokens:
-                ret = ret.__data[tok]
-            return ret
-        except:
+        if key in self.__data:
+            return self.__data[key]
+        else:
             return None
 
     def __build_config_dict(self, data):
@@ -641,7 +649,7 @@ class Config(object):
         """ Turn the config tree into a plain dictionary. """
         if self.__value is not None:
             return self.__value
-        ret = {}
+        ret = collections.OrderedDict()
         for key in self.__data:
             child = self.__data[key]
             ret[key] = child.__config_to_dict()
@@ -669,7 +677,8 @@ class ResourceLoader(object):
             images += anim["frames"]
 
         # Read in the frames.
-        loading = LoadingScreen(len(filenames), screen)
+        assert len(images) > 0
+        loading = LoadingScreen(len(images), screen)
         for filename in images:
             self.load_image(filename)
             loading.increment()
@@ -691,9 +700,11 @@ class ResourceLoader(object):
     def __list_animations(self):
         """ List all of the available animations. """
         anims = []
-        for fname in os.listdir("res/anims"):
-            if os.path.isdir(fname) and os.path.isfile(os.path.join(fname, "anim.txt")):
-                anims.append(os.path.basename(fname))
+        dirname = "res/anims"
+        for anim_name in os.listdir(dirname):
+            anim_file = os.path.join(dirname, os.path.join(anim_name, "anim.txt"))
+            if os.path.isfile(anim_file):
+                anims.append(anim_name)
         return anims
 
     def __load_animation_definition(self, name):
