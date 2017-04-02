@@ -15,6 +15,6 @@
       "weapon": "weapons/green_blaster.txt",
       "fire_period": 1,
       "burst_period": 3
-    },
+    }
   }
 }
