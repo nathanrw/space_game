@@ -1,25 +1,17 @@
-{
-  "derive_from": "enemies/base_enemy.txt",
-  "components": {
-    "src.behaviours.Hitpoints": {
-      "hp": 500
-    },
-    "src.physics.Body": {
-      "mass": 100,
-      "size": 100
-    },
-    "src.drawing.AnimBodyDrawable": {
-      "anim_name": "enemy_destroyer"
-    },
-    "src.behaviours.Turrets": {
-      "hardpoints": [
-        { "x": -70,
-	  "y": 0,
-	  "weapon_config": "enemies/turret.txt" },
-	{ "x": 70,
-	  "y": 0,
-	  "weapon_config": "enemies/turret.txt" }
-      ]
-    }
-  }
-}
+components:
+  src.behaviours.Hitpoints:
+    hp: 500
+  src.behaviours.Turrets:
+    hardpoints:
+    - weapon_config: enemies/turret.txt
+      x: -70
+      y: 0
+    - weapon_config: enemies/turret.txt
+      x: 70
+      y: 0
+  src.drawing.AnimBodyDrawable:
+    anim_name: enemy_destroyer
+  src.physics.Body:
+    mass: 100
+    size: 100
+derive_from: enemies/base_enemy.txt

@@ -1,34 +1,23 @@
-{
-  "derive_from": "bullets/base_bullet.txt",
-  "components": {
-    "src.physics.Body": {
-      "mass": 10,
-      "size": 10
-    },
-    "src.drawing.AnimBodyDrawable": {
-      "anim_name": "rocket"
-    },
-    "src.behaviours.DamageOnContact": {
-      "damage": 5
-    },
-    "src.behaviours.ExplodesOnDeath": {
-      "explosion_config": "explosions/big_explosion.txt"
-    },
-    "src.behaviours.Team": {},
-    "src.behaviours.Turrets": {
-      "hardpoints": [
-        { "x": 0,
-	  "y": 0,
-	  "weapon_config": "enemies/torpedo_turret.txt" }
-      ]
-    },
-    "src.behaviours.Tracking": {},
-    "src.behaviours.FollowsTracked": {
-      "desired_distance_to_player": 0.1,
-      "acceleration": 30000
-    },
-    "src.behaviours.Thrusters": {
-      "max_thrust": 100000
-    }
-  }
-}
+components:
+  src.behaviours.DamageOnContact:
+    damage: 5
+  src.behaviours.ExplodesOnDeath:
+    explosion_config: explosions/big_explosion.txt
+  src.behaviours.FollowsTracked:
+    acceleration: 30000
+    desired_distance_to_player: 0.1
+  src.behaviours.Team: {}
+  src.behaviours.Thrusters:
+    max_thrust: 100000
+  src.behaviours.Tracking: {}
+  src.behaviours.Turrets:
+    hardpoints:
+    - weapon_config: enemies/torpedo_turret.txt
+      x: 0
+      y: 0
+  src.drawing.AnimBodyDrawable:
+    anim_name: rocket
+  src.physics.Body:
+    mass: 10
+    size: 10
+derive_from: bullets/base_bullet.txt

@@ -1,22 +1,15 @@
-{
-  "derive_from": "enemies/base_enemy.txt",
-  "components": {
-    "src.behaviours.LaunchesFighters": {
-      "spawn_period": 10,
-      "takeoff_speed": 700,
-      "takeoff_spread": 30,
-      "num_fighters": 10,
-      "fighter_config": "enemies/fighter.txt"
-    },
-    "src.behaviours.Hitpoints": {
-      "hp": 50
-    },
-    "src.physics.Body": {
-      "mass": 100,
-      "size": 64
-    },
-    "src.drawing.AnimBodyDrawable": {
-      "anim_name": "enemy_ship"
-    }
-  }
-}
+components:
+  src.behaviours.Hitpoints:
+    hp: 50
+  src.behaviours.LaunchesFighters:
+    fighter_config: enemies/fighter.txt
+    num_fighters: 10
+    spawn_period: 10
+    takeoff_speed: 700
+    takeoff_spread: 30
+  src.drawing.AnimBodyDrawable:
+    anim_name: enemy_ship
+  src.physics.Body:
+    mass: 100
+    size: 64
+derive_from: enemies/base_enemy.txt

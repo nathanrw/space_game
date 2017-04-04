@@ -1,20 +1,12 @@
-{
-  "components": {
-    "src.physics.Body": {
-      "mass": 1,
-      "size": 3
-    },
-    "src.behaviours.KillOnTimer": {
-      "lifetime": 2
-    },
-    "src.drawing.AnimBodyDrawable": {
-      "anim_name": "pewpew_green"
-    },
-    "src.behaviours.DamageOnContact": {
-      "damage": 1
-    },
-    "src.behaviours.ExplodesOnDeath": {
-      "explosion_config": "explosions/green_explosion.txt"
-    }
-  }
-}
+components:
+  src.behaviours.DamageOnContact:
+    damage: 1
+  src.behaviours.ExplodesOnDeath:
+    explosion_config: explosions/green_explosion.txt
+  src.behaviours.KillOnTimer:
+    lifetime: 2
+  src.drawing.AnimBodyDrawable:
+    anim_name: pewpew_green
+  src.physics.Body:
+    mass: 1
+    size: 3

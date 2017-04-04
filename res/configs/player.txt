@@ -1,24 +1,15 @@
-{
-  "components": {
-    "src.behaviours.Hitpoints": {
-      "hp": 100
-    },
-    "src.physics.Body": {
-      "mass": 100,
-      "size": 20
-    },
-    "src.drawing.AnimBodyDrawable": {
-      "anim_name": "player_ship"
-    },
-    "src.behaviours.ExplodesOnDeath": {
-      "explosion_config": "explosions/big_explosion.txt"
-    },
-    "src.input_handling.PlayerInputHandler": {},
-    "src.behaviours.Team": {
-      "team": "player"
-    },
-    "src.behaviours.Thrusters": {
-      "max_thrust": 100000
-    }
-  }
-}
+components:
+  src.behaviours.ExplodesOnDeath:
+    explosion_config: explosions/big_explosion.txt
+  src.behaviours.Hitpoints:
+    hp: 100
+  src.behaviours.Team:
+    team: player
+  src.behaviours.Thrusters:
+    max_thrust: 100000
+  src.drawing.AnimBodyDrawable:
+    anim_name: player_ship
+  src.input_handling.PlayerInputHandler: {}
+  src.physics.Body:
+    mass: 100
+    size: 20

@@ -5,11 +5,11 @@ configuration from json data files, and other utilities. """
 import random
 import pygame
 import sys
-import json
 import os
 import math
 import collections
-#import yaml
+import json # for anims
+import yaml
 
 from loading_screen import LoadingScreen
 from pymunk.vec2d import Vec2d
@@ -521,8 +521,7 @@ class Config(object):
         print "Loading config: ", self.__filename
         data = collections.OrderedDict()
         try:
-            data = json.load(open(self.__filename, "r"))
-            #open(self.__filename+'.yaml', 'w').write(yaml.safe_dump(data, default_flow_style=False))
+            data = yaml.load(open(self.__filename, "r"))
         except Exception, e:
             print e
             print "**************************************************************"
@@ -541,7 +540,7 @@ class Config(object):
     def save_as(self, filename):
         """ Save to given filename. """
         data = self.__config_to_dict()
-        json.dump(data, open(filename, "w"), indent=4, separators=(',', ': '))
+        yaml.safe_dump(data, open(filename, "w"))
 
     def __getitem__(self, key):
         """ Get some data out. """

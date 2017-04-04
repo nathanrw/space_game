@@ -1,8 +1,4 @@
-{
-  "derive_from": "explosions/base_explosion.txt",
-  "components": {
-    "src.drawing.AnimBodyDrawable": {
-      "anim_name": "green_explosion"
-    }
-  }
-}
+components:
+  src.drawing.AnimBodyDrawable:
+    anim_name: green_explosion
+derive_from: explosions/base_explosion.txt

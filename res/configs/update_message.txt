@@ -1,16 +1,13 @@
-{
-  "components": {
-    "src.drawing.TextDrawable": {
-      "font_name": "res/fonts/nasdaqer/NASDAQER.ttf",
-      "font_size": 62,
-      "font_colour": { "red": 255, "green": 255, "blue": 255},
-      "blink": 1
-    },
-    "src.behaviours.KillOnTimer": {
-      "lifetime": 4
-    },
-    "src.behaviours.Text": {
-      "text": "Hello, World!"
-    }
-  }
-}
+components:
+  src.behaviours.KillOnTimer:
+    lifetime: 4
+  src.behaviours.Text:
+    text: Hello, World!
+  src.drawing.TextDrawable:
+    blink: 1
+    font_colour:
+      blue: 255
+      green: 255
+      red: 255
+    font_name: res/fonts/nasdaqer/NASDAQER.ttf
+    font_size: 62

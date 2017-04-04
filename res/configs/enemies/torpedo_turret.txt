@@ -1,10 +1,6 @@
-{
-  "derive_from": "enemies/turret.txt",
-  "components": {
-    "src.behaviours.AutomaticallyShootsBullets": {
-      "fire_period": 1,
-      "burst_period": 3,
-      "weapon": "weapons/torpedo_blaster.txt"
-    }
-  }
-}
+components:
+  src.behaviours.AutomaticallyShootsBullets:
+    burst_period: 3
+    fire_period: 1
+    weapon: weapons/torpedo_blaster.txt
+derive_from: enemies/turret.txt

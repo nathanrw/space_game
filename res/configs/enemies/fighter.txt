@@ -1,20 +1,13 @@
-{
-  "derive_from": "enemies/base_enemy.txt",
-  "components": {
-    "src.behaviours.Hitpoints": {
-      "hp": 4
-    },
-    "src.physics.Body": {
-      "mass": 100,
-      "size": 20
-    },
-    "src.drawing.AnimBodyDrawable": {
-      "anim_name": "enemy_fighter"
-    },
-    "src.behaviours.AutomaticallyShootsBullets": {
-      "weapon": "weapons/green_blaster.txt",
-      "fire_period": 1,
-      "burst_period": 3
-    }
-  }
-}
+components:
+  src.behaviours.AutomaticallyShootsBullets:
+    burst_period: 3
+    fire_period: 1
+    weapon: weapons/green_blaster.txt
+  src.behaviours.Hitpoints:
+    hp: 4
+  src.drawing.AnimBodyDrawable:
+    anim_name: enemy_fighter
+  src.physics.Body:
+    mass: 100
+    size: 20
+derive_from: enemies/base_enemy.txt

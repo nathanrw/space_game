@@ -1,15 +1,9 @@
-{
-  "derive_from": "enemies/base_enemy.txt",
-  "components": {
-    "src.behaviours.Hitpoints": {
-      "hp": 50
-    },
-    "src.physics.Body": {
-      "mass": 100,
-      "size": 20
-    },
-    "src.drawing.AnimBodyDrawable": {
-      "anim_name": "enemy_turret"
-    }
-  }
-}
+components:
+  src.behaviours.Hitpoints:
+    hp: 50
+  src.drawing.AnimBodyDrawable:
+    anim_name: enemy_turret
+  src.physics.Body:
+    mass: 100
+    size: 20
+derive_from: enemies/base_enemy.txt

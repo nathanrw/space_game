@@ -1,3 +1,1 @@
-{
-  "derive_from": "bullets/base_bullet.txt"
-}
+derive_from: bullets/base_bullet.txt

@@ -1,8 +1,4 @@
-{
-  "derive_from": "weapons/red_blaster.txt",
-  "components": {
-    "src.behaviours.ManuallyShootsBullets": {
-      "bullet_config": "bullets/green_bullet.txt"
-    }
-  }
-}
+components:
+  src.behaviours.ManuallyShootsBullets:
+    bullet_config: bullets/green_bullet.txt
+derive_from: weapons/red_blaster.txt
