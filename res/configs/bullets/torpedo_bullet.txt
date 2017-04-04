@@ -1,5 +1,5 @@
 {
-  "derive_from": "bullets/base_bullet.txt"
+  "derive_from": "bullets/base_bullet.txt",
   "components": {
     "src.physics.Body": {
       "mass": 10,
@@ -22,7 +22,7 @@
 	  "weapon_config": "enemies/torpedo_turret.txt" }
       ]
     },
-    "src.behaviours.Tracking": {}
+    "src.behaviours.Tracking": {},
     "src.behaviours.FollowsTracked": {
       "desired_distance_to_player": 0.1,
       "acceleration": 30000
@@ -30,5 +30,5 @@
     "src.behaviours.Thrusters": {
       "max_thrust": 100000
     }
-  ]
+  }
 }

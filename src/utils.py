@@ -9,6 +9,7 @@ import json
 import os
 import math
 import collections
+#import yaml
 
 from loading_screen import LoadingScreen
 from pymunk.vec2d import Vec2d
@@ -521,6 +522,7 @@ class Config(object):
         data = collections.OrderedDict()
         try:
             data = json.load(open(self.__filename, "r"))
+            #open(self.__filename+'.yaml', 'w').write(yaml.safe_dump(data, default_flow_style=False))
         except Exception, e:
             print e
             print "**************************************************************"
@@ -676,11 +678,22 @@ class ResourceLoader(object):
             anim = self.__load_animation_definition(anim)
             images += anim["frames"]
 
+        # List all config files.
+        configs = self.__list_configs()
+
+        # Number of steps.
+        count = len(images) + len(configs)
+        assert count > 0
+        loading = LoadingScreen(count, screen)
+
         # Read in the frames.
-        assert len(images) > 0
-        loading = LoadingScreen(len(images), screen)
         for filename in images:
             self.load_image(filename)
+            loading.increment()
+
+        # Read in the configs.
+        for config in configs:
+            self.load_config_file(config)
             loading.increment()
 
     def load_font(self, filename, size):
@@ -706,6 +719,36 @@ class ResourceLoader(object):
             if os.path.isfile(anim_file):
                 anims.append(anim_name)
         return anims
+
+    def __list_configs(self, rel_dir=None):
+        """ List all available configs. """
+        configs = []
+        dirname = "res/configs"
+        if rel_dir is not None:
+            dirname = os.path.join(dirname, rel_dir)
+
+        for config_or_dir in os.listdir(dirname):
+
+	    # Get the name of the config or subdir relative to the configs
+	    # directory.
+            rel_name = config_or_dir
+            if rel_dir is not None:
+                rel_name = os.path.join(rel_dir, rel_name)
+
+            # Get the actual filename of the config / dir
+            config_or_dir_path = os.path.join(dirname, config_or_dir)
+
+	    # If it's a config file, yield the relative name. Otherwise, walk
+	    # the directory.
+            if os.path.isfile(config_or_dir_path):
+                fname, ext = os.path.splitext(config_or_dir_path)
+                if ext.lower() == ".txt":
+                    configs.append(rel_name)
+            elif os.path.isdir(config_or_dir_path):
+                configs += self.__list_configs(rel_name)
+
+        # Return the list we built.
+        return configs
 
     def __load_animation_definition(self, name):
         """ Load the definition of an animation, included the names of all

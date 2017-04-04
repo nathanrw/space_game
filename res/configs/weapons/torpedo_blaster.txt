@@ -2,7 +2,7 @@
   "derive_from": "weapons/red_blaster.txt",
   "components": {
     "src.behaviours.ManuallyShootsBullets": {
-      "shots_per_second": 25,
+      "shots_per_second": 25
     }
   }
 }
