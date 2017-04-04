@@ -1,7 +1,7 @@
 Space Game
 ==========
 
-NOTE: It's currently in pieces (i.e. not really working). 
+NOTE: It's currently very broken, it will run but you won't be able to shoot. I'm currently reworking the way weapons work, as well as adding unit tests (to stop it from getting into this state in future!)
 
 A space game written in Python.
 
@@ -26,6 +26,7 @@ In order to run "Space game," you will need the following packages installed:
 * pygame
 * pymunk
 * scipy / numpy
+* pyYAML
 
 Controls
 --------
