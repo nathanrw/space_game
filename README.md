@@ -32,6 +32,18 @@ At present, you would do e.g.
 
 from the root directory. I haven't yet invesitgated a better or more automatic way of doing this.
 
+Profiling
+---------
+
+You can run with profiling enabled like so:
+
+    ./run.py --profile
+
+which will spit out a file called 'profile_results' in the current working 
+directory. You can view the results with
+
+    ./bin/print_profile_results
+
 Dependencies
 ------------
 
