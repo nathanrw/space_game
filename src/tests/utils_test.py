@@ -320,7 +320,7 @@ class ConfigTest(unittest.TestCase):
     def test_get_or_default(self):
         c1 = Config({"wibble": "wobble"})
         assert c1.get_or_default("barry", "fred") == "fred"
-        assert c1.get_or_default("wibble", "fred") == "wibble"
+        assert c1.get_or_default("wibble", "fred") == "wobble"
 
 class ResourceLoaderTest(unittest.TestCase):
     def test_preload(self):

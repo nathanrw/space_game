@@ -15,7 +15,22 @@ It's currently a very simple arcade space shooter. But it does have BULLETS THAT
 How to run
 ----------
 
-"Space game" is a Python program. You run it with Python.
+"Space game" is a Python program. You run it with Python:
+
+    ./run.py
+
+or
+
+    python2 run.py
+
+Running the tests
+-----------------
+
+At present, you would do e.g.
+
+    python2 -m unittest src.tests.utils_test
+
+from the root directory. I haven't yet invesitgated a better or more automatic way of doing this.
 
 Dependencies
 ------------
@@ -32,6 +47,7 @@ Controls
 --------
 
 WASD - Move.
+QE - Rotate
 
 Mouse - Shoot.
 
