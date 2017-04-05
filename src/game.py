@@ -99,7 +99,10 @@ class Game(object):
         self.entity_manager.register_component_system(self.input_handling)
 
         # The configuration.
-        self.config = self.resource_loader.load_config_file("config.txt")
+        if os.isfile("./config.txt"):
+            self.config = self.resource_loader.load_config_file_from("./config.txt")
+        else:
+            self.config = self.resource_loader.load_config_file("base_config.txt")
 
         # Configure the resource loader.
         self.resource_loader.minimise_image_loading = \

@@ -507,6 +507,8 @@ class Config(object):
     def load(self, filename):
         """ Load data from a file. Remember the file so we can save it later.
 
+        The filename here is relative to the game 'res' dir.
+
         If there is an error loading the file, noisily abort the program - it's
         probably a silly mistake that needs fixing. And config loading can
         happen inside physics callbacks, wherein exceptions get ignored for
@@ -515,7 +517,20 @@ class Config(object):
         If the file contains a 'derive_from' key then load a parent config
         recursively until there is no more derivation. """
 
-        self.__filename = os.path.join("res/configs", filename)
+        self.load_from(os.path.join("res/configs", filename))
+
+    def load_from(self, filename):
+        """ Load data from a file. Remember the file so we can save it later.
+
+        If there is an error loading the file, noisily abort the program - it's
+        probably a silly mistake that needs fixing. And config loading can
+        happen inside physics callbacks, wherein exceptions get ignored for
+        some reason!
+
+        If the file contains a 'derive_from' key then load a parent config
+        recursively until there is no more derivation. """
+
+        self.__filename = filename
 
         # Try to load the config from the file.
         print "Loading config: ", self.__filename
@@ -782,6 +797,12 @@ class ResourceLoader(object):
             c.load(filename)
             self.configs[filename] = c
         return self.configs[filename]
+
+    def load_config_file_from(self, filename):
+        """ Load a config from a path, not relative to the res dir. """
+        c = Config()
+        c.load_from(filename)
+        return c
 
 class Animation(object):
     """ A set of images with a timer which determines what image gets drawn

@@ -1,0 +1,3 @@
+minimise_image_loading: 1
+screen_height: 480
+screen_width: 640
