@@ -195,15 +195,54 @@ class EntityManagerTest(unittest.TestCase):
         assert entman.get_component_system_by_type(MockSystemB) == systemb
 
     def test_add_component(self):
-        pass
-    def test_system_by_component_type(self):
-        pass
+        """ Adding a component should let us get that component. """
+
+        game_services = create_entman_testing_services()
+        entman = game_services.get_entity_manager()
+        entity = entman.create_entity()
+        component = MockComponent(entity, game_services, Config())
+        entman.add_component(component)
+
+        assert entman.get_component_of_type(entity, MockComponent) == component
+
+    def test_get_system_by_component_type(self):
+        """ Should be possible to get a system from a component type. """
+        game_services = create_entman_testing_services()
+        entman = game_services.get_entity_manager()
+        entity = entman.create_entity()
+        component = MockComponent(entity, game_services, Config())
+        entman.add_component(component)
+        assert isinstance(entman.get_system_by_component_type(MockComponent), MockSystem)
+        
     def test_remove_component_by_concrete_type(self):
-        pass
+        """ Should remove the component we add. """
+        game_services = create_entman_testing_services()
+        entman = game_services.get_entity_manager()
+        entity = entman.create_entity()
+        component = MockComponent(entity, game_services, Config())
+        entman.add_component(component)
+        entman.create_queued_objects() # Wont work otherwise!
+        entman.remove_component_by_concrete_type(entity, MockComponent)
+        assert entman.get_component_of_type(entity, MockComponent) == None
+
     def test_get_component_of_type(self):
-        pass
-    def test_update(self):
-        pass
+        """ Should get the component if present, return None otherwise. """
+        game_services = create_entman_testing_services()
+        entman = game_services.get_entity_manager()
+        entity = entman.create_entity()
+        assert entman.get_component_of_type(entity, MockComponent) == None
+        component = MockComponent(entity, game_services, Config())
+        entman.add_component(component)
+        assert entman.get_component_of_type(entity, MockComponent) == component
+
+    def test_update__does_garbage_collection(self):
+        """ Should update the systems. """
+        game_services = create_entman_testing_services()
+        entman = game_services.get_entity_manager()
+        entity = entman.create_entity()
+        entity.kill()
+        entman.update(1)
+        assert not entity in entman.objects
 
 class ComponentSystemTest(unittest.TestCase):
     def test_setup(self):
