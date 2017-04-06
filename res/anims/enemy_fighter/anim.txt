@@ -1,6 +1,4 @@
-{
-  "name_base": "enemy_fighter",
-  "num_frames": 1,
-  "extension": ".png",
-  "period": 1
-}
+extension: .png
+name_base: enemy_fighter
+num_frames: 1
+period: 1

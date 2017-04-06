@@ -8,7 +8,6 @@ import sys
 import os
 import math
 import collections
-import json # for anims
 import yaml
 
 from loading_screen import LoadingScreen
@@ -768,7 +767,7 @@ class ResourceLoader(object):
         """ Load the definition of an animation, included the names of all
         frames. """
         fname = os.path.join(os.path.join("res/anims", name), "anim.txt")
-        anim = json.load(open(fname))
+        anim = yaml.load(open(fname))
         anim["frames"] = []
         for i in range(anim["num_frames"]):
             # If we want to load faster disable loading too many anims...

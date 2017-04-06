@@ -1,6 +1,4 @@
-{
-  "name_base": "explosion",
-  "num_frames": 149,
-  "extension": ".png",
-  "period": 1
-}
+extension: .png
+name_base: explosion
+num_frames: 149
+period: 1
