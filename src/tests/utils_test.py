@@ -324,15 +324,41 @@ class ConfigTest(unittest.TestCase):
 
 class ResourceLoaderTest(unittest.TestCase):
     def test_preload(self):
-        pass
+        def do_test(game_services):
+            rl = game_services.get_resource_loader()
+            rl.minimise_image_loading = True
+            rl.preload(game_services.get_screen())
+        run_pygame_test(do_test)
     def test_load_font(self):
-        pass
+        def do_test(game_services):
+            rl = game_services.get_resource_loader()
+            font = rl.load_font("res/fonts/nasdaqer/NASDAQER.ttf", 10)
+            font2 = rl.load_font("res/fonts/nasdaqer/NASDAQER.ttf", 10)
+            font3 = rl.load_font("res/fonts/nasdaqer/NASDAQER.ttf", 11)
+            assert font == font2
+            assert font != font3
+        run_pygame_test(do_test)
     def test_load_image(self):
-        pass
+        def do_test(game_services):
+            rl = game_services.get_resource_loader()
+            img = rl.load_image("res/images/background.png")
+            img2 = rl.load_image("res/images/background.png")
+            assert img == img2
+        run_pygame_test(do_test)
     def test_load_animation(self):
-        pass
+        def do_test(game_services):
+            rl = game_services.get_resource_loader()
+            anim = rl.load_animation("enemy_ship")
+            anim2 = rl.load_animation("enemy_ship")
+            assert anim.frames == anim2.frames
+        run_pygame_test(do_test)
     def test_load_config_file(self):
-        pass
+        def do_test(game_services):
+            rl = game_services.get_resource_loader()
+            cfg = rl.load_config_file("base_config.txt")
+            cfg2 = rl.load_config_file("base_config.txt")
+            assert cfg == cfg2
+        run_pygame_test(do_test)
 
 class AnimationTest(unittest.TestCase):
     def test_max_bounds(self):

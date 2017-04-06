@@ -34,16 +34,23 @@ class MockGameServices(GameServices):
         if self.on_end_game is not None:
             self.on_end_game
 
+# We only want to initialise pygame once, and then have subsequent tests
+# re-use it. This is because if you keep turning it off and on again, it
+# segfaults.
+global_screen = None
+
 def run_pygame_test(test_func, size=(640,480)):
     """ Run a pygame test. This is a minimal test without an entity manager,
     but with a camera (because much drawing relies on there being one.) """
-    pygame.init()
+    global global_screen
+    if global_screen is None:
+        pygame.init()
+        global_screen = pygame.display.set_mode(size)
     game_services = MockGameServices()
-    game_services.screen = pygame.display.set_mode(size)
+    game_services.screen = global_screen
     game_services.camera = Camera(Entity(game_services), game_services, Config())
     game_services.resource_loader = ResourceLoader()
     test_func(game_services)
-    pygame.quit()
 
 def create_entman_testing_services():
     game_services = MockGameServices()
