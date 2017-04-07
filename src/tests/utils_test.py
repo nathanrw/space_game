@@ -102,6 +102,18 @@ class MockSystemB(ComponentSystem):
     pass
 
 class MockComponent(Component):
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.killed = False
+        self.last_dt = 0
+    def manager_type(self):
+        return MockSystem
+    def on_object_killed(self):
+        self.killed = True
+    def update(self, dt):
+        self.last_dt = dt
+
+class MockComponent2(Component):
     def manager_type(self):
         return MockSystem
 
@@ -245,64 +257,169 @@ class EntityManagerTest(unittest.TestCase):
         assert not entity in entman.objects
 
 class ComponentSystemTest(unittest.TestCase):
-    def test_setup(self):
-        pass
+
+    def create_system_and_component(self):
+        """ Setup a test. """
+        class Ret(object):
+            def __init__(self):
+                self.game_services = create_entman_testing_services()
+                self.entman = self.game_services.get_entity_manager()
+                self.entity = self.entman.create_entity()
+                self.component = MockComponent(self.entity, self.game_services, Config())
+                self.system = MockSystem()
+                self.entman.register_component_system(self.system)
+                self.entman.add_component(self.component)
+        return Ret()
+        
     def test_do_on_object_killed(self):
-        pass
+        stuff = self.create_system_and_component()
+        stuff.entman.create_queued_objects()
+        stuff.entity.kill()
+        stuff.system.do_on_object_killed()
+        assert stuff.component.killed
+        
     def test_create_queued_components(self):
-        pass
-    def test_create_queued_component(self):
-        pass
+        stuff = self.create_system_and_component()
+        stuff.system.create_queued_components()
+        assert stuff.component in stuff.system.components
+        assert len(stuff.system.components_to_add) == 0
+        
     def test_add_component(self):
-        pass
+        stuff = self.create_system_and_component()
+        stuff.entman.create_queued_objects()
+        component = MockComponent2(stuff.entity, stuff.game_services, Config())
+        stuff.system.add_component(component)
+        assert component in stuff.system.components_to_add
+        assert stuff.system.object_map[stuff.entity, MockComponent2] == component
+
     def test_remove_component(self):
-        pass
+        stuff = self.create_system_and_component()
+        stuff.entman.create_queued_objects()
+        stuff.system.remove_component(stuff.component)
+        assert not stuff.component in stuff.system.components
+        
     def test_get_component(self):
-        pass
+        stuff = self.create_system_and_component()
+        stuff.entman.create_queued_objects()
+        stuff.entman.create_queued_objects()
+        assert stuff.system.get_component(stuff.entity, MockComponent) == stuff.component
+
     def test_remove_object_component(self):
-        pass
+        stuff = self.create_system_and_component()
+        stuff.entman.create_queued_objects()
+        stuff.system.remove_object_component(stuff.entity, MockComponent)
+        assert not stuff.component in stuff.system.components
+
     def test_garbage_collect(self):
-        pass
+        stuff = self.create_system_and_component()
+        stuff.entman.create_queued_objects()
+        stuff.entity.kill()
+        stuff.system.garbage_collect()
+        assert not stuff.component.killed # do_on_object_killed() is called by entman
+        assert not stuff.component in stuff.system.components
+
     def test_update(self):
-        pass
+        stuff = self.create_system_and_component()
+        stuff.entman.create_queued_objects()
+        stuff.system.update(10)
+        assert stuff.component.last_dt == 10
 
 class ComponentTest(unittest.TestCase):
+
+    def create_system_and_component(self):
+        """ Setup a test. """
+        class Ret(object):
+            def __init__(self):
+                self.game_services = create_entman_testing_services()
+                self.entman = self.game_services.get_entity_manager()
+                self.entity = self.entman.create_entity()
+                self.component = MockComponent(self.entity, self.game_services, Config())
+                self.system = MockSystem()
+                self.entman.register_component_system(self.system)
+        return Ret()
+
     def test_manager_type(self):
-        pass
+        stuff = self.create_system_and_component()
+        assert stuff.component.manager_type() == MockSystem
+        c = Component(stuff.entity, stuff.game_services, Config())
+        assert c.manager_type() == ComponentSystem
+
     def test_is_garbage(self):
-        pass
-    def test_update(self):
-        pass
-    def test_on_object_killed(self):
-        pass
+        stuff = self.create_system_and_component()
+        stuff.entman.add_component(stuff.component)
+        stuff.entman.create_queued_objects()
+        assert not stuff.component.is_garbage()
+        stuff.entity.kill()
+        assert stuff.component.is_garbage()
+        
     def test_get_system_by_type(self):
-        pass
+        stuff = self.create_system_and_component()
+        assert stuff.component.get_system_by_type(MockSystem) == stuff.system
+
     def test_create_entity(self):
-        pass
+        stuff = self.create_system_and_component()
+        stuff.entman.add_component(stuff.component)
+        stuff.entman.create_queued_objects()
+        assert stuff.component.create_entity() != stuff.entity
+        
     def test_get_component(self):
-        pass
-    def test_get_components(self):
-        pass
+        stuff = self.create_system_and_component()
+        stuff.entman.add_component(stuff.component)
+        stuff.entman.add_component(MockComponent2(stuff.entity, stuff.game_services, Config()))
+        stuff.entman.create_queued_objects()
+        assert isinstance(stuff.component.get_component(MockComponent2), MockComponent2)
 
 class EntityTest(unittest.TestCase):
+    def create_system_and_component(self):
+        """ Setup a test. """
+        class Ret(object):
+            def __init__(self):
+                self.game_services = create_entman_testing_services()
+                self.entman = self.game_services.get_entity_manager()
+                self.entity = self.entman.create_entity()
+                self.component = MockComponent(self.entity, self.game_services, Config())
+                self.system = MockSystem()
+                self.entman.register_component_system(self.system)
+        return Ret()
+
     def test_kill(self):
-        pass
+
+        ret = self.create_system_and_component()
+        ret.entman.create_queued_objects()
+        ret.entity.kill()
+        assert ret.entity.is_garbage
+        ret.entman.garbage_collect()
+
+        ent2 = ret.entman.create_entity()
+        ent3 = ret.entman.create_entity(parent=ent2)
+        ret.entman.create_queued_objects()
+        ent2.kill()
+        assert ent2.is_garbage
+        assert ent3.is_garbage
+        ret.entman.garbage_collect()
+
     def test_add_component(self):
-        pass
+        ret = self.create_system_and_component()
+        ret.entman.create_queued_objects()
+        ret.entity.add_component(ret.component)
+        assert ret.entity.get_component(MockComponent) == ret.component
+
     def test_get_system_by_type(self):
-        pass
+        ret = self.create_system_and_component()
+        assert ret.entity.get_system_by_type(MockSystem) == ret.system
+        
     def test_create_entity(self):
-        pass
-    def test_get_component(self):
-        pass
-    def test_get_components(self):
-        pass
+        ret = self.create_system_and_component()
+        ret.entman.create_queued_objects()
+        assert ret.entity.create_entity() != ret.entity
+
     def test_add_child(self):
-        pass
-    def test_is_descendant(self):
-        pass
-    def test_is_ancestor(self):
-        pass
+        ret = self.create_system_and_component()
+        ent2 = ret.entman.create_entity()
+        ret.entman.create_queued_objects()
+        ret.entity.add_child(ent2)
+        assert ent2.is_descendant(ret.entity)
+        assert ret.entity.is_ancestor(ent2)
 
 class ConfigTest(unittest.TestCase):
 
