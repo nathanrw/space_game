@@ -1,6 +1,6 @@
 components:
   src.behaviours.Hitpoints:
-    hp: 500
+    hp: 100
   src.behaviours.Turrets:
     hardpoints:
     - weapon_config: enemies/turret.txt

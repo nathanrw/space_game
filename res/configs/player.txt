@@ -1,15 +1,37 @@
+# Components of the player's space ship
+
 components:
-  src.behaviours.ExplodesOnDeath:
-    explosion_config: explosions/big_explosion.txt
-  src.behaviours.Hitpoints:
-    hp: 100
+
+  # The player's ship is on the player's team
   src.behaviours.Team:
     team: player
-  src.behaviours.Thrusters:
-    max_thrust: 100000
-  src.drawing.AnimBodyDrawable:
-    anim_name: player_ship
-  src.input_handling.PlayerInputHandler: {}
+
+  # The ship is a body in space.
   src.physics.Body:
     mass: 100
     size: 20
+
+  # The ship has weapons.
+  src.behaviours.Weapons:
+    weapons:
+      - weapons/red_blaster.txt
+      - weapons/torpedo_gun.txt
+
+  # The ship explodes when it is destroyed.
+  src.behaviours.ExplodesOnDeath:
+    explosion_config: explosions/big_explosion.txt
+
+  # The ship can take damage.
+  src.behaviours.Hitpoints:
+    hp: 50
+
+  # The ship can move.
+  src.behaviours.Thrusters:
+    max_thrust: 100000
+
+  # The ship can be drawn on the screen.
+  src.drawing.AnimBodyDrawable:
+    anim_name: player_ship
+
+  # The ship can receive input from the player.
+  src.input_handling.PlayerInputHandler: {}

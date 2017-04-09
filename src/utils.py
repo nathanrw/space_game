@@ -24,6 +24,28 @@ def bail():
     pygame.quit()
     sys.exit(1)
 
+def ordered_load(stream, Loader=yaml.Loader, object_pairs_hook=collections.OrderedDict):
+    """ Taken from http://stackoverflow.com/a/21912744
+
+    We need to be able to iterate component keys in 'document order' because
+    component types have implicit dependencies on other types, if we try to
+    construct components in an arbitrary order then it might not work.
+
+    A better solution to this problem would be to have component types declare
+    their dependencies, and not allow them to access undeclared dependencies.
+
+    For now, to get it working again, we will use this solution. """
+
+    class OrderedLoader(Loader):
+        pass
+    def construct_mapping(loader, node):
+        loader.flatten_mapping(node)
+        return object_pairs_hook(loader.construct_pairs(node))
+    OrderedLoader.add_constructor(
+        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+        construct_mapping)
+    return yaml.load(stream, OrderedLoader)
+
 class GameServices(object):
     """ Functionality required of the game. """
     def __init__(self):
@@ -535,7 +557,7 @@ class Config(object):
         print "Loading config: ", self.__filename
         data = collections.OrderedDict()
         try:
-            data = yaml.load(open(self.__filename, "r"))
+            data = ordered_load(open(self.__filename, "r"))
         except Exception, e:
             print e
             print "**************************************************************"
@@ -555,6 +577,10 @@ class Config(object):
         """ Save to given filename. """
         data = self.__config_to_dict()
         yaml.safe_dump(data, open(filename, "w"))
+
+    def get_dict(self):
+        """ Get the config as a dictionary. """
+        return self.__config_to_dict()
 
     def __getitem__(self, key):
         """ Get some data out. """
@@ -767,7 +793,7 @@ class ResourceLoader(object):
         """ Load the definition of an animation, included the names of all
         frames. """
         fname = os.path.join(os.path.join("res/anims", name), "anim.txt")
-        anim = yaml.load(open(fname))
+        anim = ordered_load(open(fname))
         anim["frames"] = []
         for i in range(anim["num_frames"]):
             # If we want to load faster disable loading too many anims...

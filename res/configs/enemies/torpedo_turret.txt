@@ -1,6 +1,7 @@
 components:
-  src.behaviours.AutomaticallyShootsBullets:
+  src.behaviours.Weapons:
     burst_period: 3
     fire_period: 1
-    weapon: weapons/torpedo_blaster.txt
+    weapons:
+      - weapons/torpedo_blaster.txt
 derive_from: enemies/turret.txt

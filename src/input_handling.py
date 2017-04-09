@@ -83,6 +83,18 @@ class PlayerInputHandler(InputHandler):
         """ Zoom the camera out. """
         self.game_services.get_camera().zoom -= 0.1
 
+    def next_weapon(self):
+        """ Cycle to the next weapon. """
+        weapons = self.get_component(Weapons)
+        if weapons is not None:
+            weapons.next_weapon()
+
+    def prev_weapon(self):
+        """ Cycle to the previous weapon. """
+        weapons = self.get_component(Weapons)
+        if weapons is not None:
+            weapons.prev_weapon()
+
     def handle_input(self, e):
         if InputHandler.handle_input(self, e):
             return True
@@ -98,7 +110,9 @@ class PlayerInputHandler(InputHandler):
             pygame.K_q: (lambda: thrusters.turn_left(), lambda: thrusters.turn_right()),
             pygame.K_e: (lambda: thrusters.turn_right(), lambda: thrusters.turn_left()),
             pygame.K_t: (nothing, lambda: self.zoom_in()),
-            pygame.K_g: (nothing, lambda: self.zoom_out())
+            pygame.K_g: (nothing, lambda: self.zoom_out()),
+            pygame.K_r: (nothing, lambda: self.next_weapon()),
+            pygame.K_f: (nothing, lambda: self.prev_weapon())
         }
         jsmap = {
             0: (lambda: self.start_shooting_forwards(), lambda: self.stop_shooting()),

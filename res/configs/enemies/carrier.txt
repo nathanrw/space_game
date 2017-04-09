@@ -1,6 +1,6 @@
 components:
   src.behaviours.Hitpoints:
-    hp: 50
+    hp: 20
   src.behaviours.LaunchesFighters:
     fighter_config: enemies/fighter.txt
     num_fighters: 10

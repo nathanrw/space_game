@@ -1,8 +1,9 @@
 components:
-  src.behaviours.AutomaticallyShootsBullets:
+  src.behaviours.Weapons:
     burst_period: 3
     fire_period: 1
-    weapon: weapons/green_blaster.txt
+    weapons:
+      - weapons/green_blaster.txt
   src.behaviours.Hitpoints:
     hp: 4
   src.drawing.AnimBodyDrawable:

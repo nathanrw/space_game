@@ -1,1 +1,11 @@
 derive_from: bullets/base_bullet.txt
+
+components:
+
+  # A red laser.
+  src.drawing.AnimBodyDrawable:
+    anim_name: pewpew_red
+
+  # A red explosion.
+  src.behaviours.ExplodesOnDeath:
+    explosion_config: explosions/red_explosion.txt
