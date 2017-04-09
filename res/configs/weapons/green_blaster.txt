@@ -1,4 +1,4 @@
 components:
-  src.behaviours.ManuallyShootsBullets:
+  src.behaviours.Weapon:
     bullet_config: bullets/green_bullet.txt
 derive_from: weapons/red_blaster.txt
