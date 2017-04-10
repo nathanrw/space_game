@@ -46,6 +46,23 @@ def ordered_load(stream, Loader=yaml.Loader, object_pairs_hook=collections.Order
         construct_mapping)
     return yaml.load(stream, OrderedLoader)
 
+class GameInfo(object):
+    """ Information about the running game. """
+    def __init__(self):
+        self.framerate = 0
+        self.raw_framerate = 0
+        self.max_framerate = 0
+        self.min_framerate = 0
+        self.framerates = []
+    def update_framerate(self, framerate, raw_framerate):
+        self.framerate = framerate
+        self.min_framerate = min(self.min_framerate, framerate)
+        self.max_framerate = max(self.max_framerate, framerate)
+        self.raw_framerate = raw_framerate
+        self.framerates.append(framerate)
+        if len(self.framerates) > 30:
+            self.framerates.pop(0)
+
 class GameServices(object):
     """ Functionality required of the game. """
     def __init__(self):
@@ -68,6 +85,9 @@ class GameServices(object):
     def end_game(self):
         """ Tidy up and exit the program cleanly. """
         pass
+    def get_info(self):
+        """ Return information about the game. """
+        return GameInfo()
     def lookup_type(self, class_path):
         """ Lookup a class by string name so that it can be dynamically
         instantiated. This is used for component and entity creation.

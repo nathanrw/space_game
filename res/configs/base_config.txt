@@ -7,3 +7,6 @@ minimise_image_loading: 1
 # The size of the window.
 screen_height: 480
 screen_width: 640
+
+# Should debug output be drawn?
+debug: 1

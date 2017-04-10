@@ -25,9 +25,9 @@ import pygame
 import os
 
 from physics import Physics
-from drawing import Drawing
+from drawing import Drawing, DebugInfoDrawable
 from behaviours import DamageCollisionHandler, Camera, WaveSpawner
-from utils import GameServices, ResourceLoader, EntityManager
+from utils import GameServices, GameInfo, ResourceLoader, EntityManager
 from input_handling import InputHandling
 
 class SpaceGameServices(GameServices):
@@ -37,6 +37,7 @@ class SpaceGameServices(GameServices):
     
     def __init__(self, game):
         self.game = game
+        self.info = GameInfo()
 
     def get_screen(self):
         return self.game.screen
@@ -56,6 +57,10 @@ class SpaceGameServices(GameServices):
     def get_resource_loader(self):
         """ Get the resource loader. """
         return self.game.resource_loader
+
+    def get_info(self):
+        """ Return the information. """
+        return self.info
 
     def end_game(self):
         """ Stop the game from running. """
@@ -149,6 +154,10 @@ class Game(object):
             # Maintaim frame rate.
             clock.tick(fps)
 
+            # Remember how long the frame took.
+            self.game_services.info.update_framerate(1.0/(clock.get_time() / 1000.0),
+                                                     1.0/(clock.get_rawtime() / 1000.0))
+
     def run(self):
         """ The game loop. This performs initialisation including setting
         up pygame, and shows a loading screen while certain resources are
@@ -170,6 +179,10 @@ class Game(object):
         # at the same time it's convenient to attach the background drawable to it, and we
         # might want to give it physical properties in future. We'll see.
         self.camera = self.entity_manager.create_entity_with(Camera)
+
+        # Draw debug info if requested.
+        if self.config.get_or_default("debug", False):
+            self.entity_manager.create_entity_with(DebugInfoDrawable)
 
         # Make the player
         self.player = self.entity_manager.create_entity("player.txt")

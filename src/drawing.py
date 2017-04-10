@@ -57,6 +57,34 @@ class Drawable(Component):
     def estimate_bounds(self):
         return None
 
+class DebugInfoDrawable(Drawable):
+    """ Draws debug information on the screen. """
+
+    def __init__(self, entity, game_services, config):
+        """ Initialise the drawable """
+        Drawable.__init__(self, entity, game_services, config)
+        self.__font = game_services.get_resource_loader().load_font("res/fonts/nasdaqer/NASDAQER.ttf", 12)
+
+    def draw_graph(self, values, maximum, position, size, camera):
+        """ Draw a graph from a list of values. """
+        points = []
+        for i, value in enumerate(values):
+            x = position[0] + size[0] * (float(i)/(len(values)))
+            y = position[1] + size[1] - size[1] * (value/float(maximum))
+            points.append((x, y))
+        if len(points) > 2:
+            pygame.draw.rect(camera.surface(), (255, 255, 255), pygame.Rect(position, size), 1)
+            pygame.draw.lines(camera.surface(), (200,200,200), False, points, 2)
+
+    def draw(self, camera):
+        """ Draw the information. """
+        game_info = self.game_services.get_info()
+        fps = self.__font.render("FPS (limited): %s" % int(game_info.framerate), True, (255, 255, 255))
+        camera.surface().blit(fps, (10, 10))
+        raw_fps = self.__font.render("FPS (raw): %s" % int(game_info.raw_framerate), True, (255, 255, 255))
+        camera.surface().blit(raw_fps, (10, 30))
+        self.draw_graph(game_info.framerates, 70, (10, 50), (100, 20), camera)
+
 class AnimBodyDrawable(Drawable):
     """ Draws an animation at the position of a body. """
 
