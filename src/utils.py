@@ -53,12 +53,14 @@ class GameInfo(object):
         self.raw_framerate = 0
         self.max_framerate = 0
         self.min_framerate = 0
+        self.time_ratio = 0
         self.framerates = []
-    def update_framerate(self, framerate, raw_framerate):
+    def update_framerate(self, framerate, raw_framerate, time_ratio):
         self.framerate = framerate
         self.min_framerate = min(self.min_framerate, framerate)
         self.max_framerate = max(self.max_framerate, framerate)
         self.raw_framerate = raw_framerate
+        self.time_ratio = time_ratio
         self.framerates.append(framerate)
         if len(self.framerates) > 30:
             self.framerates.pop(0)

@@ -79,11 +79,13 @@ class DebugInfoDrawable(Drawable):
     def draw(self, camera):
         """ Draw the information. """
         game_info = self.game_services.get_info()
-        fps = self.__font.render("FPS (limited): %s" % int(game_info.framerate), True, (255, 255, 255))
+        fps = self.__font.render("FPS (limited): %04.1f" % game_info.framerate, True, (255, 255, 255))
         camera.surface().blit(fps, (10, 10))
-        raw_fps = self.__font.render("FPS (raw): %s" % int(game_info.raw_framerate), True, (255, 255, 255))
+        raw_fps = self.__font.render("FPS (raw): %04.1f" % game_info.raw_framerate, True, (255, 255, 255))
         camera.surface().blit(raw_fps, (10, 30))
-        self.draw_graph(game_info.framerates, 70, (10, 50), (100, 20), camera)
+        self.draw_graph(game_info.framerates, 70, (10, 50), (100, 15), camera)
+        time_ratio = self.__font.render("Time scale: %03.1f" % game_info.time_ratio, True, (255, 255, 255))
+        camera.surface().blit(time_ratio, (10, 70))
 
 class AnimBodyDrawable(Drawable):
     """ Draws an animation at the position of a body. """

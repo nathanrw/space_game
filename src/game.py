@@ -131,6 +131,7 @@ class Game(object):
         self.running = True
         fps = 60
         clock = pygame.time.Clock()
+        tick_time = 1.0/fps
         while self.running:
 
             ## Create any queued objects
@@ -144,7 +145,7 @@ class Game(object):
                     pass
 
             # Update the systems.
-            self.entity_manager.update(1.0/fps)
+            self.entity_manager.update(tick_time)
 
             # Draw
             self.screen.fill((0, 0, 0))
@@ -154,9 +155,15 @@ class Game(object):
             # Maintaim frame rate.
             clock.tick(fps)
 
+            # Calculate some metrics
+            limited_fps = 1.0/(clock.get_time() / 1000.0)
+            raw_fps = 1.0/(clock.get_rawtime() / 1000.0)
+            time_ratio =  (1.0/fps) / (clock.get_time()/1000.0) 
+
             # Remember how long the frame took.
-            self.game_services.info.update_framerate(1.0/(clock.get_time() / 1000.0),
-                                                     1.0/(clock.get_rawtime() / 1000.0))
+            self.game_services.info.update_framerate(limited_fps,
+                                                     raw_fps,
+                                                     time_ratio)
 
     def run(self):
         """ The game loop. This performs initialisation including setting
