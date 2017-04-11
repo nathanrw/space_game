@@ -78,14 +78,44 @@ class DebugInfoDrawable(Drawable):
 
     def draw(self, camera):
         """ Draw the information. """
+
         game_info = self.game_services.get_info()
+
+        # Draw the framerate.
         fps = self.__font.render("FPS (limited): %04.1f" % game_info.framerate, True, (255, 255, 255))
         camera.surface().blit(fps, (10, 10))
+
+        # Draw the unlimited framerate.
         raw_fps = self.__font.render("FPS (raw): %04.1f" % game_info.raw_framerate, True, (255, 255, 255))
         camera.surface().blit(raw_fps, (10, 30))
+
+        # Draw a graph of the framerate over time.
         self.draw_graph(game_info.framerates, 70, (10, 50), (100, 15), camera)
+
+        # Draw the time ratio.
         time_ratio = self.__font.render("Time scale: %03.1f" % game_info.time_ratio, True, (255, 255, 255))
         camera.surface().blit(time_ratio, (10, 70))
+
+        # Draw info about the entity under the cursor.
+        cursor_position = Vec2d(pygame.mouse.get_pos())
+        physics = self.get_system_by_type(Physics)
+        ent = physics.get_entity_at(camera.screen_to_world(cursor_position))
+        if ent is not None:
+            x = 10
+            y = 90
+            def preview_ent(ent, x, y):
+                ent_str = self.__font.render("Entity: %s" % ent, True, (255, 255, 255))
+                camera.surface().blit(ent_str, (x, y))
+                y += 20
+                x += 20
+                for component in self.game_services.get_entity_manager().get_all_components(ent):
+                    comp_str = self.__font.render("%s" % component.__class__, True, (255, 255, 255))
+                    camera.surface().blit(comp_str, (x, y))
+                    y += 20
+                for child in ent.get_children():
+                    x,y = preview_ent(child, x, y)
+                return (x, y)
+            x, y = preview_ent(ent, x, y)
 
 class AnimBodyDrawable(Drawable):
     """ Draws an animation at the position of a body. """

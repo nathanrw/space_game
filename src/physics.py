@@ -81,6 +81,16 @@ class Physics(ComponentSystem):
                 best_length_yet = length
         return best_yet
 
+    def get_entity_at(self, point):
+        """ Get the entity at a point. """
+        pqs = self.space.point_query(point, 5, pymunk.ShapeFilter())
+        for pq in pqs:
+            if pq.shape is not None:
+                body = pq.shape.game_body
+                return body.entity
+        return None
+
+
 class Body(Component):
     """ Physical body attached to a entity. Note that it's implemented
     in terms of pymunk now. It will need to change since we're currently

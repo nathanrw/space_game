@@ -300,6 +300,12 @@ class EntityManager(object):
         if system is not None:
             return system.get_component(entity, t)
 
+    def get_all_components(self, entity):
+        """ Get all components of an entity. """
+        for system in self.systems_list:
+            for component in system.get_all_entity_components(entity):
+                yield component
+
     def update(self, dt):
         """ Update all of the systems in priority order. """
         for system in self.systems_list:
@@ -361,6 +367,12 @@ class ComponentSystem(object):
             return self.object_map[key]
         else:
             return None
+
+    def get_all_entity_components(self, entity):
+        """ Get all components associated with an entity. """
+        for c in self.components:
+            if c.entity == entity:
+                yield c
     
     def remove_object_component(self, entity, component_type):
         """ Remove the component of a particular concrete type from an object. """
@@ -503,6 +515,11 @@ class Entity(object):
         for entity in self.children:
             if entity.get_component(t) is not None:
                 yield entity
+
+    def get_children(self):
+        """ Get all of the children. """
+        for entity in self.children:
+            yield entity
 
     def add_child(self, obj):
         """ Add a child entity. """
