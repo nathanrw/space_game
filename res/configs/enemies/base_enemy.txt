@@ -26,7 +26,7 @@ components:
     desired_distance_to_player: 500
 
   src.behaviours.Hitpoints:
-    hp: 4
+    hp: 1
 
   src.drawing.AnimBodyDrawable:
     anim_name: enemy_fighter
