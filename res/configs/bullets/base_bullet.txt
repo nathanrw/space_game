@@ -3,6 +3,7 @@ components:
     damage: 1
   src.behaviours.ExplodesOnDeath:
     explosion_config: explosions/green_explosion.txt
+    sound: 234082__211redman112__lasgun-impact.ogg
   src.behaviours.KillOnTimer:
     lifetime: 2
   src.drawing.AnimBodyDrawable:

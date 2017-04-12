@@ -175,6 +175,7 @@ class Game(object):
         
         # Initialise the pygame display.
         pygame.init()
+        pygame.mixer.init()
         self.screen = pygame.display.set_mode((self.config.get_or_default("screen_width", 1024), 
                                                self.config.get_or_default("screen_height", 768)))
 

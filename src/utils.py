@@ -744,6 +744,7 @@ class ResourceLoader(object):
         self.animations = {}
         self.fonts = {}
         self.configs = {}
+        self.sounds = {}
         self.minimise_image_loading = False
 
     def preload(self, screen):
@@ -867,6 +868,14 @@ class ResourceLoader(object):
         c = Config()
         c.load_from(filename)
         return c
+
+    def load_sound(self, filename):
+        """ Load a sound. """
+        if not filename in self.sounds:
+            dirname = "res/sounds"
+            self.sounds[filename] = pygame.mixer.Sound(os.path.join(dirname, filename))
+        return self.sounds[filename]
+            
 
 class Animation(object):
     """ A set of images with a timer which determines what image gets drawn

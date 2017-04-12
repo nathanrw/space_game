@@ -265,6 +265,12 @@ class Weapon(Component):
                 muzzle_velocity.rotate_degrees(random.random() * spread - spread)
                 bullet_velocity = body.velocity+muzzle_velocity
 
+                # Play a sound.
+                shot_sound = self.config.get_or_none("shot_sound")
+                if shot_sound is not None:
+                    sound = self.game_services.get_resource_loader().load_sound(shot_sound)
+                    sound.play()
+
                 # Create the bullet.
                 self.create_entity(self.config["bullet_config"],
                                         parent=self.entity,
@@ -366,6 +372,11 @@ class ExplodesOnDeath(Component):
                                             velocity=body.velocity)
         shake_factor = self.config.get_or_default("shake_factor", 1)
         self.game_services.get_camera().apply_shake(shake_factor, body.position)
+        # Play a sound.
+        sound = self.config.get_or_none("sound")
+        if sound is not None:
+            sound = self.game_services.get_resource_loader().load_sound(sound)
+            sound.play()
 
 class EndProgramOnDeath(Component):
     """ If the entity this is attached to is destroyed, the program will exit. """
