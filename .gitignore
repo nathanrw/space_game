@@ -1,5 +1,5 @@
 *~
 *.pyc
 .idea/*
-profile_results
-config.txt
+/profile_results
+/config.txt
