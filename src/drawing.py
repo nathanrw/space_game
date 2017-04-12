@@ -5,7 +5,7 @@ and a camera. """
 import pygame
 
 from physics import *
-from behaviours import Hitpoints, Text, Thrusters
+from behaviours import Hitpoints, Text, Thrusters, Shields
 
 class Drawing(ComponentSystem):
     """ A class that manages a set of things that can draw themselves. """
@@ -156,6 +156,13 @@ class AnimBodyDrawable(Drawable):
                 length = thruster.thrust() / 500.0
                 poly = Polygon.make_bullet_polygon(pos, pos-(dir*length))
                 poly.draw(camera)
+
+        shields = self.get_component(Shields)
+        if shields is not None:
+            width = int((shields.hp/float(shields.max_hp)) * 5)
+            if width > 0:
+                p = camera.world_to_screen(body.position)
+                pygame.draw.circle(camera.surface(), (200, 220, 255), (int(p.x), int(p.y)), int(body.size*2), width)
 
         # If this body has hitpoints draw a health bar
         hitpoints = self.get_component(Hitpoints)

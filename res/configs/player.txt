@@ -11,6 +11,11 @@ components:
     mass: 100
     size: 20
 
+  # The ship is powered.
+  src.behaviours.Power:
+    capacity: 100
+    recharge_rate: 2
+
   # The ship has weapons.
   src.behaviours.Weapons:
     weapons:
@@ -24,6 +29,11 @@ components:
   # The ship can take damage.
   src.behaviours.Hitpoints:
     hp: 50
+
+  # The ship is shielded.
+  src.behaviours.Shields:
+    hp: 5
+    recharge_rate: 2
 
   # The ship can move.
   src.behaviours.Thrusters:

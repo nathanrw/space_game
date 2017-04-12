@@ -53,7 +53,7 @@ class PlayerInputHandler(InputHandler):
         weapon = weapons.get_weapon()
         if weapon is None:
             return
-        weapon.start_shooting_dir(Vec2d(0, -100))
+        weapon.start_shooting_coaxial()
 
     def stop_shooting(self):
         """ Stop the guns. """
@@ -129,14 +129,14 @@ class PlayerInputHandler(InputHandler):
                 kmap[e.key][1]()
                 return True
         elif e.type == pygame.MOUSEBUTTONDOWN:
-            self.start_shooting(Vec2d(e.pos))
+            self.start_shooting_forwards()
             return True
         elif e.type == pygame.MOUSEBUTTONUP:
             self.stop_shooting()
             return True
         elif e.type == pygame.MOUSEMOTION:
             if self.is_shooting():
-                self.start_shooting(Vec2d(e.pos))
+                self.start_shooting_forwards()
                 return True
         elif e.type == pygame.JOYAXISMOTION:
             print "axis: ", e.axis, e.value

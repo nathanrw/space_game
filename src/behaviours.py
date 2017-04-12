@@ -8,8 +8,8 @@ from pymunk.vec2d import Vec2d
 from utils import Component, Timer
 from physics import Body, Physics, CollisionHandler, CollisionResult, Thruster
 
-import pygame
 import random
+import math
         
 class FollowsTracked(Component):
 
@@ -78,6 +78,13 @@ class ShootingAtBody(object):
         self.__to_body = to_body
     def direction(self):
         return (-self.__to_body.position + self.__from_body.position).normalized()
+
+class ShootingAtCoaxial(object):
+    """ Shooting in line with a body. """
+    def __init__(self, from_body):
+        self.__from_body = from_body
+    def direction(self):
+        return Vec2d(0, -1).rotated(math.radians(self.__from_body.orientation))
 
 class Weapons(Component):
     """ An entity with the 'weapons' component manages a set of child entities
@@ -195,6 +202,9 @@ class Weapon(Component):
         if self.entity.parent is None:
             return None
         return self.entity.parent.get_component(Team).get_team()
+
+    def start_shooting_coaxial(self):
+        self.shooting_at = ShootingAtCoaxial(self.__get_body())
 
     def start_shooting_dir(self, direction):
         self.shooting_at = ShootingAtDirection(direction)
@@ -373,13 +383,51 @@ class Hitpoints(Component):
         if self.hp <= 0:
             self.entity.kill()
 
+class Power(Component):
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.capacity = config["capacity"]
+        self.power = self.capacity
+        self.recharge_rate = config["recharge_rate"]
+    def update(self, dt):
+        self.power = min(self.capacity, self.power + self.recharge_rate * dt)
+    def consume(self, amount):
+        if amount <= self.power:
+            self.power -= amount
+            return amount
+        return 0
+        
+class Shields(Component):
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.hp = self.config["hp"]
+        self.max_hp = self.config["hp"] # Rendundant, but code uses this.
+        self.recharge_rate = config["recharge_rate"]
+    def update(self, dt):
+        power = self.get_component(Power)
+        if power is None:
+            self.hp = 0
+        else:
+            self.hp = min(self.max_hp, self.hp + power.consume(self.recharge_rate * dt))
+
+    def mitigate_damage(self, amount):
+        self.hp -= amount
+        ret = 0
+        if self.hp < 0:
+            ret = -self.hp
+            self.hp = 0
+        return ret
+
 class DamageOnContact(Component):
-    def apply_damage(self, hitpoints):
+    def apply_damage(self, hitpoints, shields):
         """ Apply damage to an object we've hit. """
         if self.config.get_or_default("destroy_on_hit", True):
             self.entity.kill()
+        damage = self.config["damage"]
+        if shields is not None:
+            damage = shields.mitigate_damage(damage)
         if hitpoints is not None:
-            hitpoints.receive_damage(self.config["damage"])
+            hitpoints.receive_damage(damage)
 
 class DamageCollisionHandler(CollisionHandler):
     """ Collision handler to apply bullet damage. """
@@ -388,7 +436,7 @@ class DamageCollisionHandler(CollisionHandler):
     def handle_matching_collision(self, dmg, hp):
         if hp.entity.is_ancestor(dmg.entity):
             return CollisionResult(False, False)
-        dmg.apply_damage(hp)
+        dmg.apply_damage(hp, hp.get_component(Shields))
         return CollisionResult(True, True)
 
 class Team(Component):

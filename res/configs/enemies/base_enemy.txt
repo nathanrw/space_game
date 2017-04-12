@@ -22,7 +22,7 @@ components:
   src.behaviours.Tracking: {}
 
   src.behaviours.FollowsTracked:
-    acceleration: 3500
+    acceleration: 1000
     desired_distance_to_player: 500
 
   src.behaviours.Hitpoints:
