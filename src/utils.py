@@ -873,9 +873,38 @@ class ResourceLoader(object):
         """ Load a sound. """
         if not filename in self.sounds:
             dirname = "res/sounds"
-            self.sounds[filename] = pygame.mixer.Sound(os.path.join(dirname, filename))
+            self.sounds[filename] = Sound(os.path.join(dirname, filename))
         return self.sounds[filename]
-            
+
+class Sound(object):
+    """ A sound that can be played. """
+
+    def __init__(self, filename):
+        """ Load the pygame sound. """
+        self.__sound = pygame.mixer.Sound(filename)
+
+    def play_positional(self, position_wrt_listener):
+        """ Play at a volume related to the position. """
+
+        # Just use linear attenuation.
+        dist = position_wrt_listener.length
+        max_dist = 750
+        volume = min(max(1.0 - dist/max_dist, 0), 1)
+
+        # Play at the attenuated volume.
+        self.play(volume)
+
+    def play(self, volume=1.0):
+        """ Play at a fraction of the volume. """
+        assert 0 <= volume and volume <= 1
+        # Note: this is probably not quite correct, since if the sound
+        # is already playing then set_volume() will set the volume on
+        # it. I'm not sure if you can play the same sound multiple
+        # times simultaneously. Might need to create copies of the
+        # sound, I'm not sure.
+        if volume > 0.05:
+            self.__sound.set_volume(volume)
+            self.__sound.play()
 
 class Animation(object):
     """ A set of images with a timer which determines what image gets drawn

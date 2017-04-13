@@ -268,8 +268,7 @@ class Weapon(Component):
                 # Play a sound.
                 shot_sound = self.config.get_or_none("shot_sound")
                 if shot_sound is not None:
-                    sound = self.game_services.get_resource_loader().load_sound(shot_sound)
-                    sound.play()
+                    self.game_services.get_camera().play_sound(body, shot_sound)
 
                 # Create the bullet.
                 self.create_entity(self.config["bullet_config"],
@@ -371,12 +370,13 @@ class ExplodesOnDeath(Component):
                                             position=body.position,
                                             velocity=body.velocity)
         shake_factor = self.config.get_or_default("shake_factor", 1)
-        self.game_services.get_camera().apply_shake(shake_factor, body.position)
+        camera = self.game_services.get_camera()
+        camera.apply_shake(shake_factor, body.position)
+
         # Play a sound.
         sound = self.config.get_or_none("sound")
         if sound is not None:
-            sound = self.game_services.get_resource_loader().load_sound(sound)
-            sound.play()
+            camera.play_sound(body, sound)
 
 class EndProgramOnDeath(Component):
     """ If the entity this is attached to is destroyed, the program will exit. """
@@ -755,6 +755,11 @@ class Camera(Component):
         max_dist = screen_diagonal * 2
         amount = max(shake_factor * (1.0 - distance/max_dist), 0)
         self.__shake = min(self.__shake+amount, self.__max_shake)
+
+    def play_sound(self, body, sound):
+        """ Play a sound at a position. """
+        sound = self.game_services.get_resource_loader().load_sound(sound)
+        sound.play_positional(body.position - self.__position)
 
     @property
     def position(self):
