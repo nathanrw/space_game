@@ -1,4 +1,4 @@
 extension: .png
-name_base: shipsheet09-
+name_base: shipsheet16-
 num_frames: 1
 period: 1

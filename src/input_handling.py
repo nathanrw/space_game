@@ -107,8 +107,8 @@ class PlayerInputHandler(InputHandler):
             pygame.K_a: (lambda: thrusters.go_left(), lambda: thrusters.go_right()),
             pygame.K_s: (lambda: thrusters.go_backwards(), lambda: thrusters.go_forwards()),
             pygame.K_d: (lambda: thrusters.go_right(), lambda: thrusters.go_left()),
-            pygame.K_q: (lambda: thrusters.turn_left(), lambda: thrusters.turn_right()),
-            pygame.K_e: (lambda: thrusters.turn_right(), lambda: thrusters.turn_left()),
+            pygame.K_q: (lambda: thrusters.turn_right(), lambda: thrusters.turn_left()), # I swapped these two to make it work right.
+            pygame.K_e: (lambda: thrusters.turn_left(), lambda: thrusters.turn_right()), # Please check it's now sensible.
             pygame.K_t: (nothing, lambda: self.zoom_in()),
             pygame.K_g: (nothing, lambda: self.zoom_out()),
             pygame.K_r: (nothing, lambda: self.next_weapon()),

@@ -13,7 +13,7 @@ components:
     takeoff_spread: 30
 
   src.drawing.AnimBodyDrawable:
-    anim_name: enemy_ship
+    anim_name: carrier-closed
 
   src.physics.Body:
     mass: 100
