@@ -8,8 +8,8 @@ from pymunk.vec2d import Vec2d
 from utils import Component, Timer
 from physics import Body, Physics, CollisionHandler, CollisionResult, Thruster
 
-import pygame
 import random
+import math
         
 class FollowsTracked(Component):
 
@@ -79,9 +79,111 @@ class ShootingAtBody(object):
     def direction(self):
         return (-self.__to_body.position + self.__from_body.position).normalized()
 
-class ManuallyShootsBullets(Component):
-    """ Something that knows how to spray bullets. Note that this is not a
-    entity, it's something entitys can use to share code. """
+class ShootingAtCoaxial(object):
+    """ Shooting in line with a body. """
+    def __init__(self, from_body):
+        self.__from_body = from_body
+    def direction(self):
+        return Vec2d(0, -1).rotated(math.radians(self.__from_body.orientation))
+
+class Weapons(Component):
+    """ An entity with the 'weapons' component manages a set of child entities
+    which have the 'weapon' component. """
+
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+
+        # Initialise the weapons.
+        self.__weapons = []
+        weapons = config.get_or_default("weapons", [])
+        for weapon_config in weapons:
+            self.__weapons.append(self.create_entity(weapon_config, parent=self.entity))
+
+        # Set the current weapon.
+        self.__current_weapon = -1
+        if len(self.__weapons) > 0:
+            self.__current_weapon = 0
+
+        # Auto firing.
+        self.autofire = config.get_or_default("auto_fire", False)
+        self.fire_timer = Timer(config.get_or_default("fire_period", 1))
+        self.fire_timer.advance_to_fraction(0.8)
+        self.burst_timer = Timer(config.get_or_default("burst_period", 1))
+
+    def get_weapon(self):
+        """ Get the weapon component of our sub-entity. """
+        if self.__current_weapon < 0:
+            return None
+        return self.__weapons[self.__current_weapon].get_component(Weapon)
+
+    def next_weapon(self):
+        """ Cycle to the next weapon. """
+        if self.__current_weapon < 0:
+            return
+        self.__current_weapon = (self.__current_weapon+1)%len(self.__weapons)
+
+    def prev_weapon(self):
+        """ Cycle to the previous weapon. """
+        if self.__current_weapon < 0:
+            return
+        self.__current_weapon = (self.__current_weapon-1)%len(self.__weapons)
+
+    def update(self, dt):
+        """ Update the shooting bullet. """
+
+        if not self.autofire:
+            return
+
+        body = self.get_component(Body)
+        if body is None:
+            return
+        
+        guns = self.get_component(Weapons)
+        if guns is None:
+            return
+
+        gun = guns.get_weapon()
+        if gun is None:
+            return
+
+        tracking = self.get_component(Tracking)
+        if tracking is None:
+            return
+
+        tracked_body = tracking.get_tracked()
+        if tracked_body is None:
+            return
+
+        # Point at the object we're tracking. Note that in future it would be
+        # good for this to be physically simulated, but for now we just hack
+        # it in...
+        direction = (tracked_body.position - body.position).normalized()
+        body.orientation = 90 + direction.angle_degrees
+
+        # Shoot at the object we're tracking.
+        if not gun.shooting:
+            if self.fire_timer.tick(dt):
+                self.fire_timer.reset()
+                gun.start_shooting_at_body(tracked_body)
+        else:
+            if self.burst_timer.tick(dt):
+                self.burst_timer.reset()
+                gun.stop_shooting()
+
+class Weapon(Component):
+    """ Something that knows how to spray bullets.
+
+    A weapon is intended to be a component on an entity that represents
+    the weapon-entity.  This should be a child of the entity that 'has' a
+    weapon.  It is the parent entity that needs to have a position in space
+    etc.  So you have
+
+    e0 (player) <-------- e1 (weapon)
+    ^                     ^
+    |                     |
+    Body                  Weapon
+    ...                   ...
+    """
 
     def __init__(self, entity, game_services, config):
         """ Inject dependencies and set up default parameters. """
@@ -89,20 +191,35 @@ class ManuallyShootsBullets(Component):
         self.shooting_at = None
         self.shot_timer = 0
 
+    def __get_body(self):
+        """ Get the body of the entity with the weapon. """
+        if self.entity.parent is None:
+            return None
+        return self.entity.parent.get_component(Body)
+
+    def __get_team(self):
+        """ Get the team our parent is on. """
+        if self.entity.parent is None:
+            return None
+        return self.entity.parent.get_component(Team).get_team()
+
+    def start_shooting_coaxial(self):
+        self.shooting_at = ShootingAtCoaxial(self.__get_body())
+
     def start_shooting_dir(self, direction):
         self.shooting_at = ShootingAtDirection(direction)
 
     def start_shooting_world(self, at):
         """ Start shooting at a point in world space. """
-        self.shooting_at = ShootingAtWorld(at, self.get_component(Body))
+        self.shooting_at = ShootingAtWorld(at, self.__get_body())
 
     def start_shooting_at_body(self, body):
         """ Start shooting at a body. """
-        self.shooting_at = ShootingAtBody(body, self.get_component(Body))
+        self.shooting_at = ShootingAtBody(body, self.__get_body())
 
     def start_shooting_screen(self, at):
         """ Start shooting at a point in screen space. """
-        self.shooting_at = ShootingAtScreen(at, self.get_component(Body), self.game_services.get_camera())
+        self.shooting_at = ShootingAtScreen(at, self.__get_body(), self.game_services.get_camera())
 
     def stop_shooting(self):
         """ Stop spraying bullets. """
@@ -123,7 +240,7 @@ class ManuallyShootsBullets(Component):
         if self.shooting:
 
             # These will be the same for each shot, so get them here...
-            body = self.get_component(Body)
+            body = self.__get_body()
             shooting_at_dir = self.shooting_at.direction()
 
             # If it's time, shoot a bullet and rest the timer. Note that
@@ -148,10 +265,15 @@ class ManuallyShootsBullets(Component):
                 muzzle_velocity.rotate_degrees(random.random() * spread - spread)
                 bullet_velocity = body.velocity+muzzle_velocity
 
+                # Play a sound.
+                shot_sound = self.config.get_or_none("shot_sound")
+                if shot_sound is not None:
+                    self.game_services.get_camera().play_sound(body, shot_sound)
+
                 # Create the bullet.
                 self.create_entity(self.config["bullet_config"],
                                         parent=self.entity,
-                                        team=self.get_component(Team).get_team(),
+                                        team=self.__get_team(),
                                         position=bullet_position,
                                         velocity=bullet_velocity)
 
@@ -212,44 +334,6 @@ class Tracking(Component):
             if closest:
                 self.__tracked_body = closest
 
-class AutomaticallyShootsBullets(Component):
-    """ Something that shoots bullets at something else. """
-
-    def __init__(self, entity, game_services, config):
-        """ Initialise. """
-        Component.__init__(self, entity, game_services, config)
-        self.fire_timer = Timer(config["fire_period"])
-        self.fire_timer.advance_to_fraction(0.8)
-        self.burst_timer = Timer(config["burst_period"])
-
-    def update(self, dt):
-        """ Update the shooting bullet. """
-
-        body = self.get_component(Body)
-        gun = self.get_component(ManuallyShootsBullets)
-        tracking = self.get_component(Tracking)
-        tracked_body = tracking.get_tracked()
-
-        # Not much we can do if no bodies...
-        if body is None or tracked_body is None:
-            return
-
-        # Point at the object we're tracking. Note that in future it would be
-        # good for this to be physically simulated, but for now we just hack
-        # it in...
-        direction = (tracked_body.position - body.position).normalized()
-        body.orientation = 90 + direction.angle_degrees
-
-        # Shoot at the object we're tracking.
-        if not gun.shooting:
-            if self.fire_timer.tick(dt):
-                self.fire_timer.reset()
-                gun.start_shooting_at_body(tracked_body)
-        else:
-            if self.burst_timer.tick(dt):
-                self.burst_timer.reset()
-                gun.stop_shooting()
-
 class LaunchesFighters(Component):
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
@@ -286,7 +370,13 @@ class ExplodesOnDeath(Component):
                                             position=body.position,
                                             velocity=body.velocity)
         shake_factor = self.config.get_or_default("shake_factor", 1)
-        self.game_services.get_camera().apply_shake(shake_factor, body.position)
+        camera = self.game_services.get_camera()
+        camera.apply_shake(shake_factor, body.position)
+
+        # Play a sound.
+        sound = self.config.get_or_none("sound")
+        if sound is not None:
+            camera.play_sound(body, sound)
 
 class EndProgramOnDeath(Component):
     """ If the entity this is attached to is destroyed, the program will exit. """
@@ -304,13 +394,51 @@ class Hitpoints(Component):
         if self.hp <= 0:
             self.entity.kill()
 
+class Power(Component):
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.capacity = config["capacity"]
+        self.power = self.capacity
+        self.recharge_rate = config["recharge_rate"]
+    def update(self, dt):
+        self.power = min(self.capacity, self.power + self.recharge_rate * dt)
+    def consume(self, amount):
+        if amount <= self.power:
+            self.power -= amount
+            return amount
+        return 0
+        
+class Shields(Component):
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.hp = self.config["hp"]
+        self.max_hp = self.config["hp"] # Rendundant, but code uses this.
+        self.recharge_rate = config["recharge_rate"]
+    def update(self, dt):
+        power = self.get_component(Power)
+        if power is None:
+            self.hp = 0
+        else:
+            self.hp = min(self.max_hp, self.hp + power.consume(self.recharge_rate * dt))
+
+    def mitigate_damage(self, amount):
+        self.hp -= amount
+        ret = 0
+        if self.hp < 0:
+            ret = -self.hp
+            self.hp = 0
+        return ret
+
 class DamageOnContact(Component):
-    def apply_damage(self, hitpoints):
+    def apply_damage(self, hitpoints, shields):
         """ Apply damage to an object we've hit. """
         if self.config.get_or_default("destroy_on_hit", True):
             self.entity.kill()
+        damage = self.config["damage"]
+        if shields is not None:
+            damage = shields.mitigate_damage(damage)
         if hitpoints is not None:
-            hitpoints.receive_damage(self.config["damage"])
+            hitpoints.receive_damage(damage)
 
 class DamageCollisionHandler(CollisionHandler):
     """ Collision handler to apply bullet damage. """
@@ -319,7 +447,7 @@ class DamageCollisionHandler(CollisionHandler):
     def handle_matching_collision(self, dmg, hp):
         if hp.entity.is_ancestor(dmg.entity):
             return CollisionResult(False, False)
-        dmg.apply_damage(hp)
+        dmg.apply_damage(hp, hp.get_component(Shields))
         return CollisionResult(True, True)
 
 class Team(Component):
@@ -497,7 +625,7 @@ class HardPoint(object):
         self.__position = position
         self.__weapon = None
 
-    def set_weapon(self, weapon_entity, body_to_add_to):
+    def set_turret(self, weapon_entity, body_to_add_to):
         """ Set the weapon, freeing any existing weapon. """
 
         # If there is already a weapon then we need to delete it.
@@ -532,13 +660,13 @@ class Turrets(Component):
             weapon_config = "enemies/turret.txt"
             if "weapon_config" in hp:
                 weapon_config = hp["weapon_config"]
-            self.set_weapon(len(self.__hardpoints)-1, weapon_config)
+            self.set_turret(len(self.__hardpoints)-1, weapon_config)
 
     def num_hardpoints(self):
         """ Get the number of hardpoints. """
         return len(self.__hardpoints)
 
-    def set_weapon(self, hardpoint_index, weapon_config_name):
+    def set_turret(self, hardpoint_index, weapon_config_name):
         """ Set the weapon on a hardpoint. Note that the weapon is an actual
         entity, which is set up as a child of the entity this component is
         attached to. It is assumed to have a Body component, which is pinned
@@ -546,7 +674,7 @@ class Turrets(Component):
         entity = self.create_entity(weapon_config_name,
                                          parent=self.entity,
                                          team=self.get_component(Team).get_team())
-        self.__hardpoints[hardpoint_index].set_weapon(entity, self.get_component(Body))
+        self.__hardpoints[hardpoint_index].set_turret(entity, self.get_component(Body))
 
 class Camera(Component):
     """ A camera, which drawing is done in relation to. """
@@ -600,15 +728,16 @@ class Camera(Component):
         """ Update the camera. """
 
         # If the object we're tracking has been killed then forget about it.
-        if self.__tracking.is_garbage:
+        if self.__tracking is not None and self.__tracking.is_garbage:
             self.__tracking = None
 
         # Move the camera to track the body. Note that we could do something
         # more complex e.g. interpolate the positions, but this is good enough
         # for now.
-        tracked_body = self.__tracking.get_component(Body)
-        if tracked_body is not None:
-            self.__position = tracked_body.position
+        if self.__tracking is not None:
+            tracked_body = self.__tracking.get_component(Body)
+            if tracked_body is not None:
+                self.__position = tracked_body.position
 
         # Calculate the screen shake effect.
         if self.__shake > 0:
@@ -626,6 +755,11 @@ class Camera(Component):
         max_dist = screen_diagonal * 2
         amount = max(shake_factor * (1.0 - distance/max_dist), 0)
         self.__shake = min(self.__shake+amount, self.__max_shake)
+
+    def play_sound(self, body, sound):
+        """ Play a sound at a position. """
+        sound = self.game_services.get_resource_loader().load_sound(sound)
+        sound.play_positional(body.position - self.__position)
 
     @property
     def position(self):

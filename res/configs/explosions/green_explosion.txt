@@ -1,6 +1,4 @@
-{
-  "components": [
-    { "config": "explosions/green_explosion_drawable.txt" },
-    { "config": "explosions/explosion_body.txt" }
-  ]
-}
+components:
+  src.drawing.AnimBodyDrawable:
+    anim_name: green_explosion
+derive_from: explosions/base_explosion.txt

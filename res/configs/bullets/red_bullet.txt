@@ -1,20 +1,11 @@
-{
-  "components": [
-    { "type": "src.physics.Body",
-      "mass": 1,
-      "size": 3
-    },
-    { "type": "src.behaviours.KillOnTimer",
-      "lifetime": 2
-    },
-    { "type": "src.drawing.AnimBodyDrawable",
-      "anim_name": "pewpew_red"
-    },
-    { "type": "src.behaviours.DamageOnContact",
-      "damage": 1
-    },
-    { "type": "src.behaviours.ExplodesOnDeath",
-      "explosion_config": "explosions/red_explosion.txt"
-    }
-  ]
-}
+derive_from: bullets/base_bullet.txt
+
+components:
+
+  # A red laser.
+  src.drawing.AnimBodyDrawable:
+    anim_name: pewpew_red
+
+  # A red explosion.
+  src.behaviours.ExplodesOnDeath:
+    explosion_config: explosions/red_explosion.txt

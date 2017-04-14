@@ -1,35 +1,17 @@
-{
-  "components": [
-    { "type": "src.behaviours.Hitpoints",
-      "hp": 500
-    },
-    { "type": "src.physics.Body",
-      "mass": 100,
-      "size": 100
-    },
-    { "type": "src.drawing.AnimBodyDrawable",
-      "anim_name": "enemy_destroyer"
-    },
-    { "type": "src.behaviours.ExplodesOnDeath",
-      "explosion_config": "explosions/big_explosion.txt"
-    },
-    { "type": "src.behaviours.Tracking" },
-    { "type": "src.behaviours.FollowsTracked",
-      "desired_distance_to_player": 500,
-      "acceleration": 3500
-    },
-    { "type": "src.behaviours.Team"},
-    { "type": "src.behaviours.Turrets",
-      "hardpoints": [
-        { "x": -70,
-	  "y": 0,
-	  "weapon_config": "enemies/turret.txt" },
-	{ "x": 70,
-	  "y": 0,
-	  "weapon_config": "enemies/turret.txt" }
-      ]
-    },
-    { "type": "src.behaviours.Thrusters",
-      "max_thrust": 100000 }
-  ]
-}
+components:
+  src.behaviours.Hitpoints:
+    hp: 10
+  src.behaviours.Turrets:
+    hardpoints:
+    - weapon_config: enemies/turret.txt
+      x: -70
+      y: 0
+    - weapon_config: enemies/turret.txt
+      x: 70
+      y: 0
+  src.drawing.AnimBodyDrawable:
+    anim_name: enemy_destroyer
+  src.physics.Body:
+    mass: 100
+    size: 100
+derive_from: enemies/base_enemy.txt

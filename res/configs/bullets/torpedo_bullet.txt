@@ -1,34 +1,44 @@
-{
-  "components": [
-    { "type": "src.physics.Body",
-      "mass": 10,
-      "size": 10
-    },
-    { "type": "src.behaviours.KillOnTimer",
-      "lifetime": 2
-    },
-    { "type": "src.drawing.AnimBodyDrawable",
-      "anim_name": "rocket"
-    },
-    { "type": "src.behaviours.DamageOnContact",
-      "damage": 5
-    },
-    { "type": "src.behaviours.ExplodesOnDeath",
-      "explosion_config": "explosions/big_explosion.txt"
-    },
-    { "type": "src.behaviours.Team" },
-    { "type": "src.behaviours.Turrets",
-      "hardpoints": [
-        { "x": 0,
-	  "y": 0,
-	  "weapon_config": "enemies/torpedo_turret.txt" }
-      ]
-    },
-    { "type": "src.behaviours.Tracking" },
-    { "type": "src.behaviours.FollowsTracked",
-      "desired_distance_to_player": 0.1,
-      "acceleration": 30000 },
-    { "type": "src.behaviours.Thrusters",
-      "max_thrust": 100000 }
-  ]
-}
+# A bullet that shoots more bullets!
+
+derive_from: bullets/base_bullet.txt
+
+components:
+
+  # Does more damage than a regular bullet.
+  src.behaviours.DamageOnContact:
+    damage: 5
+
+  # A torpedo explodes, naturally!
+  src.behaviours.ExplodesOnDeath:
+    explosion_config: explosions/big_explosion.txt
+
+  # A torpedo has a team (it shoots and follows the opposite team.)
+  src.behaviours.Team: {}
+
+  # A torpedo follows a target.
+  src.behaviours.Tracking: {}
+
+  # A torpedo seeks out its target.
+  src.behaviours.FollowsTracked:
+    acceleration: 30000
+    desired_distance_to_player: 0.1
+
+  # A torpedo is driven by thrusters.
+  src.behaviours.Thrusters:
+    max_thrust: 100000
+
+  # A torpedo has a small blaster turrent on board!
+  src.behaviours.Turrets:
+    hardpoints:
+    - weapon_config: enemies/torpedo_turret.txt
+      x: 0
+      y: 0
+
+  # Make it look like a torpedo
+  src.drawing.AnimBodyDrawable:
+    anim_name: rocket
+
+  # Set the mass and size.
+  src.physics.Body:
+    mass: 10
+    size: 10

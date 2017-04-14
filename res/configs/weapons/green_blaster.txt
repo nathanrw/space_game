@@ -1,5 +1,5 @@
-{
-  "derive_from": "weapons/red_blaster.txt",
-  "bullet_config": "bullets/green_bullet.txt",
-  "shots_per_second": 2
-}
+components:
+  src.behaviours.Weapon:
+    bullet_config: bullets/green_bullet.txt
+    shots_per_second: 1
+derive_from: weapons/red_blaster.txt

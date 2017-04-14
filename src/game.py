@@ -22,11 +22,12 @@ Things I would like to work on now:
 """
 
 import pygame
+import os
 
 from physics import Physics
-from drawing import Drawing
-from behaviours import DamageCollisionHandler, Camera
-from utils import GameServices, ResourceLoader, EntityManager
+from drawing import Drawing, DebugInfoDrawable
+from behaviours import DamageCollisionHandler, Camera, WaveSpawner
+from utils import GameServices, GameInfo, ResourceLoader, EntityManager
 from input_handling import InputHandling
 
 class SpaceGameServices(GameServices):
@@ -36,6 +37,7 @@ class SpaceGameServices(GameServices):
     
     def __init__(self, game):
         self.game = game
+        self.info = GameInfo()
 
     def get_screen(self):
         return self.game.screen
@@ -55,6 +57,10 @@ class SpaceGameServices(GameServices):
     def get_resource_loader(self):
         """ Get the resource loader. """
         return self.game.resource_loader
+
+    def get_info(self):
+        """ Return the information. """
+        return self.info
 
     def end_game(self):
         """ Stop the game from running. """
@@ -99,7 +105,10 @@ class Game(object):
         self.entity_manager.register_component_system(self.input_handling)
 
         # The configuration.
-        self.config = self.resource_loader.load_config_file("config.txt")
+        if os.path.isfile("./config.txt"):
+            self.config = self.resource_loader.load_config_file_from("./config.txt")
+        else:
+            self.config = self.resource_loader.load_config_file("base_config.txt")
 
         # Configure the resource loader.
         self.resource_loader.minimise_image_loading = \
@@ -122,6 +131,7 @@ class Game(object):
         self.running = True
         fps = 60
         clock = pygame.time.Clock()
+        tick_time = 1.0/fps
         while self.running:
 
             ## Create any queued objects
@@ -135,7 +145,7 @@ class Game(object):
                     pass
 
             # Update the systems.
-            self.entity_manager.update(1.0/fps)
+            self.entity_manager.update(tick_time)
 
             # Draw
             self.screen.fill((0, 0, 0))
@@ -144,6 +154,16 @@ class Game(object):
 
             # Maintaim frame rate.
             clock.tick(fps)
+
+            # Calculate some metrics
+            limited_fps = 1.0/(clock.get_time() / 1000.0)
+            raw_fps = 1.0/(clock.get_rawtime() / 1000.0)
+            time_ratio =  (1.0/fps) / (clock.get_time()/1000.0) 
+
+            # Remember how long the frame took.
+            self.game_services.info.update_framerate(limited_fps,
+                                                     raw_fps,
+                                                     time_ratio)
 
     def run(self):
         """ The game loop. This performs initialisation including setting
@@ -155,6 +175,7 @@ class Game(object):
         
         # Initialise the pygame display.
         pygame.init()
+        pygame.mixer.init()
         self.screen = pygame.display.set_mode((self.config.get_or_default("screen_width", 1024), 
                                                self.config.get_or_default("screen_height", 768)))
 
@@ -165,7 +186,11 @@ class Game(object):
         # since it's clearly special - drawing requires one, the player moves it, etc. But
         # at the same time it's convenient to attach the background drawable to it, and we
         # might want to give it physical properties in future. We'll see.
-        self.camera = self.entity_manager.create_entity("camera.txt")
+        self.camera = self.entity_manager.create_entity_with(Camera)
+
+        # Draw debug info if requested.
+        if self.config.get_or_default("debug", False):
+            self.entity_manager.create_entity_with(DebugInfoDrawable)
 
         # Make the player
         self.player = self.entity_manager.create_entity("player.txt")
@@ -174,7 +199,7 @@ class Game(object):
         self.camera.get_component(Camera).track(self.player)
 
         # Create the wave spawner.
-        self.wave_spawner = self.entity_manager.create_entity("wave_spawner.txt")
+        self.wave_spawner = self.entity_manager.create_entity_with(WaveSpawner)
 
         # Make it so that bullets can damage things.
         self.physics.add_collision_handler(DamageCollisionHandler())
@@ -187,6 +212,3 @@ class Game(object):
 
         # Finalise
         pygame.quit()
-
-        # Save a list of images to preload next time.
-        self.resource_loader.save_preload()

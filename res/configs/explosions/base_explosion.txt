@@ -1,0 +1,5 @@
+components:
+  src.drawing.AnimBodyDrawable:
+    kill_on_finish: 1
+  src.physics.Body:
+    is_collideable: 0

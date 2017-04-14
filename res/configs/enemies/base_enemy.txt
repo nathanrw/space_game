@@ -1,0 +1,32 @@
+components:
+
+  src.physics.Body:
+    mass: 100
+    size: 20
+
+  src.behaviours.Team: {}
+
+  src.behaviours.Thrusters:
+    max_thrust: 100000
+
+  src.behaviours.Weapons:
+    burst_period: 3
+    fire_period: 1
+    weapons:
+      - weapons/green_blaster.txt
+    auto_fire: 1
+
+  src.behaviours.ExplodesOnDeath:
+    explosion_config: explosions/big_explosion.txt
+
+  src.behaviours.Tracking: {}
+
+  src.behaviours.FollowsTracked:
+    acceleration: 1000
+    desired_distance_to_player: 500
+
+  src.behaviours.Hitpoints:
+    hp: 1
+
+  src.drawing.AnimBodyDrawable:
+    anim_name: enemy_fighter

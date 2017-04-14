@@ -1,24 +1,47 @@
-{
-  "components": [
-    { "type": "src.behaviours.Hitpoints",
-      "hp": 100
-    },
-    { "type": "src.physics.Body",
-      "mass": 100,
-      "size": 20
-    },
-    { "type": "src.drawing.AnimBodyDrawable",
-      "anim_name": "player_ship"
-    },
-    { "config": "weapons/torpedo_gun.txt" },
-    { "config": "weapons/red_blaster.txt" },
-    { "type": "src.behaviours.ExplodesOnDeath",
-      "explosion_config": "explosions/big_explosion.txt"
-    },
-    { "type": "src.input_handling.PlayerInputHandler" },
-    { "type": "src.behaviours.Team",
-      "team": "player" },
-    { "type": "src.behaviours.Thrusters",
-      "max_thrust": 100000 }
-  ]
-}
+# Components of the player's space ship
+
+components:
+
+  # The player's ship is on the player's team
+  src.behaviours.Team:
+    team: player
+
+  # The ship is a body in space.
+  src.physics.Body:
+    mass: 100
+    size: 20
+
+  # The ship is powered.
+  src.behaviours.Power:
+    capacity: 100
+    recharge_rate: 2
+
+  # The ship has weapons.
+  src.behaviours.Weapons:
+    weapons:
+      - weapons/red_blaster.txt
+      - weapons/torpedo_gun.txt
+
+  # The ship explodes when it is destroyed.
+  src.behaviours.ExplodesOnDeath:
+    explosion_config: explosions/big_explosion.txt
+
+  # The ship can take damage.
+  src.behaviours.Hitpoints:
+    hp: 50
+
+  # The ship is shielded.
+  src.behaviours.Shields:
+    hp: 5
+    recharge_rate: 2
+
+  # The ship can move.
+  src.behaviours.Thrusters:
+    max_thrust: 100000
+
+  # The ship can be drawn on the screen.
+  src.drawing.AnimBodyDrawable:
+    anim_name: player_ship
+
+  # The ship can receive input from the player.
+  src.input_handling.PlayerInputHandler: {}

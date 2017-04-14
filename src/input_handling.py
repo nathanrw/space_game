@@ -3,7 +3,7 @@ from pymunk.vec2d import Vec2d
 import pygame
 
 from utils import ComponentSystem, Component
-from behaviours import ManuallyShootsBullets, Thrusters
+from behaviours import Weapons, Weapon, Thrusters
 from physics import Body
 
 class InputHandling(ComponentSystem):
@@ -37,27 +37,43 @@ class PlayerInputHandler(InputHandler):
 
     def start_shooting(self, pos):
         """ Start shooting at a particular screen space point. """
-        guns = self.get_components(ManuallyShootsBullets)
-        for g in guns:
-            g.start_shooting_screen(pos)
+        weapons = self.get_component(Weapons)
+        if weapons is None:
+            return
+        weapon = weapons.get_weapon()
+        if weapon is None:
+            return
+        weapon.start_shooting_screen(pos)
 
     def start_shooting_forwards(self):
         """ Start shooting ahead. """
-        guns = self.get_components(ManuallyShootsBullets)
-        for g in guns:
-            g.start_shooting_dir(Vec2d(0, -100))
-        
+        weapons = self.get_component(Weapons)
+        if weapons is None:
+            return
+        weapon = weapons.get_weapon()
+        if weapon is None:
+            return
+        weapon.start_shooting_coaxial()
 
     def stop_shooting(self):
         """ Stop the guns. """
-        guns = self.get_components(ManuallyShootsBullets)
-        for g in guns:
-            g.stop_shooting()
+        weapons = self.get_component(Weapons)
+        if weapons is None:
+            return
+        weapon = weapons.get_weapon()
+        if weapon is None:
+            return
+        weapon.stop_shooting()
 
     def is_shooting(self):
         """ Are the guns firing? If one is they both are. """
-        guns = self.get_components(ManuallyShootsBullets)
-        return guns[0].shooting
+        weapons = self.get_component(Weapons)
+        if weapons is None:
+            return False
+        weapon = weapons.get_weapon()
+        if weapon is None:
+            return False
+        return weapon.shooting
 
     def zoom_in(self):
         """ Zoom the camera in."""
@@ -66,6 +82,18 @@ class PlayerInputHandler(InputHandler):
     def zoom_out(self):
         """ Zoom the camera out. """
         self.game_services.get_camera().zoom -= 0.1
+
+    def next_weapon(self):
+        """ Cycle to the next weapon. """
+        weapons = self.get_component(Weapons)
+        if weapons is not None:
+            weapons.next_weapon()
+
+    def prev_weapon(self):
+        """ Cycle to the previous weapon. """
+        weapons = self.get_component(Weapons)
+        if weapons is not None:
+            weapons.prev_weapon()
 
     def handle_input(self, e):
         if InputHandler.handle_input(self, e):
@@ -82,7 +110,9 @@ class PlayerInputHandler(InputHandler):
             pygame.K_q: (lambda: thrusters.turn_left(), lambda: thrusters.turn_right()),
             pygame.K_e: (lambda: thrusters.turn_right(), lambda: thrusters.turn_left()),
             pygame.K_t: (nothing, lambda: self.zoom_in()),
-            pygame.K_g: (nothing, lambda: self.zoom_out())
+            pygame.K_g: (nothing, lambda: self.zoom_out()),
+            pygame.K_r: (nothing, lambda: self.next_weapon()),
+            pygame.K_f: (nothing, lambda: self.prev_weapon())
         }
         jsmap = {
             0: (lambda: self.start_shooting_forwards(), lambda: self.stop_shooting()),
@@ -103,14 +133,14 @@ class PlayerInputHandler(InputHandler):
                 kmap[e.key][1]()
                 return True
         elif e.type == pygame.MOUSEBUTTONDOWN:
-            self.start_shooting(Vec2d(e.pos))
+            self.start_shooting_forwards()
             return True
         elif e.type == pygame.MOUSEBUTTONUP:
             self.stop_shooting()
             return True
         elif e.type == pygame.MOUSEMOTION:
             if self.is_shooting():
-                self.start_shooting(Vec2d(e.pos))
+                self.start_shooting_forwards()
                 return True
         elif e.type == pygame.JOYAXISMOTION:
             print "axis: ", e.axis, e.value

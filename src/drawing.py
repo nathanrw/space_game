@@ -5,7 +5,7 @@ and a camera. """
 import pygame
 
 from physics import *
-from behaviours import Hitpoints, Text, Thrusters
+from behaviours import Hitpoints, Text, Thrusters, Shields
 
 class Drawing(ComponentSystem):
     """ A class that manages a set of things that can draw themselves. """
@@ -57,6 +57,66 @@ class Drawable(Component):
     def estimate_bounds(self):
         return None
 
+class DebugInfoDrawable(Drawable):
+    """ Draws debug information on the screen. """
+
+    def __init__(self, entity, game_services, config):
+        """ Initialise the drawable """
+        Drawable.__init__(self, entity, game_services, config)
+        self.__font = game_services.get_resource_loader().load_font("res/fonts/nasdaqer/NASDAQER.ttf", 12)
+
+    def draw_graph(self, values, maximum, position, size, camera):
+        """ Draw a graph from a list of values. """
+        points = []
+        for i, value in enumerate(values):
+            x = position[0] + size[0] * (float(i)/(len(values)))
+            y = position[1] + size[1] - size[1] * (value/float(maximum))
+            points.append((x, y))
+        if len(points) > 2:
+            pygame.draw.rect(camera.surface(), (255, 255, 255), pygame.Rect(position, size), 1)
+            pygame.draw.lines(camera.surface(), (200,200,200), False, points, 2)
+
+    def draw(self, camera):
+        """ Draw the information. """
+
+        game_info = self.game_services.get_info()
+
+        # Draw the framerate.
+        fps = self.__font.render("FPS (limited): %04.1f" % game_info.framerate, True, (255, 255, 255))
+        camera.surface().blit(fps, (10, 10))
+
+        # Draw the unlimited framerate.
+        raw_fps = self.__font.render("FPS (raw): %04.1f" % game_info.raw_framerate, True, (255, 255, 255))
+        camera.surface().blit(raw_fps, (10, 30))
+
+        # Draw a graph of the framerate over time.
+        self.draw_graph(game_info.framerates, 70, (10, 50), (100, 15), camera)
+
+        # Draw the time ratio.
+        time_ratio = self.__font.render("Time scale: %03.1f" % game_info.time_ratio, True, (255, 255, 255))
+        camera.surface().blit(time_ratio, (10, 70))
+
+        # Draw info about the entity under the cursor.
+        cursor_position = Vec2d(pygame.mouse.get_pos())
+        physics = self.get_system_by_type(Physics)
+        ent = physics.get_entity_at(camera.screen_to_world(cursor_position))
+        if ent is not None:
+            x = 10
+            y = 90
+            def preview_ent(ent, x, y):
+                ent_str = self.__font.render("Entity: %s" % ent, True, (255, 255, 255))
+                camera.surface().blit(ent_str, (x, y))
+                y += 20
+                x += 20
+                for component in self.game_services.get_entity_manager().get_all_components(ent):
+                    comp_str = self.__font.render("%s" % component.__class__, True, (255, 255, 255))
+                    camera.surface().blit(comp_str, (x, y))
+                    y += 20
+                for child in ent.get_children():
+                    x,y = preview_ent(child, x, y)
+                return (x, y)
+            x, y = preview_ent(ent, x, y)
+
 class AnimBodyDrawable(Drawable):
     """ Draws an animation at the position of a body. """
 
@@ -96,6 +156,13 @@ class AnimBodyDrawable(Drawable):
                 length = thruster.thrust() / 500.0
                 poly = Polygon.make_bullet_polygon(pos, pos-(dir*length))
                 poly.draw(camera)
+
+        shields = self.get_component(Shields)
+        if shields is not None:
+            width = int((shields.hp/float(shields.max_hp)) * 5)
+            if width > 0:
+                p = camera.world_to_screen(body.position)
+                pygame.draw.circle(camera.surface(), (200, 220, 255), (int(p.x), int(p.y)), int(body.size*2), width)
 
         # If this body has hitpoints draw a health bar
         hitpoints = self.get_component(Hitpoints)
