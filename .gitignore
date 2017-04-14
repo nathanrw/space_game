@@ -2,4 +2,4 @@
 *.pyc
 .idea/*
 /profile_results
-/config.txt
+res/configs/config.txt
