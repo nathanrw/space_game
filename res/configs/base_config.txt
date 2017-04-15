@@ -2,11 +2,11 @@
 # configuration file exists.
 
 # Speed up loading by only reading in every tenth animation frame.
-minimise_image_loading: 1
+minimise_image_loading: 0
 
 # The size of the window.
-screen_height: 480
-screen_width: 640
+screen_height: 1024 
+screen_width: 768
 
 # Should debug output be drawn?
-debug: 1
+debug: 0
