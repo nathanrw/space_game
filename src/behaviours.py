@@ -275,7 +275,8 @@ class Weapon(Component):
                                         parent=self.entity,
                                         team=self.__get_team(),
                                         position=bullet_position,
-                                        velocity=bullet_velocity)
+                                        velocity=bullet_velocity,
+                                        orientation=shooting_at_dir.normalized().get_angle_degrees()+90)
 
 class Tracking(Component):
     """ Tracks something on the opposite team. """

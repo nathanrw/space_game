@@ -115,6 +115,12 @@ class Game(object):
         self.resource_loader.minimise_image_loading = \
             self.config.get_or_default("minimise_image_loading", False)
 
+        # The display surface
+        self.screen = None
+
+        # Is the game running?
+        self.running = False
+
     def stop_running(self):
         """ Stop the game from running. """
         self.running = False
@@ -153,7 +159,7 @@ class Game(object):
             self.drawing.draw(self.camera.get_component(Camera))
             pygame.display.update()
 
-            # Maintaim frame rate.
+            # Maintain frame rate.
             clock.tick(fps)
 
             # Calculate some metrics
@@ -202,7 +208,8 @@ class Game(object):
         self.camera.get_component(Camera).track(self.player)
 
         # Create the wave spawner.
-        self.wave_spawner = self.entity_manager.create_entity_with(WaveSpawner)
+        if not self.config.get_or_default("peaceful_mode", False):
+            self.wave_spawner = self.entity_manager.create_entity_with(WaveSpawner)
 
         # Make it so that bullets can damage things.
         self.physics.add_collision_handler(DamageCollisionHandler())
