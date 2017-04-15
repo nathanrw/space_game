@@ -1,0 +1,10 @@
+derive_from: enemies/base_enemy.txt
+
+components:
+
+  src.behaviours.Thrusters:
+    max_thrust: 100000
+
+  src.behaviours.FollowsTracked:
+    acceleration: 1000
+    desired_distance_to_player: 500

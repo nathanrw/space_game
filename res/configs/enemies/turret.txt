@@ -1,10 +1,13 @@
 derive_from: enemies/base_enemy.txt
 
 components:
+
   src.behaviours.Hitpoints:
     hp: 2
+
   src.drawing.AnimBodyDrawable:
     anim_name: enemy_turret
+
   src.physics.Body:
     mass: 1
     size: 20

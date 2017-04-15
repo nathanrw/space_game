@@ -1,9 +1,9 @@
-derive_from: enemies/base_enemy.txt
+derive_from: enemies/base_flying_enemy.txt
 
 components:
 
   src.behaviours.Hitpoints:
-    hp: 6
+    hp: 200
 
   src.behaviours.LaunchesFighters:
     fighter_config: enemies/fighter.txt
