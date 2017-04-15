@@ -6,5 +6,6 @@ components:
   src.behaviours.Weapons:
     burst_period: 3
     fire_period: 1
+    auto_fire: 1
     weapons:
       - weapons/torpedo_blaster.txt

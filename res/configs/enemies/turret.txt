@@ -11,3 +11,10 @@ components:
   src.physics.Body:
     mass: 1
     size: 20
+
+  src.behaviours.Weapons:
+    burst_period: 3
+    fire_period: 1
+    weapons:
+      - weapons/green_blaster.txt
+    auto_fire: 1
