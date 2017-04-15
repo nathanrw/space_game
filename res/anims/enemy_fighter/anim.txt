@@ -1,4 +1,4 @@
 extension: .png
-name_base: enemy_fighter
+name_base: shipsheet13-
 num_frames: 1
 period: 1

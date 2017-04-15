@@ -73,6 +73,7 @@ class Game(object):
     def __init__(self):
         """ Initialise the game systems. """
 
+        os.chdir( os.path.dirname( os.path.dirname(__file__)) )
         # Services exposed to the entitys.
         self.game_services = SpaceGameServices(self)
 
@@ -205,7 +206,7 @@ class Game(object):
         self.physics.add_collision_handler(DamageCollisionHandler())
 
         # Set the scrolling background.
-        self.drawing.set_background("res/images/star--background-seamless-repeating9.jpg")
+        self.drawing.set_background("res/images/seamless space.PNG")
 
         # Run the game loop.
         self.run_update_loop()
