@@ -8,6 +8,7 @@ components:
 
   src.behaviours.ExplodesOnDeath:
     explosion_config: explosions/big_explosion.txt
+    sound: boom1.wav
 
   src.behaviours.Tracking: {}
 
