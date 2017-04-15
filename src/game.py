@@ -190,8 +190,10 @@ class Game(object):
         self.camera = self.entity_manager.create_entity_with(Camera)
 
         # Draw debug info if requested.
-        if self.config.get_or_default("debug", False):
-            self.entity_manager.create_entity_with(DebugInfoDrawable)
+        self.entity_manager.create_entity_with(
+          DebugInfoDrawable, 
+          debug_level=self.config.get_or_default("debug", 0)
+        )
 
         # Make the player
         self.player = self.entity_manager.create_entity("player.txt")

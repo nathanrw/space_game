@@ -64,6 +64,12 @@ class DebugInfoDrawable(Drawable):
         """ Initialise the drawable """
         Drawable.__init__(self, entity, game_services, config)
         self.__font = game_services.get_resource_loader().load_font("res/fonts/nasdaqer/NASDAQER.ttf", 12)
+        self.__debug_level = 0
+
+    def setup(self, **kwargs):
+        Drawable.setup(self, **kwargs)
+        if "debug_level" in kwargs:
+            self.__debug_level = kwargs["debug_level"]
 
     def draw_graph(self, values, maximum, position, size, camera):
         """ Draw a graph from a list of values. """
@@ -78,6 +84,10 @@ class DebugInfoDrawable(Drawable):
 
     def draw(self, camera):
         """ Draw the information. """
+
+        # Check the debug level.
+        if self.__debug_level <= 0:
+            return
 
         game_info = self.game_services.get_info()
 
@@ -95,6 +105,10 @@ class DebugInfoDrawable(Drawable):
         # Draw the time ratio.
         time_ratio = self.__font.render("Time scale: %03.1f" % game_info.time_ratio, True, (255, 255, 255))
         camera.surface().blit(time_ratio, (10, 70))
+
+        # Check the debug level.
+        if self.__debug_level <= 1:
+            return
 
         # Draw info about the entity under the cursor.
         cursor_position = Vec2d(pygame.mouse.get_pos())
