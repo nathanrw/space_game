@@ -236,47 +236,65 @@ class Weapon(Component):
         if self.shot_timer > 0:
             self.shot_timer -= dt
 
+        weapon_type = self.config.get_or_default("type", "projectile_thrower")
+
         # If we're shooting, let's shoot some bullets!
         if self.shooting:
+
+            if weapon_type == "projectile_thrower":
+                self.shoot_bullet()
+
+            elif weapon_type == "beam":
+                self.shoot_beam()
+
+            else:
+                # Unknown weapon style.
+                pass
+
+    def shoot_beam(self):
+        """ Fire a beam, for beam type weapons. """
+
+    def shoot_bullet(self):
+        """ Shoot a bullet, for projectile thrower type weapons. """
+
+        # If it's time, shoot a bullet and rest the timer. Note that
+        # we can shoot more than one bullet in a time step if we have
+        # a high enough rate of fire.
+        while self.shot_timer <= 0:
 
             # These will be the same for each shot, so get them here...
             body = self.__get_body()
             shooting_at_dir = self.shooting_at.direction()
 
-            # If it's time, shoot a bullet and rest the timer. Note that
-            # we can shoot more than one bullet in a time step if we have
-            # a high enough rate of fire.
-            while self.shot_timer <= 0:
+            # Update the timer.
+            self.shot_timer += 1.0/self.config["shots_per_second"]
 
-                # Update the timer.
-                self.shot_timer += 1.0/self.config["shots_per_second"]
+            # Can't spawn bullets if there's nowhere to put them!
+            if body is None:
+                return
 
-                # Can't spawn bullets if there's nowhere to put them!
-                if body is None:
-                    continue
+            # Position the bullet somewhere sensible.
+            separation = body.size*2
+            bullet_position = Vec2d(body.position) + shooting_at_dir * separation
 
-                # Position the bullet somewhere sensible.
-                separation = body.size*2
-                bullet_position = Vec2d(body.position) + shooting_at_dir * separation
+            # Work out the muzzle velocity.
+            muzzle_velocity = shooting_at_dir * self.config["bullet_speed"]
+            spread = self.config["spread"]
+            muzzle_velocity.rotate_degrees(random.random() * spread - spread)
+            bullet_velocity = body.velocity+muzzle_velocity
 
-                # Work out the muzzle velocity.
-                muzzle_velocity = shooting_at_dir * self.config["bullet_speed"]
-                spread = self.config["spread"]
-                muzzle_velocity.rotate_degrees(random.random() * spread - spread)
-                bullet_velocity = body.velocity+muzzle_velocity
+            # Play a sound.
+            shot_sound = self.config.get_or_none("shot_sound")
+            if shot_sound is not None:
+                self.game_services.get_camera().play_sound(body, shot_sound)
 
-                # Play a sound.
-                shot_sound = self.config.get_or_none("shot_sound")
-                if shot_sound is not None:
-                    self.game_services.get_camera().play_sound(body, shot_sound)
-
-                # Create the bullet.
-                self.create_entity(self.config["bullet_config"],
-                                        parent=self.entity,
-                                        team=self.__get_team(),
-                                        position=bullet_position,
-                                        velocity=bullet_velocity,
-                                        orientation=shooting_at_dir.normalized().get_angle_degrees()+90)
+            # Create the bullet.
+            self.create_entity(self.config["bullet_config"],
+                                    parent=self.entity,
+                                    team=self.__get_team(),
+                                    position=bullet_position,
+                                    velocity=bullet_velocity,
+                                    orientation=shooting_at_dir.normalized().get_angle_degrees()+90)
 
 class Tracking(Component):
     """ Tracks something on the opposite team. """
