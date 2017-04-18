@@ -15,5 +15,7 @@ components:
   src.behaviours.Hitpoints:
     hp: 1
 
-  src.drawing.AnimBodyDrawable:
+  src.behaviours.AnimationComponent:
     anim_name: enemy_fighter
+
+  src.drawing.Drawable: {}

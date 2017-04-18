@@ -452,7 +452,7 @@ class ConfigTest(unittest.TestCase):
         c1 = Config()
         c1.load("enemies/destroyer.txt")
         components = c1["components"]
-        drawable = components["src.drawing.AnimBodyDrawable"]
+        drawable = components["src.drawing.Drawable"]
         assert drawable["anim_name"] == "enemy_destroyer"
         
     def test_save(self):

@@ -5,23 +5,24 @@ and a camera. """
 import pygame
 
 from physics import *
-from behaviours import Hitpoints, Text, Thrusters, Shields
+from behaviours import Hitpoints, Text, Thrusters, Shields, AnimationComponent
 
 class Drawing(ComponentSystem):
     """ A class that manages a set of things that can draw themselves. """
 
     def __init__(self):
         ComponentSystem.__init__(self)
-        self.background_image = None
+        self.__background_image = None
+        self.__font = None
 
     def set_background(self, image_name):
-        self.background_image = self.game_services.get_resource_loader().load_image(image_name)
+        self.__background_image = self.game_services.get_resource_loader().load_image(image_name)
 
     def draw_background(self, camera):
-        if self.background_image is None:
+        if self.__background_image is None:
             return
         screen = camera.surface()
-        (image_width, image_height) = self.background_image.get_size()
+        (image_width, image_height) = self.__background_image.get_size()
         (screen_width, screen_height) = screen.get_size()
         pos = camera.position
         x = int(pos.x)
@@ -30,46 +31,8 @@ class Drawing(ComponentSystem):
         start_j = -(y%image_width)
         for i in xrange(start_i, screen_width, image_width):
             for j in xrange(start_j, screen_height, image_height):
-                screen.blit(self.background_image, (i, j))
+                screen.blit(self.__background_image, (i, j))
 
-    def draw(self, camera):
-        """ Draw the drawables in order of layer. """
-        self.draw_background(camera)
-        self.components = sorted(self.components, lambda x, y: cmp(x.level, y.level))
-        for drawable in self.components:
-            if not drawable.visible():
-                continue
-            if not camera.check_bounds_world(drawable.estimate_bounds()):
-                continue
-            drawable.draw(camera)
-
-class Drawable(Component):
-    """ Base class for something that can be drawn. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.level = 0
-    def manager_type(self):
-        return Drawing
-    def draw(self, camera):
-        pass
-    def visible(self):
-        return True
-    def estimate_bounds(self):
-        return None
-
-class DebugInfoDrawable(Drawable):
-    """ Draws debug information on the screen. """
-
-    def __init__(self, entity, game_services, config):
-        """ Initialise the drawable """
-        Drawable.__init__(self, entity, game_services, config)
-        self.__font = game_services.get_resource_loader().load_font("res/fonts/nasdaqer/NASDAQER.ttf", 12)
-        self.__debug_level = 0
-
-    def setup(self, **kwargs):
-        Drawable.setup(self, **kwargs)
-        if "debug_level" in kwargs:
-            self.__debug_level = kwargs["debug_level"]
 
     def draw_graph(self, values, maximum, position, size, camera):
         """ Draw a graph from a list of values. """
@@ -82,12 +45,19 @@ class DebugInfoDrawable(Drawable):
             pygame.draw.rect(camera.surface(), (255, 255, 255), pygame.Rect(position, size), 1)
             pygame.draw.lines(camera.surface(), (200,200,200), False, points, 2)
 
-    def draw(self, camera):
+    def draw_debug_info(self, camera):
         """ Draw the information. """
 
         # Check the debug level.
-        if self.__debug_level <= 0:
+        if self.game_services.get_debug_level() <= 0:
             return
+
+        # Load the font.
+        if self.__font == None:
+            self.__font = self.game_services.get_resource_loader().load_font(
+                "res/fonts/nasdaqer/NASDAQER.ttf",
+                12
+            )
 
         game_info = self.game_services.get_info()
 
@@ -107,7 +77,7 @@ class DebugInfoDrawable(Drawable):
         camera.surface().blit(time_ratio, (10, 70))
 
         # Check the debug level.
-        if self.__debug_level <= 1:
+        if self.game_services.get_debug_level() <= 1:
             return
 
         # Draw info about the entity under the cursor.
@@ -131,37 +101,104 @@ class DebugInfoDrawable(Drawable):
                 return (x, y)
             x, y = preview_ent(ent, x, y)
 
-class AnimBodyDrawable(Drawable):
-    """ Draws an animation at the position of a body. """
+    def draw(self, camera):
+        """ Draw the drawables in order of layer. """
+        self.draw_background(camera)
+        self.components = sorted(self.components, lambda x, y: cmp(x.level, y.level))
+        for drawable in self.components:
+            if not camera.check_bounds_world(drawable.estimate_bounds()):
+                continue
+            drawable.draw(camera)
+        self.draw_debug_info(camera)
+
+class Drawable(Component):
+    """ Draws an entity on the screen. """
 
     def __init__(self, entity, game_services, config):
         """ Initialise the drawable """
-        Drawable.__init__(self, entity, game_services, config)
-        self.anim = game_services.get_resource_loader().load_animation(config["anim_name"])
-        self.kill_on_finished = config.get_or_default("kill_on_finish", False)
-        self.rect = self.anim.get_max_bounds()
+        Component.__init__(self, entity, game_services, config)
+        self.level = 0
+        self.rect = None
+        self.__text_drawer = None
+
+    def manager_type(self):
+        return Drawing
 
     def update(self, dt):
         """ Update our bounding box and kill timer. """
-        if self.anim.tick(dt):
-            if self.kill_on_finished:
-                self.entity.kill()
-            else:
-                self.anim.reset()
-        self.rect.center = self.get_component(Body).position
+        if self.rect is None:
+            anim = self.get_component(AnimationComponent)
+            if anim is not None:
+                self.rect = anim.get_anim().get_max_bounds()
+        if self.rect is not None:
+            self.rect.center = self.get_component(Body).position
 
     def draw(self, camera):
+        """ Draw the entity. """
+
+        # If it's a body draw various things.
+        self.draw_body(camera)
+
+        # If it's text draw text.
+        self.draw_text(camera)
+
+    def draw_body(self, camera):
         """ Draw the body on the screen. """
 
         # Get the body
         body = self.get_component(Body)
         if body is None:
             return
-        
-        # Draw the animation.
-        self.anim.orientation = -body.orientation
-        self.anim.draw(body.position, camera)
 
+        # Draw any animation.
+        self.draw_animation(body, camera)
+
+        # Draw any thrusters affecting the body.
+        self.draw_thrusters(body, camera)
+
+        # Draw hitpoints.
+        self.draw_hitpoints(body, camera)
+
+        # Draw shields.
+        self.draw_shields(body, camera)
+
+    def draw_shields(self, body, camera):
+        """ Draw any shields the entity might have. """
+        # Draw shields if we have them.
+        shields = self.get_component(Shields)
+        if shields is not None:
+            width = int((shields.hp/float(shields.max_hp)) * 5)
+            if width > 0:
+                p = camera.world_to_screen(body.position)
+                pygame.draw.circle(camera.surface(),
+                                   (200, 220, 255),
+                                   (int(p.x), int(p.y)),
+                                   int(body.size*2),
+                                   width)
+
+    def draw_animation(self, body, camera):
+        """ Draw an animation on the screen. """
+        
+        # See if there's an animation to draw.
+        component = self.get_component(AnimationComponent)
+        if component is None:
+            return
+
+        # Get the anim itself.
+        anim = component.get_anim()
+
+        # Draw the animation
+        img = anim.frames[anim.timer.pick_index(len(anim.frames))]
+        if (body.orientation != 0):
+            img = pygame.transform.rotate(img, -body.orientation)
+        if (camera.zoom != 1):
+            size = Vec2d(img.get_size())*camera.zoom
+            img = pygame.transform.scale(img, (int(size[0]), int(size[1])))
+        screen_pos = camera.world_to_screen(body.position) - Vec2d(img.get_rect().center)
+        camera.surface().blit(img, screen_pos)
+
+    def draw_thrusters(self, body, camera):
+        """ Draw the thrusters affecting the body. """
         # If this body has thrusters then draw them.
         for thruster in body.thrusters():
             if thruster.on():
@@ -171,12 +208,9 @@ class AnimBodyDrawable(Drawable):
                 poly = Polygon.make_bullet_polygon(pos, pos-(dir*length))
                 poly.draw(camera)
 
-        shields = self.get_component(Shields)
-        if shields is not None:
-            width = int((shields.hp/float(shields.max_hp)) * 5)
-            if width > 0:
-                p = camera.world_to_screen(body.position)
-                pygame.draw.circle(camera.surface(), (200, 220, 255), (int(p.x), int(p.y)), int(body.size*2), width)
+    def draw_hitpoints(self, body, camera):
+        """ Draw the entity's hitpoints, or a marker showing where it
+        is if it's off screen. """
 
         # If this body has hitpoints draw a health bar
         hitpoints = self.get_component(Hitpoints)
@@ -203,28 +237,37 @@ class AnimBodyDrawable(Drawable):
             rect.bottom = min(h-5, rect.bottom)
             pygame.draw.rect(camera.surface(), (255, 0, 0), rect)
 
+    def draw_text(self, camera):
+        """ Draw text using the text drawer. """
+        if self.get_component(Text) is None:
+            return
+        if self.__text_drawer is None:
+            self.__text_drawer = TextDrawer(self.entity, self.game_services)
+        self.__text_drawer.draw(camera)
+
     def estimate_bounds(self):
         """ Return precomputed bounding box. """
         return self.rect
 
-class TextDrawable(Drawable):
+class TextDrawer(object):
     """ Draws text in the middle of the screen. Note that you don't set the text on the
     drawable, it gets stored in a Text component. This means that logic code doesn't need
     to mess with the drawable. """
 
-    def __init__(self, entity, game_services, config):
+    def __init__(self, entity, game_services):
         """Load the font."""
-        Drawable.__init__(self, entity, game_services, config)
-        self.__font = game_services.get_resource_loader().load_font(config["font_name"], config["font_size"])
-        self.__small_font = game_services.get_resource_loader().load_font(config["font_name"], 14)
-        colour_dict = config["font_colour"]
-        self.__colour = (colour_dict["red"], colour_dict["green"], colour_dict["blue"])
+        self.entity = entity
+        self.game_services = game_services
+        text = self.entity.get_component(Text)
+        self.__font = game_services.get_resource_loader().load_font(text.font_name(), text.large_font_size())
+        self.__small_font = game_services.get_resource_loader().load_font(text.font_name(), text.small_font_size())
+        self.__colour = text.font_colour()
         self.__text = None
         self.__image = None
         self.__warning = self.__small_font.render("WARNING", True, self.__colour)
         self.__level = 999
-        self.__blink = config.get_or_default("blink", 0)
-        self.__blink_timer = Timer(config.get_or_default("blink_period", 0.5))
+        self.__blink = text.blink()
+        self.__blink_timer = Timer(text.blink_period())
         self.__visible = True
         self.__offs = 0
         self.__scroll_speed = 300
@@ -232,7 +275,6 @@ class TextDrawable(Drawable):
 
     def update(self, dt):
         """ Update: support blinking. """
-        Drawable.update(self, dt)
         if self.__blink:
             if self.__blink_timer.tick(dt):
                 self.__blink_timer.reset()
@@ -265,7 +307,7 @@ class TextDrawable(Drawable):
 
         # Try to obtain some text to draw.
         text = None
-        text_component = self.get_component(Text)
+        text_component = self.entity.get_component(Text)
         if text_component is not None:
             text = text_component.text
 

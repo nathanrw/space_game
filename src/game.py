@@ -25,7 +25,7 @@ import pygame
 import os
 
 from physics import Physics
-from drawing import Drawing, DebugInfoDrawable
+from drawing import Drawing
 from behaviours import DamageCollisionHandler, Camera, WaveSpawner
 from utils import GameServices, GameInfo, ResourceLoader, EntityManager
 from input_handling import InputHandling
@@ -38,6 +38,7 @@ class SpaceGameServices(GameServices):
     def __init__(self, game):
         self.game = game
         self.info = GameInfo()
+        self.debug_level = 0
 
     def get_screen(self):
         return self.game.screen
@@ -65,6 +66,10 @@ class SpaceGameServices(GameServices):
     def end_game(self):
         """ Stop the game from running. """
         self.game.stop_running()
+
+    def get_debug_level(self):
+        """ Return the debug level. """
+        return self.debug_level
                 
 class Game(object):
     """ Class glueing all of the building blocks together into an actual
@@ -196,10 +201,7 @@ class Game(object):
         self.camera = self.entity_manager.create_entity_with(Camera)
 
         # Draw debug info if requested.
-        self.entity_manager.create_entity_with(
-          DebugInfoDrawable, 
-          debug_level=self.config.get_or_default("debug", 0)
-        )
+        self.game_services.debug_level = self.config.get_or_default("debug", 0)
 
         # Make the player
         self.player = self.entity_manager.create_entity("player.txt")

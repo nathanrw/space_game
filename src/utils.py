@@ -127,6 +127,9 @@ class GameServices(object):
         # Might not actually be a class. But if it's a function that returns
         # an instance, who cares...
         return cls
+    def get_debug_level():
+        """ Get the debug level. """
+        return 0
 
 class Timer(object):
     """ A simple stopwatch - you tell it how much time has gone by and it
@@ -912,20 +915,10 @@ class Animation(object):
     def __init__(self, frames, period):
         self.frames = frames
         self.timer = Timer(period)
-        self.orientation = 0
     def tick(self, dt):
         return self.timer.tick(dt)
     def reset(self):
         self.timer.reset()
-    def draw(self, world_pos, camera):
-        img = self.frames[self.timer.pick_index(len(self.frames))]
-        if (self.orientation != 0):
-            img = pygame.transform.rotate(img, self.orientation)
-        if (camera.zoom != 1):
-            size = Vec2d(img.get_size())*camera.zoom
-            img = pygame.transform.scale(img, (int(size[0]), int(size[1])))
-        screen_pos = camera.world_to_screen(world_pos) - Vec2d(img.get_rect().center)
-        camera.surface().blit(img, screen_pos)
     def randomise(self):
         self.timer.randomise()
     def get_max_bounds(self):

@@ -12,7 +12,7 @@ components:
     takeoff_speed: 700
     takeoff_spread: 30
 
-  src.drawing.AnimBodyDrawable:
+  src.behaviours.AnimationComponent:
     anim_name: carrier-closed
 
   src.physics.Body:

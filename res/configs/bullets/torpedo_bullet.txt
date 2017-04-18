@@ -35,7 +35,7 @@ components:
       y: 0
 
   # Make it look like a torpedo
-  src.drawing.AnimBodyDrawable:
+  src.behaviours.AnimationComponent:
     anim_name: rocket
 
   # Set the mass and size.

@@ -3,7 +3,6 @@ components:
     lifetime: 4
   src.behaviours.Text:
     text: Hello, World!
-  src.drawing.TextDrawable:
     blink: 1
     font_colour:
       blue: 255
@@ -11,3 +10,5 @@ components:
       red: 255
     font_name: res/fonts/nasdaqer/NASDAQER.ttf
     font_size: 62
+  src.drawing.Drawable: {}
+

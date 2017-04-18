@@ -324,6 +324,17 @@ class Body(Component):
         result = self.__thruster_configurations[key]
         for i in xrange(0, len(result.x)):
             self.__thrusters[i].go(float(result.x[i]))
+
+    def hit_scan(self, local_origin, local_direction, distance, radius):
+        """ Do a hit scan computation. Return the bodies and hit locations of
+        entities that intersect the line. Return: [(body, pos)]. """
+        start = self.local_to_world(local_origin)
+        end = self.local_dir_to_world(direction)*distance
+        results = self.__space.segment_query(start, end, radius)
+        for result in results:
+            if not result.shape.game_body.entity.is_ancestor_of(self.entity):
+                return (result.shape.game_body, self.entity)
+        return (None, end)
         
     @property
     def position(self):

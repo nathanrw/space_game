@@ -6,8 +6,9 @@ components:
     sound: 234082__211redman112__lasgun-impact.ogg
   src.behaviours.KillOnTimer:
     lifetime: 2
-  src.drawing.AnimBodyDrawable:
+  src.behaviours.AnimationComponent:
     anim_name: pewpew_green
+  src.drawing.Drawable: {}
   src.physics.Body:
     mass: 1
     size: 3

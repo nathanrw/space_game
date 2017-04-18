@@ -12,7 +12,7 @@ components:
       x: 0
       y: 0
 
-  src.drawing.AnimBodyDrawable:
+  src.behaviours.AnimationComponent:
     anim_name: enemy_destroyer
 
   src.physics.Body:

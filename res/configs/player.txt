@@ -39,9 +39,12 @@ components:
   src.behaviours.Thrusters:
     max_thrust: 100000
 
-  # The ship can be drawn on the screen.
-  src.drawing.AnimBodyDrawable:
+  # The ship has an animation.
+  src.behaviours.AnimationComponent:
     anim_name: player_ship
+
+  # The ship can be drawn on the screen.
+  src.drawing.Drawable: {}
 
   # The ship can receive input from the player.
   src.input_handling.PlayerInputHandler: {}

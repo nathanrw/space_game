@@ -170,6 +170,41 @@ class Weapons(Component):
                 self.burst_timer.reset()
                 gun.stop_shooting()
 
+class LaserBeam(Component):
+    """ The laser beam. """
+
+    def __init__(self, entity, game_services, config):
+        """ Initialise the laser. """
+        Component.__init__(self, entity, game_services, config)
+        self.body_entity = None
+        self.body_local_direction = Vec2d(0, 1)
+        self.body_local_origin = Vec2d(0, 0)
+        self.impact_point = None
+
+    def setup(self, **kwargs):
+        """ Setup the laser. """
+        self.body_entity = kwargs["body_entity"]
+
+    def update(self, dt):
+        """ Update the laser. """
+
+        # Get the originating body.
+        if self.body_entity.is_garbage:
+            return None
+        body = self.body_entity.get_component(Body)
+        if body is None:
+            return
+
+        # Figure out if the laser has hit anything.
+        (hit_body, self.impact_point) = body.hit_scan(self.body_local_origin,
+                                                      self.body_local_direction,
+                                                      self.config["range"],
+                                                      self.config["radius"])
+
+        # If we hit something, damage it.
+        if hit_body is not None:
+            apply_damage_to_entity(self.config["damage"]*dt, hit_body.entity)
+
 class Weapon(Component):
     """ Something that knows how to spray bullets.
 
@@ -245,14 +280,21 @@ class Weapon(Component):
                 self.shoot_bullet()
 
             elif weapon_type == "beam":
-                self.shoot_beam()
+                if self.beam_entity == None:
+                    self.beam_entity = self.create_entity_with(LaserBeam,
+                                                               parent=self.entity,
+                                                               body_entity=self.entity.parent)
+                                                               
 
             else:
                 # Unknown weapon style.
                 pass
+        else:
 
-    def shoot_beam(self):
-        """ Fire a beam, for beam type weapons. """
+            if weapon_type == "beam":
+                if self.beam_entity is not None:
+                    self.beam_entity.kill()
+                    self.beam_entity = None
 
     def shoot_bullet(self):
         """ Shoot a bullet, for projectile thrower type weapons. """
@@ -448,16 +490,21 @@ class Shields(Component):
             self.hp = 0
         return ret
 
+def apply_damage_to_entity(damage, entity):
+    """ Apply damage to an object we've hit. """
+    shields = entity.get_component(Shields) 
+    if shields is not None:
+        damage = shields.mitigate_damage(damage)
+    hitpoints = entity.get_component(Hitpoints)
+    if hitpoints is not None:
+        hitpoints.receive_damage(damage)
+
 class DamageOnContact(Component):
-    def apply_damage(self, hitpoints, shields):
-        """ Apply damage to an object we've hit. """
+    def apply_damage(self, entity):
+        damage = self.config["damage"]
         if self.config.get_or_default("destroy_on_hit", True):
             self.entity.kill()
-        damage = self.config["damage"]
-        if shields is not None:
-            damage = shields.mitigate_damage(damage)
-        if hitpoints is not None:
-            hitpoints.receive_damage(damage)
+        apply_damage_to_entity(damage, entity)
 
 class DamageCollisionHandler(CollisionHandler):
     """ Collision handler to apply bullet damage. """
@@ -466,7 +513,7 @@ class DamageCollisionHandler(CollisionHandler):
     def handle_matching_collision(self, dmg, hp):
         if hp.entity.is_ancestor(dmg.entity):
             return CollisionResult(False, False)
-        dmg.apply_damage(hp, hp.get_component(Shields))
+        dmg.apply_damage(hp.entity)
         return CollisionResult(True, True)
 
 class Team(Component):
@@ -491,6 +538,32 @@ class Text(Component):
         Component.setup(self, **kwargs)
         if "text" in kwargs:
             self.text = kwargs["text"]
+    def font_name(self):
+        return self.config["font_name"]
+    def small_font_size(self):
+        return self.config.get_or_default("small_font_size", 14)
+    def large_font_size(self):
+        return self.config.get_or_default("font_size", 32)
+    def font_colour(self):
+        colour = self.config.get_or_default("font_colour", {"red":255, "green":255, "blue":255})
+        return (colour["red"], colour["green"], colour["blue"])
+    def blink(self):
+        return self.config.get_or_default("blink", 0)
+    def blink_period(self):
+        return self.config.get_or_default("blink_period", 1)
+
+class AnimationComponent(Component):
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.__anim = game_services.get_resource_loader().load_animation(config["anim_name"])
+    def update(self, dt):
+        if self.__anim.tick(dt):
+            if self.config.get_or_default("kill_on_finish", 0):
+                self.entity.kill()
+            else:
+                self.__anim.reset()
+    def get_anim(self):
+        return self.__anim
 
 class Thrusters(Component):
     """ Thruster component. This allows an entity with a body to move itself.

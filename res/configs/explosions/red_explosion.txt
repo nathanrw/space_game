@@ -1,4 +1,5 @@
-components:
-  src.drawing.AnimBodyDrawable:
-    anim_name: red_explosion
 derive_from: explosions/base_explosion.txt
+
+components:
+  src.behaviours.AnimationComponent:
+    anim_name: red_explosion

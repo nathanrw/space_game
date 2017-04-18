@@ -5,7 +5,7 @@ components:
   src.behaviours.Hitpoints:
     hp: 2
 
-  src.drawing.AnimBodyDrawable:
+  src.behaviours.AnimationComponent:
     anim_name: enemy_turret
 
   src.physics.Body:
