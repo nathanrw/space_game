@@ -5,7 +5,7 @@ and a camera. """
 import pygame
 
 from physics import *
-from behaviours import Hitpoints, Text, Thrusters, Shields, AnimationComponent
+from behaviours import Hitpoints, Text, Thrusters, Shields, AnimationComponent, Weapon
 
 class Drawing(ComponentSystem):
     """ A class that manages a set of things that can draw themselves. """
@@ -161,6 +161,31 @@ class Drawable(Component):
 
         # Draw shields.
         self.draw_shields(body, camera)
+
+        # Draw lasers
+        self.draw_lasers(body, camera)
+
+    def draw_lasers(self, body, camera):
+        """ Draw laser beams. """
+        children = body.entity.get_children()
+        for child in children:
+            weapon = child.get_component(Weapon)
+            if weapon is not None:
+                if weapon.weapon_type == "beam":
+                    if weapon.shooting and weapon.impact_point is not None:
+                        radius = weapon.config.get_or_default("radius", 2)
+                        pygame.draw.line(camera.surface(),
+                                         (255,100,100),
+                                         camera.world_to_screen(body.position),
+                                         camera.world_to_screen(weapon.impact_point),
+                                         radius)
+                        core_radius = radius/3
+                        if core_radius > 0:
+                            pygame.draw.line(camera.surface(),
+                                             (255,255,255),
+                                             camera.world_to_screen(body.position),
+                                             camera.world_to_screen(weapon.impact_point),
+                                             core_radius)
 
     def draw_shields(self, body, camera):
         """ Draw any shields the entity might have. """

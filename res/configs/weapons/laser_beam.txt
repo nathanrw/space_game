@@ -1,0 +1,7 @@
+components:
+  src.behaviours.Weapon:
+    type: beam
+    range: 1000
+    radius: 6
+    damage: 50
+    power_usage: 2

@@ -21,6 +21,7 @@ components:
     weapons:
       - weapons/red_blaster.txt
       - weapons/torpedo_gun.txt
+      - weapons/laser_beam.txt
 
   # The ship explodes when it is destroyed.
   src.behaviours.ExplodesOnDeath:

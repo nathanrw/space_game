@@ -170,41 +170,6 @@ class Weapons(Component):
                 self.burst_timer.reset()
                 gun.stop_shooting()
 
-class LaserBeam(Component):
-    """ The laser beam. """
-
-    def __init__(self, entity, game_services, config):
-        """ Initialise the laser. """
-        Component.__init__(self, entity, game_services, config)
-        self.body_entity = None
-        self.body_local_direction = Vec2d(0, 1)
-        self.body_local_origin = Vec2d(0, 0)
-        self.impact_point = None
-
-    def setup(self, **kwargs):
-        """ Setup the laser. """
-        self.body_entity = kwargs["body_entity"]
-
-    def update(self, dt):
-        """ Update the laser. """
-
-        # Get the originating body.
-        if self.body_entity.is_garbage:
-            return None
-        body = self.body_entity.get_component(Body)
-        if body is None:
-            return
-
-        # Figure out if the laser has hit anything.
-        (hit_body, self.impact_point) = body.hit_scan(self.body_local_origin,
-                                                      self.body_local_direction,
-                                                      self.config["range"],
-                                                      self.config["radius"])
-
-        # If we hit something, damage it.
-        if hit_body is not None:
-            apply_damage_to_entity(self.config["damage"]*dt, hit_body.entity)
-
 class Weapon(Component):
     """ Something that knows how to spray bullets.
 
@@ -225,6 +190,8 @@ class Weapon(Component):
         Component.__init__(self, entity, game_services, config)
         self.shooting_at = None
         self.shot_timer = 0
+        self.weapon_type = self.config.get_or_default("type", "projectile_thrower")
+        self.impact_point = None
 
     def __get_body(self):
         """ Get the body of the entity with the weapon. """
@@ -237,6 +204,12 @@ class Weapon(Component):
         if self.entity.parent is None:
             return None
         return self.entity.parent.get_component(Team).get_team()
+
+    def __get_power(self):
+        """ Get the power component. """
+        if self.entity.parent is None:
+            return None
+        return self.entity.parent.get_component(Power)
 
     def start_shooting_coaxial(self):
         self.shooting_at = ShootingAtCoaxial(self.__get_body())
@@ -271,30 +244,35 @@ class Weapon(Component):
         if self.shot_timer > 0:
             self.shot_timer -= dt
 
-        weapon_type = self.config.get_or_default("type", "projectile_thrower")
 
         # If we're shooting, let's shoot some bullets!
         if self.shooting:
 
-            if weapon_type == "projectile_thrower":
+            if self.weapon_type == "projectile_thrower":
                 self.shoot_bullet()
 
-            elif weapon_type == "beam":
-                if self.beam_entity == None:
-                    self.beam_entity = self.create_entity_with(LaserBeam,
-                                                               parent=self.entity,
-                                                               body_entity=self.entity.parent)
-                                                               
+            elif self.weapon_type == "beam":
+
+                power = self.__get_power()
+                if power is None or not power.consume(self.config["power_usage"]):
+                    self.stop_shooting()
+                else:
+
+                    body = self.__get_body()
+
+                    # Figure out if the laser has hit anything.
+                    (hit_body, self.impact_point) = body.hit_scan(Vec2d(0, 0),
+                                                                  Vec2d(0, -1),
+                                                                  self.config["range"],
+                                                                  self.config["radius"])
+
+                    # If we hit something, damage it.
+                    if hit_body is not None:
+                        apply_damage_to_entity(self.config["damage"]*dt, hit_body.entity)
 
             else:
                 # Unknown weapon style.
                 pass
-        else:
-
-            if weapon_type == "beam":
-                if self.beam_entity is not None:
-                    self.beam_entity.kill()
-                    self.beam_entity = None
 
     def shoot_bullet(self):
         """ Shoot a bullet, for projectile thrower type weapons. """

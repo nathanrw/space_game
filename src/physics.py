@@ -329,11 +329,11 @@ class Body(Component):
         """ Do a hit scan computation. Return the bodies and hit locations of
         entities that intersect the line. Return: [(body, pos)]. """
         start = self.local_to_world(local_origin)
-        end = self.local_dir_to_world(direction)*distance
-        results = self.__space.segment_query(start, end, radius)
+        end = self.local_to_world(local_direction*distance)
+        results = self.__space.segment_query(start, end, radius, pymunk.ShapeFilter())
         for result in results:
-            if not result.shape.game_body.entity.is_ancestor_of(self.entity):
-                return (result.shape.game_body, self.entity)
+            if not result.shape.game_body.entity.is_ancestor(self.entity):
+                return (result.shape.game_body, result.point)
         return (None, end)
         
     @property
