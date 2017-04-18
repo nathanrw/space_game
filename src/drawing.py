@@ -5,7 +5,7 @@ and a camera. """
 import pygame
 
 from physics import *
-from behaviours import Hitpoints, Text, Thrusters, Shields, AnimationComponent, Weapon
+from behaviours import Hitpoints, Text, Thrusters, Shields, AnimationComponent, Weapon, Power
 
 class Drawing(ComponentSystem):
     """ A class that manages a set of things that can draw themselves. """
@@ -233,6 +233,15 @@ class Drawable(Component):
                 poly = Polygon.make_bullet_polygon(pos, pos-(dir*length))
                 poly.draw(camera)
 
+    def draw_bar(self, arg_rect, fraction, col_back, col_0, col_1, camera):
+        """ Draw a progress bar """
+        rect = pygame.Rect(arg_rect)
+        pygame.draw.rect(camera.surface(), col_back, rect)
+        rect.inflate_ip(-4, -4)
+        pygame.draw.rect(camera.surface(), col_0, rect)
+        rect.width = int(fraction * rect.width)
+        pygame.draw.rect(camera.surface(), col_1, rect)
+
     def draw_hitpoints(self, body, camera):
         """ Draw the entity's hitpoints, or a marker showing where it
         is if it's off screen. """
@@ -243,15 +252,25 @@ class Drawable(Component):
             return
 
         # Draw health bar if it's on screen. Otherwise draw marker.
-        rect = pygame.Rect(0, 0, body.size*2, 12)
+        rect = pygame.Rect(0, 0, body.size*2, 6)
         rect.center = rect.center = camera.world_to_screen(body.position)
         rect.top = rect.top - (body.size*1.2)
         if camera.check_bounds_screen(rect):
-            pygame.draw.rect(camera.surface(), (255, 255, 255), rect)
-            rect.inflate_ip(-4, -4)
-            pygame.draw.rect(camera.surface(), (255, 0, 0), rect)
-            rect.width = int(hitpoints.hp/float(hitpoints.max_hp) * rect.width)
-            pygame.draw.rect(camera.surface(), (0, 255, 0), rect)
+            self.draw_bar(rect,
+                          hitpoints.hp/float(hitpoints.max_hp),
+                          (255, 255, 255),
+                          (255, 0, 0),
+                          (0, 255, 0),
+                          camera)
+            power = self.get_component(Power)
+            if power is not None:
+                rect.top += rect.height + 4
+                self.draw_bar(rect,
+                              power.power/float(power.capacity),
+                              (255, 255, 255),
+                              (100, 50, 0),
+                              (255, 255, 0),
+                              camera)
         else:
             (w, h) = camera.surface().get_size()
             rect.width = 5

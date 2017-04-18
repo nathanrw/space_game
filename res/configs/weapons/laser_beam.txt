@@ -4,4 +4,4 @@ components:
     range: 1000
     radius: 6
     damage: 50
-    power_usage: 2
+    power_usage: 20

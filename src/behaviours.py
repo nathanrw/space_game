@@ -254,7 +254,7 @@ class Weapon(Component):
             elif self.weapon_type == "beam":
 
                 power = self.__get_power()
-                if power is None or not power.consume(self.config["power_usage"]):
+                if power is None or not power.consume(self.config["power_usage"] * dt):
                     self.stop_shooting()
                 else:
 

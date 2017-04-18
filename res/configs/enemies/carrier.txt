@@ -17,4 +17,4 @@ components:
 
   src.physics.Body:
     mass: 100
-    size: 64
+    size: 100
