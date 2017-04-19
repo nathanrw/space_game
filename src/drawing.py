@@ -132,6 +132,8 @@ class Drawable(Component):
                 self.rect = anim.get_anim().get_max_bounds()
         if self.rect is not None:
             self.rect.center = self.get_component(Body).position
+        if self.__text_drawer is not None:
+            self.__text_drawer.update(dt)
 
     def draw(self, camera):
         """ Draw the entity. """
