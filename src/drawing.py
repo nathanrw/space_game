@@ -4,8 +4,8 @@ and a camera. """
 
 import pygame
 
-from physics import *
-from behaviours import Hitpoints, Text, Thrusters, Shields, AnimationComponent, Weapon, Power
+from .physics import *
+from .behaviours import Hitpoints, Text, Thrusters, Shields, AnimationComponent, Weapon, Power
 
 class Drawing(ComponentSystem):
     """ A class that manages a set of things that can draw themselves. """

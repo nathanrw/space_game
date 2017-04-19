@@ -2,9 +2,9 @@ from pymunk.vec2d import Vec2d
 
 import pygame
 
-from utils import ComponentSystem, Component
-from behaviours import Weapons, Weapon, Thrusters
-from physics import Body
+from .utils import ComponentSystem, Component
+from .behaviours import Weapons, Weapon, Thrusters
+from .physics import Body
 
 class InputHandling(ComponentSystem):
     """ A system for input handlers: components that know how to deal
@@ -143,25 +143,25 @@ class PlayerInputHandler(InputHandler):
                 self.start_shooting_forwards()
                 return True
         elif e.type == pygame.JOYAXISMOTION:
-            print "axis: ", e.axis, e.value
+            print( "axis: ", e.axis, e.value )
             pass
         elif e.type == pygame.JOYBALLMOTION:
-            print "ball: ", e.ball, e.rel
+            print( "ball: ", e.ball, e.rel )
             pass
         elif e.type == pygame.JOYBUTTONDOWN:
-            print "button: ", e.button
+            print( "button: ", e.button )
             if e.button in jsmap:
                 jsmap[e.button][0]()
                 return True
             pass
         elif e.type == pygame.JOYBUTTONUP:
-            print "button: ", e.button
+            print( "button: ", e.button )
             if e.button in jsmap:
                 jsmap[e.button][1]()
                 return True
             pass
         elif e.type == pygame.JOYHATMOTION:
-            print "hat: ", e.hat, e.value
+            print( "hat: ", e.hat, e.value )
             thrusters.set_direction(Vec2d(e.value[0], -e.value[1]))
             return True
         return False

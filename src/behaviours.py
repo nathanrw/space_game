@@ -5,8 +5,8 @@ See utils.py for the overall scheme this fits into.
 """
 
 from pymunk.vec2d import Vec2d
-from utils import Component, Timer
-from physics import Body, Physics, CollisionHandler, CollisionResult, Thruster
+from .utils import Component, Timer
+from .physics import Body, Physics, CollisionHandler, CollisionResult, Thruster
 
 import random
 import math
