@@ -325,7 +325,7 @@ class Body(Component):
         for i in xrange(0, len(result.x)):
             self.__thrusters[i].go(float(result.x[i]))
 
-    def hit_scan(self, local_origin, local_direction, distance, radius):
+    def hit_scan(self, local_origin=Vec2d(0,0), local_direction=Vec2d(0,-1), distance=1000, radius=1):
         """ Do a hit scan computation. Return the bodies and hit locations of
         entities that intersect the line. Return: [(body, pos)]. """
         start = self.local_to_world(local_origin)
