@@ -120,15 +120,19 @@ class Weapons(Component):
         """ Cycle to the next weapon. """
         if self.__current_weapon < 0:
             return
-        self.__weapons[self.__current_weapon].get_component(Weapon).stop_shooting()
+        was_shooting = self.__weapons[self.__current_weapon].get_component(Weapon).shooting
+        if was_shooting: self.__weapons[self.__current_weapon].get_component(Weapon).stop_shooting()
         self.__current_weapon = (self.__current_weapon+1)%len(self.__weapons)
+        if was_shooting : self.__weapons[self.__current_weapon].get_component(Weapon).start_shooting_coaxial()
 
     def prev_weapon(self):
         """ Cycle to the previous weapon. """
         if self.__current_weapon < 0:
             return
-        self.__weapons[self.__current_weapon].get_component(Weapon).stop_shooting()
+        was_shooting = self.__weapons[self.__current_weapon].get_component(Weapon).shooting
+        if was_shooting: self.__weapons[self.__current_weapon].get_component(Weapon).stop_shooting()
         self.__current_weapon = (self.__current_weapon-1)%len(self.__weapons)
+        if was_shooting : self.__weapons[self.__current_weapon].get_component(Weapon).start_shooting_coaxial()
 
     def update(self, dt):
         """ Update the shooting bullet. """
