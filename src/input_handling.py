@@ -113,7 +113,7 @@ class PlayerInputHandler(InputHandler):
             pygame.K_g: (nothing, lambda: self.zoom_out()),
             pygame.K_r: (nothing, lambda: self.next_weapon()),
             pygame.K_f: (nothing, lambda: self.prev_weapon()),
-			pygame.K_SPACE: (lambda: self.start_shooting_forwards(), lambda: self.stop_shooting())
+            pygame.K_SPACE: (lambda: self.start_shooting_forwards(), lambda: self.stop_shooting())
         }
         jsmap = {
             0: (lambda: self.start_shooting_forwards(), lambda: self.stop_shooting()),

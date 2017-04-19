@@ -120,12 +120,14 @@ class Weapons(Component):
         """ Cycle to the next weapon. """
         if self.__current_weapon < 0:
             return
+        self.__weapons[self.__current_weapon].get_component(Weapon).stop_shooting()
         self.__current_weapon = (self.__current_weapon+1)%len(self.__weapons)
 
     def prev_weapon(self):
         """ Cycle to the previous weapon. """
         if self.__current_weapon < 0:
             return
+        self.__weapons[self.__current_weapon].get_component(Weapon).stop_shooting()
         self.__current_weapon = (self.__current_weapon-1)%len(self.__weapons)
 
     def update(self, dt):
