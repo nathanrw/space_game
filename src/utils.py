@@ -251,7 +251,7 @@ class EntityManager(object):
         self.systems_list.append(system) # Note: could just insert at right place.
         self.systems_list = sorted(
             self.systems_list,
-            lambda x, y: cmp(x.priority, y.priority)
+            key = lambda x: x.priority
         )
 
     def get_component_system(self, component):

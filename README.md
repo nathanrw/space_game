@@ -15,11 +15,13 @@ Dependencies
 
 In order to run "Space game," you will need the following packages installed:
 
-* Python 2.7
+* Python 3 (should work fine on 2.7, though)
 * pygame
 * pymunk
 * scipy / numpy
 * pyYAML
+
+The easiest way to install the libraries is `pip3 install pygame pymunk scipy pyyaml`.
 
 How to run
 ----------
@@ -28,9 +30,8 @@ How to run
 
     ./run.py
 
-or
-
-    python2 run.py
+or 
+    python run.py
 
 Controls
 --------
@@ -50,7 +51,7 @@ Running the tests
 
 At present, you would do e.g.
 
-    python2 -m unittest src.tests.utils_test
+    python -m unittest src.tests.utils_test
 
 from the root directory. I haven't yet invesitgated a better or more automatic way of doing this.
 

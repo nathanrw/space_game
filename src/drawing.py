@@ -30,8 +30,8 @@ class Drawing(ComponentSystem):
         y = int(pos.y)
         start_i = -(x%image_width)
         start_j = -(y%image_width)
-        for i in xrange(start_i, screen_width, image_width):
-            for j in xrange(start_j, screen_height, image_height):
+        for i in range(start_i, screen_width, image_width):
+            for j in range(start_j, screen_height, image_height):
                 screen.blit(self.__background_image, (i, j))
 
 
@@ -105,7 +105,7 @@ class Drawing(ComponentSystem):
     def draw(self, camera):
         """ Draw the drawables in order of layer. """
         self.draw_background(camera)
-        self.components = sorted(self.components, lambda x, y: cmp(x.level, y.level))
+        self.components = sorted(self.components, key = lambda x: x.level )
         for drawable in self.components:
             if not camera.check_bounds_world(drawable.estimate_bounds()):
                 continue
@@ -186,7 +186,7 @@ class Drawable(Component):
                                          p0,
                                          p1,
                                          radius)
-                        core_radius = radius/3
+                        core_radius = radius//3
                         if core_radius > 0:
                             pygame.draw.line(camera.surface(),
                                              white,
@@ -354,7 +354,7 @@ class TextDrawer(object):
             if not forwards:
                 x = -x
             start_i = -(x%(image_width+self.__padding))
-            for i in xrange(int(start_i), screen_width, image_width + self.__padding):
+            for i in range(int(start_i), screen_width, image_width + self.__padding):
                 screen.blit(self.__warning, (i, y))
             rect = screen.get_rect()
             rect.height = 5
