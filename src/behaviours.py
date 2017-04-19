@@ -109,6 +109,7 @@ class Weapons(Component):
         self.fire_timer = Timer(config.get_or_default("fire_period", 1))
         self.fire_timer.advance_to_fraction(0.8)
         self.burst_timer = Timer(config.get_or_default("burst_period", 1))
+        self.can_shoot = False 
 
     def get_weapon(self):
         """ Get the weapon component of our sub-entity. """
@@ -168,9 +169,14 @@ class Weapons(Component):
 
         # Shoot at the object we're tracking.
         if not gun.shooting:
-            if self.fire_timer.tick(dt):
+            if not self.can_shoot and self.fire_timer.tick(dt):
                 self.fire_timer.reset()
-                gun.start_shooting_at_body(tracked_body)
+                self.can_shoot = True
+            if self.can_shoot:
+                (hit_body, hit_point) = body.hit_scan()
+                if hit_body == tracked_body:
+                    self.can_shoot = False
+                    gun.start_shooting_at_body(tracked_body)
         else:
             if self.burst_timer.tick(dt):
                 self.burst_timer.reset()

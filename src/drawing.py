@@ -3,6 +3,7 @@ a special kind of component that knows how to draw itself given a surface
 and a camera. """
 
 import pygame
+import random
 
 from .physics import *
 from .behaviours import Hitpoints, Text, Thrusters, Shields, AnimationComponent, Weapon, Power
@@ -132,6 +133,8 @@ class Drawable(Component):
                 self.rect = anim.get_anim().get_max_bounds()
         if self.rect is not None:
             self.rect.center = self.get_component(Body).position
+        if self.__text_drawer is not None:
+            self.__text_drawer.update(dt)
 
     def draw(self, camera):
         """ Draw the entity. """
@@ -173,19 +176,33 @@ class Drawable(Component):
             if weapon is not None:
                 if weapon.weapon_type == "beam":
                     if weapon.shooting and weapon.impact_point is not None:
+                        p0 = camera.world_to_screen(body.position)
+                        p1 = camera.world_to_screen(weapon.impact_point)
                         radius = weapon.config.get_or_default("radius", 2)
+                        red = (255,100,100)
+                        white = (255,255,255)
                         pygame.draw.line(camera.surface(),
-                                         (255,100,100),
-                                         camera.world_to_screen(body.position),
-                                         camera.world_to_screen(weapon.impact_point),
+                                         red,
+                                         p0,
+                                         p1,
                                          radius)
                         core_radius = radius/3
                         if core_radius > 0:
                             pygame.draw.line(camera.surface(),
-                                             (255,255,255),
-                                             camera.world_to_screen(body.position),
-                                             camera.world_to_screen(weapon.impact_point),
+                                             white,
+                                             p0,
+                                             p1,
                                              core_radius)
+                        size = int(radius+random.random()*radius*2)
+                        pygame.draw.circle(camera.surface(),
+                                           red, 
+                                           (int(p1.x), int(p1.y)),
+                                           size)
+                        pygame.draw.circle(camera.surface(),
+                                           white, 
+                                           (int(p1.x), int(p1.y)),
+                                           size-2)
+                                           
 
     def draw_shields(self, body, camera):
         """ Draw any shields the entity might have. """
