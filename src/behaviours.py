@@ -5,8 +5,8 @@ See utils.py for the overall scheme this fits into.
 """
 
 from pymunk.vec2d import Vec2d
-from utils import Component, Timer
-from physics import Body, Physics, CollisionHandler, CollisionResult, Thruster
+from .utils import Component, Timer
+from .physics import Body, Physics, CollisionHandler, CollisionResult, Thruster
 
 import random
 import math
@@ -121,13 +121,19 @@ class Weapons(Component):
         """ Cycle to the next weapon. """
         if self.__current_weapon < 0:
             return
+        was_shooting = self.__weapons[self.__current_weapon].get_component(Weapon).shooting
+        if was_shooting: self.__weapons[self.__current_weapon].get_component(Weapon).stop_shooting()
         self.__current_weapon = (self.__current_weapon+1)%len(self.__weapons)
+        if was_shooting : self.__weapons[self.__current_weapon].get_component(Weapon).start_shooting_coaxial()
 
     def prev_weapon(self):
         """ Cycle to the previous weapon. """
         if self.__current_weapon < 0:
             return
+        was_shooting = self.__weapons[self.__current_weapon].get_component(Weapon).shooting
+        if was_shooting: self.__weapons[self.__current_weapon].get_component(Weapon).stop_shooting()
         self.__current_weapon = (self.__current_weapon-1)%len(self.__weapons)
+        if was_shooting : self.__weapons[self.__current_weapon].get_component(Weapon).start_shooting_coaxial()
 
     def update(self, dt):
         """ Update the shooting bullet. """
@@ -388,7 +394,7 @@ class LaunchesFighters(Component):
             self.spawn_timer.reset()
             self.spawn()
     def spawn(self):
-        for i in xrange(self.config["num_fighters"]):
+        for i in range(self.config["num_fighters"]):
             direction = self.get_component(Tracking).towards_tracked()
             spread = self.config["takeoff_spread"]
             direction.rotate_degrees(spread*random.random()-spread/2.0)
@@ -659,7 +665,7 @@ class WaveSpawner(Component):
         player = self.game_services.get_player()
         player_body = player.get_component(Body)
         self.wave += 1
-        for i in xrange(self.wave-1):
+        for i in range(self.wave-1):
             enemy_type = random.choice(("enemies/destroyer.txt",
                                         "enemies/carrier.txt"))
             rnd = random.random()
@@ -672,7 +678,7 @@ class WaveSpawner(Component):
 
     def wave_is_dead(self):
         """ Has the last wave been wiped out? """
-        self.spawned = filter(lambda x: not x.is_garbage, self.spawned)
+        self.spawned = list( filter(lambda x: not x.is_garbage, self.spawned) )
         return len(self.spawned) == 0
 
     def prepare_for_wave(self):

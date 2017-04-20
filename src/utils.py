@@ -10,7 +10,7 @@ import math
 import collections
 import yaml
 
-from loading_screen import LoadingScreen
+from .loading_screen import LoadingScreen
 from pymunk.vec2d import Vec2d
 
 def fromwin(path):
@@ -100,28 +100,28 @@ class GameServices(object):
         try:
             module_path, class_name = class_path.rsplit(".", 1)
         except ValueError:
-            print "**************************************************************"
-            print "ERROR CREATING OBJECT: '%s'" % class_path
-            print "Must specify e.g. module.class in path. Got: '%s'." % class_path
-            print "**************************************************************"
+            print( "**************************************************************" )
+            print( "ERROR CREATING OBJECT: '%s'" % class_path )
+            print( "Must specify e.g. module.class in path. Got: '%s'." % class_path )
+            print( "**************************************************************" )
             bail()           
             
         try:
             module = __import__(module_path, fromlist=[class_name])
         except ImportError:
-            print "**************************************************************"
-            print "ERROR CREATING OBJECT: '%s'" % class_path
-            print "The module '%s' could not be imported." % module_path
-            print "**************************************************************"
+            print( "**************************************************************" )
+            print( "ERROR CREATING OBJECT: '%s'" % class_path )
+            print( "The module '%s' could not be imported." % module_path )
+            print( "**************************************************************" )
             bail()
 
         try:
             cls = getattr(module, class_name)
         except AttributeError:
-            print "**************************************************************"
-            print "ERROR CREATING OBJECT: '%s'" % class_path
-            print "The attribute '%s' could not be found." % class_name
-            print "**************************************************************"
+            print( "**************************************************************" )
+            print( "ERROR CREATING OBJECT: '%s'" % class_path )
+            print( "The attribute '%s' could not be found." % class_name )
+            print( "**************************************************************" )
             bail()
 
         # Might not actually be a class. But if it's a function that returns
@@ -251,7 +251,7 @@ class EntityManager(object):
         self.systems_list.append(system) # Note: could just insert at right place.
         self.systems_list = sorted(
             self.systems_list,
-            lambda x, y: cmp(x.priority, y.priority)
+            key = lambda x: x.priority
         )
 
     def get_component_system(self, component):
@@ -596,16 +596,16 @@ class Config(object):
         self.__filename = filename
 
         # Try to load the config from the file.
-        print "Loading config: ", self.__filename
+        print( "Loading config: ", self.__filename )
         data = collections.OrderedDict()
         try:
             data = ordered_load(open(self.__filename, "r"))
-        except Exception, e:
-            print e
-            print "**************************************************************"
-            print "ERROR LOADING CONFIG FILE: ", self.__filename
-            print "Probably either the file doesn't exist, or you forgot a comma!"
-            print "**************************************************************"
+        except Exception as e:
+            print( e )
+            print( "**************************************************************" )
+            print( "ERROR LOADING CONFIG FILE: ", self.__filename )
+            print( "Probably either the file doesn't exist, or you forgot a comma!" )
+            print( "**************************************************************" )
             bail() # Bail - we might be in the physics thread which ignores exceptions
 
         # Transform the data into a Config tree.
@@ -628,12 +628,12 @@ class Config(object):
         """ Get some data out. """
         got = self.get_or_none(key)
         if got is None:
-            print "**************************************************************"
-            print self.__data
-            print "ERROR READING CONFIG ATTRIBUTE: %s" % key
-            print "CONFIG FILE: %s" % self.__filename
-            print "It's probably not been added to the file, or there is a bug."
-            print "**************************************************************"
+            print( "**************************************************************" )
+            print( self.__data )
+            print( "ERROR READING CONFIG ATTRIBUTE: %s" % key )
+            print( "CONFIG FILE: %s" % self.__filename )
+            print( "It's probably not been added to the file, or there is a bug." )
+            print( "**************************************************************" )
             bail() # Bail - we might be in the physics thread which ignores exceptions
         return got
 
@@ -789,7 +789,7 @@ class ResourceLoader(object):
         filename = fromwin(filename)
         if not filename in self.images:
             self.images[filename] = pygame.image.load(filename).convert_alpha()
-            print "Loaded image: %s" % filename
+            print( "Loaded image: %s" % filename )
         return self.images[filename]
 
     def __list_animations(self):
@@ -811,8 +811,8 @@ class ResourceLoader(object):
 
         for config_or_dir in os.listdir(dirname):
 
-	    # Get the name of the config or subdir relative to the configs
-	    # directory.
+        # Get the name of the config or subdir relative to the configs
+        # directory.
             rel_name = config_or_dir
             if rel_dir is not None:
                 rel_name = os.path.join(rel_dir, rel_name)
@@ -820,8 +820,8 @@ class ResourceLoader(object):
             # Get the actual filename of the config / dir
             config_or_dir_path = os.path.join(dirname, config_or_dir)
 
-	    # If it's a config file, yield the relative name. Otherwise, walk
-	    # the directory.
+        # If it's a config file, yield the relative name. Otherwise, walk
+        # the directory.
             if os.path.isfile(config_or_dir_path):
                 fname, ext = os.path.splitext(config_or_dir_path)
                 if ext.lower() == ".txt":
@@ -854,7 +854,7 @@ class ResourceLoader(object):
             anim = self.__load_animation_definition(filename)
             frames = [self.load_image(x) for x in anim["frames"]]
             self.animations[filename] = (frames, anim["period"])
-            print "Loaded animation: %s" % filename
+            print( "Loaded animation: %s" % filename )
         (frames, period) = self.animations[filename]
         return Animation(frames, period)
 

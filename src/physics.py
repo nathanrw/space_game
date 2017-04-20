@@ -1,4 +1,4 @@
-from utils import *
+from .utils import *
 
 import pymunk
 import math
@@ -281,7 +281,7 @@ class Body(Component):
             # Calculate the resultant force and moment from applying all thrusters.
             resultant_force = Vec2d(0, 0);
             resultant_moment = 0
-            for i in xrange(0, len(thrusts)):
+            for i in range(0, len(thrusts)):
                 thrust = float(thrusts[i])
                 resultant_force += self.__thrusters[i].force_with_thrust(thrust)
                 resultant_moment += self.__thrusters[i].moment_with_thrust(thrust)
@@ -322,7 +322,7 @@ class Body(Component):
 
         # Get the cached configuration.
         result = self.__thruster_configurations[key]
-        for i in xrange(0, len(result.x)):
+        for i in range(0, len(result.x)):
             self.__thrusters[i].go(float(result.x[i]))
 
     def hit_scan(self, local_origin=Vec2d(0,0), local_direction=Vec2d(0,-1), distance=1000, radius=1):

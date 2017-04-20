@@ -24,11 +24,11 @@ Things I would like to work on now:
 import pygame
 import os
 
-from physics import Physics
-from drawing import Drawing
-from behaviours import DamageCollisionHandler, Camera, WaveSpawner
-from utils import GameServices, GameInfo, ResourceLoader, EntityManager
-from input_handling import InputHandling
+from .physics import Physics
+from .drawing import Drawing
+from .behaviours import DamageCollisionHandler, Camera, WaveSpawner
+from .utils import GameServices, GameInfo, ResourceLoader, EntityManager
+from .input_handling import InputHandling
 
 class SpaceGameServices(GameServices):
     """ The services exposed to the entitys. This is separate from
