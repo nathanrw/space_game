@@ -31,6 +31,7 @@ How to run
     ./run.py
 
 or 
+
     python run.py
 
 Controls
