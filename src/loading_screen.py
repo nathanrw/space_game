@@ -7,12 +7,12 @@ class LoadingScreen(object):
     resources, construct the loading screen, and then just increment it after
     each resource is read. """
 
-    def __init__(self, total, screen):
+    def __init__(self, total, renderer):
         """ Constructor. This actually does the initial draw. """
         self.total = total
         self.progress = 0
-        self.screen = screen
-        self.title = title = pygame.image.load("res/images/title.bmp")
+        self.renderer = renderer
+        self.title = renderer.load_compatible_image("res/images/title.bmp")
         self.__draw()
 
     def increment(self):
@@ -28,10 +28,10 @@ class LoadingScreen(object):
         """ Do the actual drawing and screen refresh. """
 
         # Clear the screen
-        self.screen.fill((0, 0, 0))
+        #self.screen.fill((0, 0, 0))
 
         # Define the geometry of the loading bar.
-        screen_rect = self.screen.get_rect()
+        screen_rect = self.renderer.screen_rect()
         bar_rect = pygame.Rect((0, 0), (0, 0))
         bar_rect.width = screen_rect.width-60
         bar_rect.height = 60
@@ -39,20 +39,21 @@ class LoadingScreen(object):
         bar_rect.top += self.title.get_height() / 2
 
         # Draw the title image above the loading bar.
-        self.screen.blit(self.title,
-                         Vec2d(bar_rect.center[0], bar_rect.top)
-                         - Vec2d(self.title.get_width()/2, self.title.get_height()+10))
+        #self.screen.blit(self.title,
+        #                 Vec2d(bar_rect.center[0], bar_rect.top)
+        #                 - Vec2d(self.title.get_width()/2, self.title.get_height()+10))
 
         # Draw the loading bar
         sz = 8
-        pygame.draw.rect(self.screen, (255, 255, 255), bar_rect)
+        #renderer.add_job_rect(self.screen, (255, 255, 255), bar_rect)
         bar_rect.inflate_ip(-sz, -sz)
-        pygame.draw.rect(self.screen, (0, 0, 0), bar_rect)
+        #pygame.draw.rect(self.screen, (0, 0, 0), bar_rect)
         bar_rect.inflate_ip(-sz, -sz)
         left = bar_rect.left
         bar_rect.width = int(bar_rect.width * (float(self.progress)/self.total))
         bar_rect.left = left
-        pygame.draw.rect(self.screen, (255, 255, 255), bar_rect)
+        #pygame.draw.rect(self.screen, (255, 255, 255), bar_rect)
 
         # Refresh the screen.
-        pygame.display.update();
+        self.renderer.render_jobs()
+        self.renderer.flip_buffers()

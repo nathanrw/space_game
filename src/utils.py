@@ -69,8 +69,8 @@ class GameServices(object):
     """ Functionality required of the game. """
     def __init__(self):
         pass
-    def get_screen(self):
-        """ Get the main drawing surface. """
+    def get_renderer(self):
+        """ Get the renderer. """
         pass
     def get_player(self):
         """ Get the player's entity. """
@@ -743,6 +743,7 @@ class ResourceLoader(object):
     
     def __init__(self):
         """ Initialise the resource loader. """
+        self.renderer = None
         self.images = {}
         self.animations = {}
         self.fonts = {}
@@ -750,7 +751,7 @@ class ResourceLoader(object):
         self.sounds = {}
         self.minimise_image_loading = False
 
-    def preload(self, screen):
+    def preload(self):
         """ Preload certain resources to reduce game stutter. """
 
         # List all animation frames.
@@ -766,7 +767,7 @@ class ResourceLoader(object):
         # Number of steps.
         count = len(images) + len(configs)
         assert count > 0
-        loading = LoadingScreen(count, screen)
+        loading = LoadingScreen(count, self.renderer)
 
         # Read in the frames.
         for filename in images:
@@ -781,14 +782,14 @@ class ResourceLoader(object):
     def load_font(self, filename, size):
         """ Load a font from the file system. """
         if not (filename, size) in self.fonts:
-            self.fonts[(filename, size)] = pygame.font.Font(filename, size)
+            self.fonts[(filename, size)] = self.renderer.load_compatible_font(filename, size)
         return self.fonts[(filename, size)]
         
     def load_image(self, filename):
         """ Load an image from the file system. """
         filename = fromwin(filename)
         if not filename in self.images:
-            self.images[filename] = pygame.image.load(filename).convert_alpha()
+            self.images[filename] = self.renderer.load_compatible_image(filename)
             print( "Loaded image: %s" % filename )
         return self.images[filename]
 
@@ -852,7 +853,7 @@ class ResourceLoader(object):
         """ Load an animation from the filesystem. """
         if not filename in self.animations:
             anim = self.__load_animation_definition(filename)
-            frames = [self.load_image(x) for x in anim["frames"]]
+            frames = self.renderer.load_compatible_anim_frames(anim["frames"])
             self.animations[filename] = (frames, anim["period"])
             print( "Loaded animation: %s" % filename )
         (frames, period) = self.animations[filename]
@@ -929,3 +930,15 @@ class Animation(object):
         rect.width = size
         rect.height = size
         return rect
+
+class Polygon(object):
+    """ A polygon. Used to be used for bullets. """
+    @classmethod
+    def make_bullet_polygon(klass, a, b):
+        perp = (a-b).perpendicular_normal() * (a-b).length * 0.1
+        lerp = a + (b - a) * 0.1
+        c = lerp + perp
+        d = lerp - perp
+        return Polygon((a,c,b,d,a))
+    def __init__(self, points):
+        self.points = [p for p in points]

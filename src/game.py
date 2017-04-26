@@ -40,8 +40,8 @@ class SpaceGameServices(GameServices):
         self.info = GameInfo()
         self.debug_level = 0
 
-    def get_screen(self):
-        return self.game.screen
+    def get_renderer(self):
+        return self.game.renderer
 
     def get_player(self):
         """ Get the player. """
@@ -78,12 +78,29 @@ class Game(object):
     def __init__(self):
         """ Initialise the game systems. """
 
+        # Change directory into the directory above this file - the
+        # one containng the 'res' tree.
         os.chdir( os.path.dirname( os.path.dirname(__file__)) )
-        # Services exposed to the entitys.
+
+        # Services exposed to the entities.
         self.game_services = SpaceGameServices(self)
 
         # The resource loader.
         self.resource_loader = ResourceLoader()
+
+        # The configuration.
+        if os.path.isfile("./config.txt"):
+            self.config = self.resource_loader.load_config_file_from("./config.txt")
+        else:
+            self.config = self.resource_loader.load_config_file("base_config.txt")
+
+        # Create the renderer.
+        self.renderer = self.game_services.lookup_type(
+            self.config.get_or_default("renderer", "src.pygame_renderer.PygameRenderer")
+        )()
+
+        # The resource loaded needs a renderer to load images etc.
+        self.resource_loader.renderer = self.renderer
 
         # The player
         self.player = None
@@ -98,7 +115,7 @@ class Game(object):
         self.physics = Physics()
 
         # The drawing system.
-        self.drawing = Drawing()
+        self.drawing = Drawing(self.renderer)
 
         # The input handling system.
         self.input_handling = InputHandling()
@@ -110,18 +127,9 @@ class Game(object):
         self.entity_manager.register_component_system(self.drawing)
         self.entity_manager.register_component_system(self.input_handling)
 
-        # The configuration.
-        if os.path.isfile("./config.txt"):
-            self.config = self.resource_loader.load_config_file_from("./config.txt")
-        else:
-            self.config = self.resource_loader.load_config_file("base_config.txt")
-
         # Configure the resource loader.
         self.resource_loader.minimise_image_loading = \
             self.config.get_or_default("minimise_image_loading", False)
-
-        # The display surface
-        self.screen = None
 
         # Is the game running?
         self.running = False
@@ -160,9 +168,9 @@ class Game(object):
             self.entity_manager.update(tick_time)
 
             # Draw
-            self.screen.fill((0, 0, 0))
-            self.drawing.draw(self.camera.get_component(Camera))
-            pygame.display.update()
+            self.drawing.draw(self.renderer, self.camera.get_component(Camera))
+            self.renderer.render_jobs()
+            self.renderer.flip_buffers()
 
             # Maintain frame rate.
             clock.tick(fps)
@@ -188,11 +196,11 @@ class Game(object):
         # Initialise the pygame display.
         pygame.init()
         pygame.mixer.init()
-        self.screen = pygame.display.set_mode((self.config.get_or_default("screen_width", 1024), 
-                                               self.config.get_or_default("screen_height", 768)))
+        self.renderer.initialise((self.config.get_or_default("screen_width", 1024), 
+                                  self.config.get_or_default("screen_height", 768)))
 
         # Preload certain images.
-        self.resource_loader.preload(self.screen)
+        self.resource_loader.preload()
 
         # Make the camera. Im not 100% sure about this being a entity like any other
         # since it's clearly special - drawing requires one, the player moves it, etc. But

@@ -7,6 +7,7 @@ See utils.py for the overall scheme this fits into.
 from pymunk.vec2d import Vec2d
 from .utils import Component, Timer
 from .physics import Body, Physics, CollisionHandler, CollisionResult, Thruster
+from .renderer import View
 
 import random
 import math
@@ -770,14 +771,15 @@ class Turrets(Component):
                                          team=self.get_component(Team).get_team())
         self.__hardpoints[hardpoint_index].set_turret(entity, self.get_component(Body))
 
-class Camera(Component):
+class Camera(Component, View):
     """ A camera, which drawing is done in relation to. """
 
     def __init__(self, entity, game_services, config):
         """ Initialise the camera. """
+        renderer = game_services.get_renderer()
         Component.__init__(self, entity, game_services, config)
+        View.__init__(self, renderer)
         self.__position = Vec2d(0, 0)
-        self.__screen = game_services.get_screen()
         self.__max_shake = 20
         self.__damping_factor = 10
         self.__shake = 0
@@ -785,38 +787,11 @@ class Camera(Component):
         self.__horizontal_shake = 0
         self.__tracking = None
         self.__zoom = 1
+        self.__screen_diagonal = (Vec2d(renderer.screen_size())/2).length
 
     def track(self, entity):
         """ Make the camera follow a particular entity. """
         self.__tracking = entity
-
-    def surface(self):
-        """ Get the surface drawing will be done on. """
-        return self.__screen
-
-    def world_to_screen(self, world):
-        """ Convert from world coordinates to screen coordinates. """
-        centre = Vec2d(self.__screen.get_size())/2
-        return self.__zoom * (world - self.position) + centre
-
-    def screen_to_world(self, screen):
-        """ Convert from screen coordinates to world coordinates. """
-        centre = Vec2d(self.__screen.get_size())/2
-        return (screen - centre) / self.__zoom + self.position
-
-    def check_bounds_world(self, bbox):
-        """ Check whether a world space bounding box is on the screen. """
-        if bbox is None: return True
-        self_box = self.__screen.get_rect()
-        self_box.width /= self.__zoom
-        self_box.height /= self.__zoom
-        self_box.center = self.position
-        return bbox.colliderect(self_box)
-
-    def check_bounds_screen(self, bbox):
-        """ Check whether a screen space bounding box is on the screen. """
-        if bbox is None: return True
-        return self.__screen.get_rect().colliderect(bbox)
 
     def update(self, dt):
         """ Update the camera. """
@@ -845,8 +820,7 @@ class Camera(Component):
         """ Apply a screen shake effect. """
         displacement = self.__position - position
         distance = displacement.length
-        screen_diagonal = (Vec2d(self.__screen.get_size())/2).length
-        max_dist = screen_diagonal * 2
+        max_dist = self.__screen_diagonal * 2
         amount = max(shake_factor * (1.0 - distance/max_dist), 0)
         self.__shake = min(self.__shake+amount, self.__max_shake)
 

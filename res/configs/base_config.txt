@@ -10,3 +10,6 @@ screen_width: 768
 
 # Should debug output be drawn?
 debug: 0
+
+# What renderer should be used?
+renderer: src.pygame_renderer.PygameRenderer
