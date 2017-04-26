@@ -6,8 +6,6 @@ from pymunk.vec2d import Vec2d
 class View(object):
     """ A view. """
     
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, renderer):
         """ Constructor. """
         self.__renderer = renderer

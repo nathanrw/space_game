@@ -1,6 +1,8 @@
 import pygame
 from pymunk.vec2d import Vec2d
 
+from .renderer import Renderer, View
+
 class LoadingScreen(object):
     """ A loading screen to display while the resources are read in. It assumes
     direct control over the pygame display. The intention is you count your
@@ -12,6 +14,7 @@ class LoadingScreen(object):
         self.total = total
         self.progress = 0
         self.renderer = renderer
+        self.view = View(renderer)
         self.title = renderer.load_compatible_image("res/images/title.bmp")
         self.__draw()
 
@@ -39,20 +42,20 @@ class LoadingScreen(object):
         bar_rect.top += self.title.get_height() / 2
 
         # Draw the title image above the loading bar.
-        #self.screen.blit(self.title,
+        #self.renderer.add_job_image(self.title,
         #                 Vec2d(bar_rect.center[0], bar_rect.top)
         #                 - Vec2d(self.title.get_width()/2, self.title.get_height()+10))
 
         # Draw the loading bar
         sz = 8
-        #renderer.add_job_rect(self.screen, (255, 255, 255), bar_rect)
+        self.renderer.add_job_rect(self.view, bar_rect, colour=(255, 255, 255), coords=Renderer.COORDS_SCREEN)
         bar_rect.inflate_ip(-sz, -sz)
-        #pygame.draw.rect(self.screen, (0, 0, 0), bar_rect)
+        self.renderer.add_job_rect(self.view, bar_rect, colour=(0, 0, 0), coords=Renderer.COORDS_SCREEN)
         bar_rect.inflate_ip(-sz, -sz)
         left = bar_rect.left
         bar_rect.width = int(bar_rect.width * (float(self.progress)/self.total))
         bar_rect.left = left
-        #pygame.draw.rect(self.screen, (255, 255, 255), bar_rect)
+        self.renderer.add_job_rect(self.view, bar_rect, colour=(255, 255, 255), coords=Renderer.COORDS_SCREEN)
 
         # Refresh the screen.
         self.renderer.render_jobs()
