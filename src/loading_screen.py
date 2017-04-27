@@ -30,9 +30,6 @@ class LoadingScreen(object):
     def __draw(self):
         """ Do the actual drawing and screen refresh. """
 
-        # Clear the screen
-        #self.screen.fill((0, 0, 0))
-
         # Define the geometry of the loading bar.
         screen_rect = self.renderer.screen_rect()
         bar_rect = pygame.Rect((0, 0), (0, 0))
