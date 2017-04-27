@@ -42,9 +42,13 @@ class LoadingScreen(object):
         bar_rect.top += self.title.get_height() / 2
 
         # Draw the title image above the loading bar.
-        #self.renderer.add_job_image(self.title,
-        #                 Vec2d(bar_rect.center[0], bar_rect.top)
-        #                 - Vec2d(self.title.get_width()/2, self.title.get_height()+10))
+        self.renderer.add_job_image(
+            self.view,
+            Vec2d(bar_rect.center[0], bar_rect.top)
+            - Vec2d(self.title.get_width()/2, self.title.get_height()+10),
+            self.title,
+            coords=Renderer.COORDS_SCREEN
+        )
 
         # Draw the loading bar
         sz = 8

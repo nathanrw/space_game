@@ -95,6 +95,10 @@ class PygameRenderer(Renderer):
         screen_pos = job.position - Vec2d(img.get_rect().center)
         self.__surface.blit(img, screen_pos)
 
+    def render_RenderJobImage(self, job):
+        """ Render an image. """
+        self.__surface.blit(job.image, job.position)
+
     def render_RenderJobWarning(self, job):
         """ Render a warning on the screen. """
 

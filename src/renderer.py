@@ -285,6 +285,24 @@ class RenderJobAnimation(RenderJob):
         """ Dispatch the job. """
         renderer.render_RenderJobAnimation(self)
 
+class RenderJobImage(RenderJob):
+    """ Render an image. """
+
+    def __init__(self, view, level, coords, position, image):
+        """ Constructor. """
+        RenderJob.__init__(self, view, level, coords)
+        self.__position = position
+        self.image = image
+
+    @property
+    def position(self):
+        """ Get the position. """
+        return self.point_to_screen(self.__position)
+
+    def dispatch(self, renderer):
+        """ Dispatch the job. """
+        renderer.render_RenderJobImage(self)
+
 class RenderJobWarning(RenderJob):
 
     def __init__(self, view, level, coords, large_font, small_font,
@@ -489,6 +507,16 @@ class Renderer(object):
             coords=kwargs["coords"]
         self.add_job(RenderJobAnimation(view, level, coords, orientation, position, anim))
 
+    def add_job_image(self, view, position, image, **kwargs):
+        """ Queue a job to render an image. """
+        level=Renderer.LEVEL_FORE_NEAR
+        if "level" in kwargs:
+            level=kwargs["level"]
+        coords=Renderer.COORDS_SCREEN
+        if "coords" in kwargs:
+            coords=kwargs["coords"]
+        self.add_job(RenderJobImage(view, level, coords, position, image))
+
     def add_job_warning(self, view, large_font, small_font, text, **kwargs):
         """ Queue a job to render a warning. """
 
@@ -553,6 +581,11 @@ class Renderer(object):
     @abc.abstractmethod
     def render_RenderJobAnimation(self, job):
         """ Render an animation. """
+        pass
+
+    @abc.abstractmethod
+    def render_RenderJobImage(self, job):
+        """ Render an image. """
         pass
 
     @abc.abstractmethod
