@@ -65,29 +65,46 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobRect(self, job):
         """ Render rectangle. """
-        pass
+        rect = job.rect
+        tl = rect.topleft
+        tr = rect.topright
+        br = rect.bottomright
+        bl = rect.bottomleft
+        GL.glColor3f(*job.colour)
+        if job.width == 0:
+            GL.glBegin(GL.GL_QUADS)
+        else:
+            GL.glLineWidth(job.width)
+            GL.glBegin(GL.GL_LINE_LOOP)
+        GL.glVertex2f(tl[0], tl[1])
+        GL.glVertex2f(tr[0], tr[1])
+        GL.glVertex2f(br[0], br[1])
+        GL.glVertex2f(bl[0], bl[1])
+        GL.glEnd()
 
     def render_RenderJobLine(self, job):
         """ Render a line. """
+        GL.glLineWidth(job.width)
+        GL.glColor3f(*job.colour)
         GL.glBegin(GL.GL_LINES)
-        GL.glColor3f(1, 1, 1)
         GL.glVertex2f(job.p0[0], job.p0[1])
         GL.glVertex2f(job.p1[0], job.p1[1])
         GL.glEnd()
 
     def render_RenderJobLines(self, job):
         """ Render a polyline. """
+        GL.glLineWidth(job.width)
+        GL.glColor3f(*job.colour)
         GL.glBegin(GL.GL_LINE_STRIP)
         for point in job.points:
-            GL.glColor3f(1, 1, 1)
             GL.glVertex2f(point[0], point[1])
         GL.glEnd()
 
     def render_RenderJobPolygon(self, job):
         """ Render a polygon. """
+        GL.glColor3f(*job.colour)
         GL.glBegin(GL.GL_POLYGON)
         for point in job.points:
-            GL.glColor3f(1, 1, 1)
             GL.glVertex2f(point[0], point[1])
         GL.glEnd()
 
