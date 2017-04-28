@@ -143,10 +143,10 @@ class PygameOpenGLRenderer(Renderer):
         height = job.length_to_screen(job.anim.frames.get_height())
         GL.glColor3f(1, 1, 1)
         GL.glBegin(GL.GL_QUADS)
-        GL.glVertex2f(*(job.position + Vec2d(-width/2, -height/2)))
-        GL.glVertex2f(*(job.position + Vec2d(width/2, -height/2)))
-        GL.glVertex2f(*(job.position + Vec2d(width/2, height/2)))
-        GL.glVertex2f(*(job.position + Vec2d(-width/2, height/2)))
+        GL.glVertex2f(*(job.position + Vec2d(-width/2, -height/2).rotated(math.radians(-job.orientation))))
+        GL.glVertex2f(*(job.position + Vec2d(width/2, -height/2).rotated(math.radians(-job.orientation))))
+        GL.glVertex2f(*(job.position + Vec2d(width/2, height/2).rotated(math.radians(-job.orientation))))
+        GL.glVertex2f(*(job.position + Vec2d(-width/2, height/2).rotated(math.radians(-job.orientation))))
         GL.glEnd()
 
     def render_RenderJobImage(self, job):
