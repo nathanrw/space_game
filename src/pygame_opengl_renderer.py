@@ -1,6 +1,9 @@
 import pygame
 import OpenGL
 import OpenGL.GL as GL
+import math
+
+from pymunk import Vec2d
 
 from .renderer import *
 
@@ -31,6 +34,7 @@ class PygameOpenGLRenderer(Renderer):
         GL.glMatrixMode(GL.GL_PROJECTION)
         GL.glLoadIdentity()
         GL.glOrtho(0, self.__surface.get_width(), self.__surface.get_height(), 0, 0, 1)
+        GL.glDisable(GL.GL_DEPTH_TEST)
 
     def flip_buffers(self):
         """ Update the pygame display. """
@@ -70,7 +74,7 @@ class PygameOpenGLRenderer(Renderer):
         tr = rect.topright
         br = rect.bottomright
         bl = rect.bottomleft
-        GL.glColor3f(*job.colour)
+        GL.glColor3f(*self.colour_int_to_float(job.colour))
         if job.width == 0:
             GL.glBegin(GL.GL_QUADS)
         else:
@@ -85,7 +89,7 @@ class PygameOpenGLRenderer(Renderer):
     def render_RenderJobLine(self, job):
         """ Render a line. """
         GL.glLineWidth(job.width)
-        GL.glColor3f(*job.colour)
+        GL.glColor3f(*self.colour_int_to_float(job.colour))
         GL.glBegin(GL.GL_LINES)
         GL.glVertex2f(job.p0[0], job.p0[1])
         GL.glVertex2f(job.p1[0], job.p1[1])
@@ -94,7 +98,7 @@ class PygameOpenGLRenderer(Renderer):
     def render_RenderJobLines(self, job):
         """ Render a polyline. """
         GL.glLineWidth(job.width)
-        GL.glColor3f(*job.colour)
+        GL.glColor3f(*self.colour_int_to_float(job.colour))
         GL.glBegin(GL.GL_LINE_STRIP)
         for point in job.points:
             GL.glVertex2f(point[0], point[1])
@@ -102,7 +106,7 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobPolygon(self, job):
         """ Render a polygon. """
-        GL.glColor3f(*job.colour)
+        GL.glColor3f(*self.colour_int_to_float(job.colour))
         GL.glBegin(GL.GL_POLYGON)
         for point in job.points:
             GL.glVertex2f(point[0], point[1])
@@ -110,7 +114,20 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobCircle(self, job):
         """ Render a circle. """
-        pass
+        GL.glColor3f(*self.colour_int_to_float(job.colour))
+        if job.width == 0:
+            GL.glBegin(GL.GL_TRIANGLE_FAN)
+        else:
+            GL.glLineWidth(job.width)
+            GL.glBegin(GL.GL_LINE_LOOP)
+        circumference = 2*math.pi*job.radius
+        points = []
+        npoi = max(int(circumference / 10), 6)
+        for i in range(0, npoi):
+            angle = i/float(npoi) * math.pi * 2
+            point = job.position + job.radius * Vec2d(math.cos(angle), math.sin(angle))
+            GL.glVertex2f(point[0], point[1])
+        GL.glEnd()
 
     def render_RenderJobText(self, job):
         """ Render some text. """
@@ -127,3 +144,7 @@ class PygameOpenGLRenderer(Renderer):
     def render_RenderJobWarning(self, job):
         """ Render a warning on the screen. """
         pass
+
+    def colour_int_to_float(self, colour):
+        """ Convert colour to float format. """
+        return (float(colour[0])/255, float(colour[1])/255, float(colour[2])/255)
