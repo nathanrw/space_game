@@ -9,15 +9,19 @@ from .renderer import *
 
 class Texture(object):
     def __init__(self, filename):
-        pass
+        self.__surface = pygame.image.load(filename)
     def get_width(self):
-        return 0
+        return self.__surface.get_width()
     def get_height(self):
-        return 0
+        return self.__surface.get_height()
 
 class TextureSequence(object):
     def __init__(self, filenames):
-        pass
+        self.__surface = pygame.image.load(filenames[0])
+    def get_width(self):
+        return self.__surface.get_width()
+    def get_height(self):
+        return self.__surface.get_height()
 
 class PygameOpenGLRenderer(Renderer):
     """ A pygame software renderer. """
@@ -135,11 +139,27 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobAnimation(self, job):
         """ Render an animation. """
-        pass
+        width = job.length_to_screen(job.anim.frames.get_width())
+        height = job.length_to_screen(job.anim.frames.get_height())
+        GL.glColor3f(1, 1, 1)
+        GL.glBegin(GL.GL_QUADS)
+        GL.glVertex2f(*(job.position + Vec2d(-width/2, -height/2)))
+        GL.glVertex2f(*(job.position + Vec2d(width/2, -height/2)))
+        GL.glVertex2f(*(job.position + Vec2d(width/2, height/2)))
+        GL.glVertex2f(*(job.position + Vec2d(-width/2, height/2)))
+        GL.glEnd()
 
     def render_RenderJobImage(self, job):
         """ Render an image. """
-        pass
+        width = job.length_to_screen(job.image.get_width())
+        height = job.length_to_screen(job.image.get_height())
+        GL.glColor3f(1, 1, 1)
+        GL.glBegin(GL.GL_QUADS)
+        GL.glVertex2f(*(job.position + Vec2d(0, 0)))
+        GL.glVertex2f(*(job.position + Vec2d(width, 0)))
+        GL.glVertex2f(*(job.position + Vec2d(width, height)))
+        GL.glVertex2f(*(job.position + Vec2d(0, height)))
+        GL.glEnd()
 
     def render_RenderJobWarning(self, job):
         """ Render a warning on the screen. """
