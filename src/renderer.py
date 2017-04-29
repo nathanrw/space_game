@@ -303,24 +303,6 @@ class RenderJobImage(RenderJob):
         """ Dispatch the job. """
         renderer.render_RenderJobImage(self)
 
-class RenderJobWarning(RenderJob):
-
-    def __init__(self, view, level, coords, large_font, small_font,
-                 text, colour, blink, offset, padding, visible):
-        """ Constructor. """
-        RenderJob.__init__(self, view, level, coords)
-        self.large_font = large_font
-        self.small_font = small_font
-        self.colour = colour
-        self.blink = blink
-        self.offset = offset
-        self.padding = padding
-        self.visible = visible
-        self.text = text
-
-    def dispatch(self, renderer):
-        renderer.render_RenderJobWarning(self)
-
 class Renderer(object):
     """ An abstract render that knows how to draw things. """
 
@@ -381,6 +363,11 @@ class Renderer(object):
     def load_compatible_font(self, filename, size):
         """ Load a font that can be rendered. The implementation can return its
         own font representation; the client should treat it as an opaque object. """
+        pass
+
+    @abc.abstractmethod
+    def compatible_image_from_text(self, text, font, colour):
+        """ Create an image by rendering a text string. """
         pass
 
     @abc.abstractmethod
@@ -517,32 +504,6 @@ class Renderer(object):
             coords=kwargs["coords"]
         self.add_job(RenderJobImage(view, level, coords, position, image))
 
-    def add_job_warning(self, view, large_font, small_font, text, **kwargs):
-        """ Queue a job to render a warning. """
-
-        # Parse arguments.
-        level=Renderer.LEVEL_FORE_NEAR
-        coords=Renderer.COORDS_SCREEN
-        colour=(255,255,255)
-        if "colour" in kwargs:
-            colour = kwargs["colour"]
-        blink=True
-        if "blink" in kwargs:
-            blink = kwargs["blink"]
-        offset=0
-        if "offset" in kwargs:
-            offset = kwargs["offset"]
-        padding=0
-        if "padding" in kwargs:
-            padding = kwargs["padding"]
-        visible=True
-        if "visible" in kwargs:
-            visible = kwargs["visible"]
-
-        # Add the job.
-        self.add_job(RenderJobWarning(view, level, coords, large_font, small_font,
-                                      text, colour, blink, offset, padding, visible))
-
     @abc.abstractmethod
     def render_RenderJobBackground(self, job):
         """ Render a scrolling background. """
@@ -586,9 +547,4 @@ class Renderer(object):
     @abc.abstractmethod
     def render_RenderJobImage(self, job):
         """ Render an image. """
-        pass
-
-    @abc.abstractmethod
-    def render_RenderJobWarning(self, job):
-        """ Render a warning. """
         pass

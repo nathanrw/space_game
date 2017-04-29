@@ -143,6 +143,10 @@ class PygameOpenGLRenderer(Renderer):
         """ Load a pygame font. """
         return pygame.font.Font(filename, size)
 
+    def compatible_image_from_text(self, text, font, colour):
+        """ Create an image by rendering a text string. """
+        return Texture.from_surface(font.render(text, True, colour))
+
     def screen_size(self):
         """ Get the display size. """
         return self.__surface.get_size()
@@ -230,7 +234,7 @@ class PygameOpenGLRenderer(Renderer):
         text_surface = job.font.render(job.text, True, job.colour)
         texture = Texture.from_surface(text_surface)
         self.render_image(texture, texture.get_width(), texture.get_height(), job.position)
-        del texture
+        texture.delete()
 
     def render_RenderJobAnimation(self, job):
         """ Render an animation. """
@@ -254,43 +258,6 @@ class PygameOpenGLRenderer(Renderer):
         width = job.length_to_screen(job.image.get_width())
         height = job.length_to_screen(job.image.get_height())
         self.render_image(job.image, width, height, job.position)
-
-    def render_RenderJobWarning(self, job):
-        """ Render a warning on the screen. """
-
-        # Render text.
-        image = Texture(job.large_font.render(job.text, True, job.colour))
-        warning = Texture(job.small_font.render("WARNING", True, job.colour))
-
-        # Now draw the image, if we have one.
-        if job.visible:
-            pos = Vec2d(self.screen_rect().center) - Vec2d(image.get_size()) / 2
-            self.render_image(image, image.get_width(), image.get_height(), pos)
-
-        # Get positions of the 'WARNING' strips
-        pos = Vec2d(self.screen_rect().center) - Vec2d(image.get_size()) / 2
-        y0 = int(pos.y-warning.get_height()-10)
-        y1 = int(pos.y+image.get_height()+10)
-
-        # Draw a scrolling warning.
-        if job.blink:
-            for (forwards, y) in ((True, y0), (False, y1)):
-                image_width = warning.get_width()
-                image_height = warning.get_height()
-                (screen_width, screen_height) = self.screen_size()
-                x = job.offset
-                if not forwards:
-                    x = -x
-                start_i = -(x%(image_width+job.padding))
-                for i in range(int(start_i), screen_width, image_width + job.padding):
-                    self.render_image(warning, warning.get_width(), warning.get_height(), (i, y))
-                rect = self.__surface.get_rect()
-                rect.height = 5
-                rect.bottom = y-5
-                GL.glColor3f(*self.colour_int_to_float(job.colour))
-                self.render_quad(rect.width, rect.height, rect.topleft)
-                rect.top=y+warning.get_height()+5
-                self.render_quad(rect.width, rect.height, rect.topleft)
 
     def render_image(self, texture, width, height, position):
         """ Render an image. """

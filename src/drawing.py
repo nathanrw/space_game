@@ -281,6 +281,9 @@ class TextDrawer(object):
         self.__offs = 0
         self.__scroll_speed = 300
         self.__padding = 20
+        self.__image = None
+        self.__warning = None
+        self.__colour = (255, 255, 255)
 
     def update(self, dt):
         """ Update: support blinking. """
@@ -288,8 +291,9 @@ class TextDrawer(object):
             if self.__blink_timer.tick(dt):
                 self.__blink_timer.reset()
                 self.__visible = not self.__visible
-        self.__offs += self.__scroll_speed * dt
-        #self.__offs = self.__offs % (self.__warning.get_width()+self.__padding)
+        if self.__warning is not None:
+            self.__offs += self.__scroll_speed * dt
+            self.__offs = self.__offs % (self.__warning.get_width()+self.__padding)
 
     def draw(self, renderer, camera):
         """Draw the text to the screen."""
@@ -300,8 +304,36 @@ class TextDrawer(object):
         if text_component is not None:
             text = text_component.text
 
-        # Ask the renderer to draw a warning.
-        renderer.add_job_warning(camera, self.__font, self.__small_font, text,
-                                 blink=self.__blink, offset=self.__offs,
-                                 padding=self.__padding, visible=self.__visible,
-                                 colour=text_component.font_colour())
+        # Render text.
+        if self.__image is None:
+            self.__image = renderer.compatible_image_from_text(text, self.__font, self.__colour)
+        if self.__warning is None:
+            self.__warning = renderer.compatible_image_from_text("WARNING", self.__small_font, self.__colour)
+
+        # Now draw the image, if we have one.
+        if self.__visible:
+            pos = Vec2d(renderer.screen_rect().center) - Vec2d(self.__image.get_size()) / 2
+            renderer.add_job_image(camera, pos, self.__image, coords=Renderer.COORDS_SCREEN)
+
+        # Get positions of the 'WARNING' strips
+        pos = Vec2d(renderer.screen_rect().center) - Vec2d(self.__image.get_size()) / 2
+        y0 = int(pos.y-self.__warning.get_height()-10)
+        y1 = int(pos.y+self.__image.get_height()+10)
+
+        # Draw a scrolling warning.
+        if self.__blink:
+            for (forwards, y) in ((True, y0), (False, y1)):
+                (image_width, image_height) = self.__warning.get_size()
+                (screen_width, screen_height) = renderer.screen_size()
+                x = self.__offs
+                if not forwards:
+                    x = -x
+                start_i = -(x%(image_width+self.__padding))
+                for i in range(int(start_i), screen_width, image_width + self.__padding):
+                    renderer.add_job_image(camera, (i, y), self.__warning, coords=Renderer.COORDS_SCREEN)
+                rect = renderer.screen_rect()
+                rect.height = 5
+                rect.bottom = y-5
+                renderer.add_job_rect(camera, rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN)
+                rect.top=y+self.__warning.get_height()+5
+                renderer.add_job_rect(camera, rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN)

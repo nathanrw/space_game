@@ -33,6 +33,10 @@ class PygameRenderer(Renderer):
         """ Load a pygame font. """
         return pygame.font.Font(filename, size)
 
+    def compatible_image_from_text(self, text, font, colour):
+        """ Create an image by rendering a text string. """
+        return font.render(text, True, colour)
+
     def screen_size(self):
         """ Get the display size. """
         return self.__surface.get_size()
@@ -98,38 +102,3 @@ class PygameRenderer(Renderer):
     def render_RenderJobImage(self, job):
         """ Render an image. """
         self.__surface.blit(job.image, job.position)
-
-    def render_RenderJobWarning(self, job):
-        """ Render a warning on the screen. """
-
-        # Render text.
-        image = job.large_font.render(job.text, True, job.colour)
-        warning = job.small_font.render("WARNING", True, job.colour)
-
-        # Now draw the image, if we have one.
-        if job.visible:
-            pos = Vec2d(self.__surface.get_rect().center) - Vec2d(image.get_size()) / 2
-            self.__surface.blit(image, (int(pos.x), int(pos.y)))
-
-        # Get positions of the 'WARNING' strips
-        pos = Vec2d(self.__surface.get_rect().center) - Vec2d(image.get_size()) / 2
-        y0 = int(pos.y-warning.get_height()-10)
-        y1 = int(pos.y+image.get_height()+10)
-
-        # Draw a scrolling warning.
-        if job.blink:
-            for (forwards, y) in ((True, y0), (False, y1)):
-                (image_width, image_height) = warning.get_size()
-                (screen_width, screen_height) = self.__surface.get_size()
-                x = job.offset
-                if not forwards:
-                    x = -x
-                start_i = -(x%(image_width+job.padding))
-                for i in range(int(start_i), screen_width, image_width + job.padding):
-                    self.__surface.blit(warning, (i, y))
-                rect = self.__surface.get_rect()
-                rect.height = 5
-                rect.bottom = y-5
-                pygame.draw.rect(self.__surface, job.colour, rect)
-                rect.top=y+warning.get_height()+5
-                pygame.draw.rect(self.__surface, job.colour, rect)
