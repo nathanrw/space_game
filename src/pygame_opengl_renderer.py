@@ -10,9 +10,19 @@ from .renderer import *
 class Texture(object):
     """ An OpenGL texture. """
 
-    def __init__(self, filename):
-        """ Constructor. """
+    @classmethod
+    def from_file(klass, filename):
+        """ Create a texture from a file. """
         surface = pygame.image.load(filename).convert_alpha()
+        return Texture(surface)
+
+    @classmethod
+    def from_surface(klass, surface):
+        """ Create a texture from a surface. """
+        return Texture(surface)
+
+    def __init__(self, surface):
+        """ Constructor. """
         data = pygame.image.tostring(surface, "RGBA", 1)
         self.__width = surface.get_width()
         self.__height = surface.get_height()
@@ -27,21 +37,35 @@ class Texture(object):
 
     def begin(self):
         """ Set OpenGL state. """
+        assert self.__texture is not None
         GL.glEnable(GL.GL_TEXTURE_2D)
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.__texture)
         GL.glColor3f(1, 1, 1)
 
     def end(self):
         """ Unset the state. """
+        assert self.__texture is not None
         GL.glDisable(GL.GL_TEXTURE_2D)
 
     def get_width(self):
         """ Get the texture width in pixels. """
+        assert self.__texture is not None
         return self.__width
 
     def get_height(self):
         """ Get the texture height in pixels. """
+        assert self.__texture is not None
         return self.__height
+
+    def delete(self):
+        """ Free the texture. """
+        if self.__texture is not None:
+            GL.glDeleteTextures(self.__texture)
+            self.__texture = None
+
+    def __del__(self):
+        """ Ensure the OpenGL texture gets deleted. """
+        self.delete()
 
 class TextureSequence(object):
     """ A sequence of textures. """
@@ -53,7 +77,7 @@ class TextureSequence(object):
 
     def __init__(self, filenames):
         """ Constructor. """
-        self.__textures = [Texture(f) for f in filenames]
+        self.__textures = [Texture.from_file(f) for f in filenames]
         self.__bound_texture = None
 
     def begin(self, timer):
@@ -101,7 +125,7 @@ class PygameOpenGLRenderer(Renderer):
 
     def load_compatible_image(self, filename):
         """ Load a pygame image. """
-        return Texture(filename)
+        return Texture.from_file(filename)
 
     def load_compatible_anim_frames(self, filename_list):
         """ Load the frames of an animation into a format compatible
@@ -198,7 +222,10 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobText(self, job):
         """ Render some text. """
-        pass
+        text_surface = job.font.render(job.text, True, job.colour)
+        texture = Texture.from_surface(text_surface)
+        self.render_image(texture, texture.get_width(), texture.get_height(), job.position)
+        del texture
 
     def render_RenderJobAnimation(self, job):
         """ Render an animation. """
@@ -221,22 +248,26 @@ class PygameOpenGLRenderer(Renderer):
         """ Render an image. """
         width = job.length_to_screen(job.image.get_width())
         height = job.length_to_screen(job.image.get_height())
-        job.image.begin()
-        GL.glBegin(GL.GL_QUADS)
-        GL.glTexCoord2f(0, 0)
-        GL.glVertex2f(*(job.position + Vec2d(0, 0)))
-        GL.glTexCoord2f(1, 0)
-        GL.glVertex2f(*(job.position + Vec2d(width, 0)))
-        GL.glTexCoord2f(1, 1)
-        GL.glVertex2f(*(job.position + Vec2d(width, height)))
-        GL.glTexCoord2f(0, 1)
-        GL.glVertex2f(*(job.position + Vec2d(0, height)))
-        GL.glEnd()
-        job.image.end()
+        self.render_image(job.image, width, height, job.position)
 
     def render_RenderJobWarning(self, job):
         """ Render a warning on the screen. """
         pass
+
+    def render_image(self, texture, width, height, position):
+        """ Render an image. """
+        texture.begin()
+        GL.glBegin(GL.GL_QUADS)
+        GL.glTexCoord2f(0, 0)
+        GL.glVertex2f(*(position + Vec2d(0, 0)))
+        GL.glTexCoord2f(1, 0)
+        GL.glVertex2f(*(position + Vec2d(width, 0)))
+        GL.glTexCoord2f(1, 1)
+        GL.glVertex2f(*(position + Vec2d(width, height)))
+        GL.glTexCoord2f(0, 1)
+        GL.glVertex2f(*(position + Vec2d(0, height)))
+        GL.glEnd()
+        texture.end()
 
     def colour_int_to_float(self, colour):
         """ Convert colour to float format. """
