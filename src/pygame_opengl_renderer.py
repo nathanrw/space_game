@@ -57,6 +57,11 @@ class Texture(object):
         assert self.__texture is not None
         return self.__height
 
+    def get_size(self):
+        """ Get the texture size in pixels. """
+        assert self.__texture is not None
+        return (self.__width, self.__height)
+
     def delete(self):
         """ Free the texture. """
         if self.__texture is not None:
@@ -252,11 +257,49 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobWarning(self, job):
         """ Render a warning on the screen. """
-        pass
+
+        # Render text.
+        image = Texture(job.large_font.render(job.text, True, job.colour))
+        warning = Texture(job.small_font.render("WARNING", True, job.colour))
+
+        # Now draw the image, if we have one.
+        if job.visible:
+            pos = Vec2d(self.screen_rect().center) - Vec2d(image.get_size()) / 2
+            self.render_image(image, image.get_width(), image.get_height(), pos)
+
+        # Get positions of the 'WARNING' strips
+        pos = Vec2d(self.screen_rect().center) - Vec2d(image.get_size()) / 2
+        y0 = int(pos.y-warning.get_height()-10)
+        y1 = int(pos.y+image.get_height()+10)
+
+        # Draw a scrolling warning.
+        if job.blink:
+            for (forwards, y) in ((True, y0), (False, y1)):
+                image_width = warning.get_width()
+                image_height = warning.get_height()
+                (screen_width, screen_height) = self.screen_size()
+                x = job.offset
+                if not forwards:
+                    x = -x
+                start_i = -(x%(image_width+job.padding))
+                for i in range(int(start_i), screen_width, image_width + job.padding):
+                    self.render_image(warning, warning.get_width(), warning.get_height(), (i, y))
+                rect = self.__surface.get_rect()
+                rect.height = 5
+                rect.bottom = y-5
+                GL.glColor3f(*self.colour_int_to_float(job.colour))
+                self.render_quad(rect.width, rect.height, rect.topleft)
+                rect.top=y+warning.get_height()+5
+                self.render_quad(rect.width, rect.height, rect.topleft)
 
     def render_image(self, texture, width, height, position):
         """ Render an image. """
         texture.begin()
+        self.render_quad(width, height, position)
+        texture.end()
+
+    def render_quad(self, width, height, position):
+        """ Render a quad. """
         GL.glBegin(GL.GL_QUADS)
         GL.glTexCoord2f(0, 0)
         GL.glVertex2f(*(position + Vec2d(0, 0)))
@@ -267,7 +310,6 @@ class PygameOpenGLRenderer(Renderer):
         GL.glTexCoord2f(0, 1)
         GL.glVertex2f(*(position + Vec2d(0, height)))
         GL.glEnd()
-        texture.end()
 
     def colour_int_to_float(self, colour):
         """ Convert colour to float format. """
