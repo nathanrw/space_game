@@ -222,7 +222,7 @@ class PygameOpenGLRenderer(Renderer):
             GL.glBegin(GL.GL_LINE_LOOP)
         circumference = 2*math.pi*job.radius
         points = []
-        npoi = max(int(circumference / 10), 6)
+        npoi = max(int(math.sqrt(circumference)), 6)
         for i in range(0, npoi):
             angle = i/float(npoi) * math.pi * 2
             point = job.position + job.radius * Vec2d(math.cos(angle), math.sin(angle))
