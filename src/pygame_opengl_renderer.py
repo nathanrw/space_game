@@ -106,6 +106,11 @@ class TextureSequence(object):
         """ The texture height. """
         return self.__textures[0].get_height()
 
+    def get_frame(self, timer):
+        """ Get a frame from a timer. """
+        idx = timer.pick_index(len(self.__textures))
+        return self.__textures[idx]
+
 class PygameOpenGLRenderer(Renderer):
     """ A pygame software renderer. """
 
@@ -233,18 +238,14 @@ class PygameOpenGLRenderer(Renderer):
         """ Render an animation. """
         width = job.length_to_screen(job.anim.frames.get_width())
         height = job.length_to_screen(job.anim.frames.get_height())
-        job.anim.frames.begin(job.anim.timer)
-        GL.glBegin(GL.GL_QUADS)
-        GL.glTexCoord2f(0, 0)
-        GL.glVertex2f(*(job.position + Vec2d(-width/2, -height/2).rotated(math.radians(-job.orientation))))
-        GL.glTexCoord2f(1, 0)
-        GL.glVertex2f(*(job.position + Vec2d(width/2, -height/2).rotated(math.radians(-job.orientation))))
-        GL.glTexCoord2f(1, 1)
-        GL.glVertex2f(*(job.position + Vec2d(width/2, height/2).rotated(math.radians(-job.orientation))))
-        GL.glTexCoord2f(0, 1)
-        GL.glVertex2f(*(job.position + Vec2d(-width/2, height/2).rotated(math.radians(-job.orientation))))
-        GL.glEnd()
-        job.anim.frames.end()
+        self.render_image(
+            job.anim.frames.get_frame(job.anim.timer),
+            width,
+            height,
+            job.position,
+            origin=Vec2d(width/2, height/2),
+            orientation = math.radians(-job.orientation)
+        )
 
     def render_RenderJobImage(self, job):
         """ Render an image. """
@@ -252,23 +253,37 @@ class PygameOpenGLRenderer(Renderer):
         height = job.length_to_screen(job.image.get_height())
         self.render_image(job.image, width, height, job.position)
 
-    def render_image(self, texture, width, height, position):
+    def render_image(self, texture, width, height, position, **kwargs):
         """ Render an image. """
         texture.begin()
-        self.render_quad(width, height, position)
+        self.render_quad(width, height, position, **kwargs)
         texture.end()
 
-    def render_quad(self, width, height, position):
+    def render_quad(self, width, height, position, **kwargs):
         """ Render a quad. """
+
+        # Rotation about origin.
+        orientation = 0
+        if "orientation" in kwargs:
+            orientation = kwargs["orientation"]
+
+        # Origin position in local coordinates.
+        origin = Vec2d(0, 0)
+        if "origin" in kwargs:
+            origin = kwargs["origin"]
+
+        # Get quad corners in local coordinates, relative to position.
+        tl = Vec2d(0, 0) - origin
+        tr = Vec2d(width, 0) - origin
+        br = Vec2d(width, height) - origin
+        bl = Vec2d(0, height) - origin
+
+        # Render the quad.
         GL.glBegin(GL.GL_QUADS)
-        GL.glTexCoord2f(0, 0)
-        GL.glVertex2f(*(position + Vec2d(0, 0)))
-        GL.glTexCoord2f(1, 0)
-        GL.glVertex2f(*(position + Vec2d(width, 0)))
-        GL.glTexCoord2f(1, 1)
-        GL.glVertex2f(*(position + Vec2d(width, height)))
-        GL.glTexCoord2f(0, 1)
-        GL.glVertex2f(*(position + Vec2d(0, height)))
+        GL.glTexCoord2f(0, 0); GL.glVertex2f(*(position + tl.rotated(orientation)))
+        GL.glTexCoord2f(1, 0); GL.glVertex2f(*(position + tr.rotated(orientation)))
+        GL.glTexCoord2f(1, 1); GL.glVertex2f(*(position + br.rotated(orientation)))
+        GL.glTexCoord2f(0, 1); GL.glVertex2f(*(position + bl.rotated(orientation)))
         GL.glEnd()
 
     def colour_int_to_float(self, colour):
