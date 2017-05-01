@@ -280,10 +280,10 @@ class PygameOpenGLRenderer(Renderer):
 
         # Render the quad.
         GL.glBegin(GL.GL_QUADS)
-        GL.glTexCoord2f(0, 0); GL.glVertex2f(*(position + tl.rotated(orientation)))
-        GL.glTexCoord2f(1, 0); GL.glVertex2f(*(position + tr.rotated(orientation)))
-        GL.glTexCoord2f(1, 1); GL.glVertex2f(*(position + br.rotated(orientation)))
-        GL.glTexCoord2f(0, 1); GL.glVertex2f(*(position + bl.rotated(orientation)))
+        GL.glTexCoord2f(0, 1); GL.glVertex2f(*(position + tl.rotated(orientation)))
+        GL.glTexCoord2f(0, 0); GL.glVertex2f(*(position + bl.rotated(orientation)))
+        GL.glTexCoord2f(1, 0); GL.glVertex2f(*(position + br.rotated(orientation)))
+        GL.glTexCoord2f(1, 1); GL.glVertex2f(*(position + tr.rotated(orientation)))
         GL.glEnd()
 
     def colour_int_to_float(self, colour):
