@@ -158,14 +158,7 @@ class PygameOpenGLRenderer(Renderer):
     def render_RenderJobBackground(self, job):
         """ Render scrolling background. """
         (w, h) = self.screen_size()
-        job.background_image.begin()
-        GL.glBegin(GL.GL_QUADS)
-        GL.glTexCoord2f(0, 0); GL.glVertex2f(0, 0)
-        GL.glTexCoord2f(1, 0); GL.glVertex2f(w, 0)
-        GL.glTexCoord2f(1, 1); GL.glVertex2f(w, h)
-        GL.glTexCoord2f(0, 1); GL.glVertex2f(0, h)
-        GL.glEnd()
-        job.background_image.end()
+        self.render_image(job.background_image, w, h, Vec2d(0, 0))
 
     def render_RenderJobRect(self, job):
         """ Render rectangle. """
