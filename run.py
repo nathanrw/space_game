@@ -7,7 +7,11 @@ import cProfile
 def main():
     """ Run the game! """
     game = src.game.Game()
-    game.run()
+    try:
+        game.run()
+    except KeyboardInterrupt:
+        # Don't show a stack trace.
+        pass
 
 if __name__ == '__main__':
 
