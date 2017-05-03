@@ -56,6 +56,18 @@ Rolling our own
 
 * Draw using a simple shader.
 
+### renderer.py
+
+* Abstract class 'Renderer' which is passed 'jobs' each of which specifies
+  a single drawing operation.  Jobs are buffered, and executed when a method
+  'render_jobs()' is called.  The renderer is free to process and reorder the
+  jobs for greater efficiency.
+
+* Derived class 'PygameRenderer' implements pygame software rendering.
+
+* Derived class 'PygameOpenGLRenderer' uses OpenGL to do drawing into a
+  pygame window.
+
 Pyglet
 ------
 
