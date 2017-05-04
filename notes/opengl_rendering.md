@@ -68,6 +68,29 @@ Rolling our own
 * Derived class 'PygameOpenGLRenderer' uses OpenGL to do drawing into a
   pygame window.
 
+### PygameOpenGLRenderer
+
+A simple old-school OpenGL renderer. It's very slow, a lot of the work of
+transforming vertices is done in software and lots of draw calls and state
+changes are made.
+
+### Plan for efficient sprite rendering
+
+* Sort jobs by (layer, ...) Combine jobs together into batches.
+
+* Maximise size of batches using array textures and instancing.
+
+* At first, I envisage 1 array texture per animation, but the max frame
+  count is very high so we could potentially have more. Or have a 3d
+  texture atlas, have *all* data in a single 3d texture.
+
+* Render sprites using instancing. Upload a triangle strip for a
+  unit quad, and upload the (position, width, height, texture z,
+  texture offset) separately. Do this via glDrawArraysInstanced,
+  this way the other data comes in as vertex attributes and not
+  as uniform data (of which you can only have so much.)
+
+
 Pyglet
 ------
 
