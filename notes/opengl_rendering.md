@@ -33,7 +33,16 @@ following:
     OpenGL ES profile version string: OpenGL ES 3.0 Mesa 13.0.4
     OpenGL ES profile shading language version string: OpenGL ES GLSL ES 3.00
 
-OpenGL 3.3 seems reasonable enough.
+I had thought this meant OpenGL 3.3 was available. Turns out, I think it
+means we're limited to 3.0 / GLSL 1.3.  At least, that's what pygame uses
+when it creates the opengl context.
+
+This means
+
+ * We can use array textures.
+ * We can't use glDrawArraysIndexed, which came in OpenGL 3.1.
+
+I might be missing something.
 
 Rolling our own
 ---------------

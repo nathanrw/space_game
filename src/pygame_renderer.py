@@ -10,9 +10,10 @@ class PygameRenderer(Renderer):
         Renderer.__init__(self)
         self.__surface = None
 
-    def initialise(self, screen_size):
+    def initialise(self, screen_size, data_path):
         """ Initialise the pygame display. """
         self.__surface = pygame.display.set_mode(screen_size)
+        self.__data_path = data_path
 
     def flip_buffers(self):
         """ Update the pygame display. """

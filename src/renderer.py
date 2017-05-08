@@ -329,7 +329,7 @@ class Renderer(object):
         self.__jobs = []
 
     @abc.abstractmethod
-    def initialise(self, screen_size):
+    def initialise(self, screen_size, data_path):
         """ Initialise the renderer. """
         pass
 

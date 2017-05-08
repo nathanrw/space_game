@@ -2,10 +2,84 @@ import pygame
 import OpenGL
 import OpenGL.GL as GL
 import math
+import os
+import os.path
 
 from pymunk import Vec2d
 
 from .renderer import *
+
+class ShaderProgram(object):
+    """ Manages an OpenGL shader program.
+
+    Note that the program will currently never be deleted. My thinking
+    is that there won't be many shaders, and so we will leave them to be
+    cleaned up when the program terminates. """
+
+    def __init__(self, filename_type_pairs, attribs, uniforms):
+        """ Constructor - create and initialise a shader program.
+
+        'filename_type_pairs' is a list of (filename, enum) tuples
+        that specify the shader source to load and what type of
+        shaders they are.
+
+        'attribs' is a list of vertex attributes used in the shader
+        program.
+
+        'uniforms' is a list of uniform state used in the shader
+        program.
+
+        These will correspond to variables declared in the shader
+        source.
+        """
+
+        # Note: see the following, which was referenced in the PyOpenGL
+        # documentation:
+        #       https://bitbucket.org/rndblnch/opengl-programmable/src/tip/10-g
+        #       l3.2core.py?fileviewer=file-view-default
+
+        # Create the program object.
+        self.__shader_program = GL.glCreateProgram()
+
+        # Assign locations to vertex attributes. We'll bind them in the program later...
+        self.__attrib_locations = dict((k, v) for (v, k) in enumerate(attribs))
+
+        # Uniform locations will be determined by OpenGL, we'll get them later.
+        self.__uniform_locations = {}
+
+        # Compile all of the source files and attach the resulting
+        # shader objects to our shader program.
+        for (filename, shader_type) in filename_type_pairs:
+            shader = GL.glCreateShader(shader_type)
+            GL.glShaderSource(shader, open(filename, 'r').read())
+            GL.glCompileShader(shader)
+            if GL.glGetShaderiv(shader, GL.GL_COMPILE_STATUS) != GL.GL_TRUE:
+                raise Exception(GL.glGetShaderInfoLog(shader))
+            GL.glAttachShader(self.__shader_program, shader)
+
+        # Now we can bind all of the vertex attributes to their
+        # assigned locations.
+        for attrib in attribs:
+            GL.glBindAttribLocation(self.__shader_program,
+                                    self.__attrib_locations[attrib],
+                                    attrib)
+
+        # Now link the program.
+        GL.glLinkProgram(self.__shader_program)
+        if GL.glGetProgramiv(self.__shader_program, GL.GL_LINK_STATUS) != GL.GL_TRUE:
+            raise Exception(GL.glGetProgramInfoLog(self.__shader_program))
+
+        # Retrieve the uniform locations and remember them.
+        for uniform in uniforms:
+            self.__uniform_locations[uniform] = GL.glGetUniformLocation(self.__shader_program, uniform)
+
+    def bind(self):
+        """ Render using the shader program. """
+        GL.glUseProgram(self.__shader_program)
+
+    def unbind(self):
+        """ Render using the fixed function pipeline. """
+        GL.glUseProgram(0)
 
 class Texture(object):
     """ An OpenGL texture. """
@@ -119,15 +193,26 @@ class PygameOpenGLRenderer(Renderer):
         Renderer.__init__(self)
         self.__surface = None
 
-    def initialise(self, screen_size):
+    def initialise(self, screen_size, data_path):
         """ Initialise the pygame display. """
         self.__surface = pygame.display.set_mode(screen_size, pygame.DOUBLEBUF|pygame.OPENGL)
+        self.__data_path = data_path
         GL.glViewport(0, 0, self.__surface.get_width(), self.__surface.get_height())
         GL.glMatrixMode(GL.GL_PROJECTION)
         GL.glLoadIdentity()
         GL.glOrtho(0, self.__surface.get_width(), self.__surface.get_height(), 0, 0, 1)
         GL.glEnable(GL.GL_BLEND)
         GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
+
+        print ("OpenGL version: %s" % GL.glGetString(GL.GL_VERSION))
+        print ("OpenGL vendor: %s" % GL.glGetString(GL.GL_VENDOR))
+
+        self.__anim_shader = ShaderProgram(
+            ((os.path.join(self.__data_path, "shaders/anim/anim.v.glsl"), GL.GL_VERTEX_SHADER),
+             (os.path.join(self.__data_path, "shaders/anim/anim.f.glsl"), GL.GL_FRAGMENT_SHADER)),
+            ("vertex"), # Attributes
+            () # Uniforms
+        )
 
     def flip_buffers(self):
         """ Update the pygame display. """

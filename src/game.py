@@ -197,7 +197,8 @@ class Game(object):
         pygame.init()
         pygame.mixer.init()
         self.renderer.initialise((self.config.get_or_default("screen_width", 1024), 
-                                  self.config.get_or_default("screen_height", 768)))
+                                  self.config.get_or_default("screen_height", 768)),
+                                 "./res")
 
         # Preload certain images.
         self.resource_loader.preload()
