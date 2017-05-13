@@ -4,6 +4,7 @@ import OpenGL.GL as GL
 import math
 import os
 import os.path
+import numpy
 
 from pymunk import Vec2d
 
@@ -72,10 +73,16 @@ class ShaderProgram(object):
         # Retrieve the uniform locations and remember them.
         for uniform in uniforms:
             self.__uniform_locations[uniform] = GL.glGetUniformLocation(self.__shader_program, uniform)
+            if self.__uniform_locations[uniform] == -1:
+                print ("Warning: Uniform '%s' does not exist." % uniform)
 
     def begin(self):
         """ Render using the shader program. """
         GL.glUseProgram(self.__shader_program)
+
+    def get_uniform_location(self, name):
+        """ Get the location of a uniform. """
+        return self.__uniform_locations[name]
 
     def end(self):
         """ Render using the fixed function pipeline. """
@@ -142,9 +149,6 @@ class Texture(object):
             GL.glDeleteTextures(self.__texture)
             self.__texture = None
 
-    def __del__(self):
-        """ Ensure the OpenGL texture gets deleted. """
-        self.delete()
 
 class TextureSequence(object):
     """ A sequence of textures. """
@@ -185,11 +189,56 @@ class TextureSequence(object):
         idx = timer.pick_index(len(self.__textures))
         return self.__textures[idx]
 
+
+class TextureRef(object):
+    """ A reference to a location in a texture. """
+
+    def __init__(self, u0, v0, u1, v1, level):
+        """ Constructor. """
+        self.__min = Vec2d(u0, v0)
+        self.__max = Vec2d(u1, v1)
+        self.__level = level
+
+    def get_texcoord(self, i):
+        """ 'i' corresponds to a rectangle corner, and is a number between 0 and 3. """
+        if i == 0:
+            return (self.__min[0], self.__min[1], self.__level)
+        if i == 1:
+            return (self.__max[0], self.__min[1], self.__level)
+        if i == 2:
+            return (self.__max[0], self.__max[1], self.__level)
+        if i == 3:
+            return (self.__min[0], self.__max[1], self.__level)
+        raise Exception("Expected 0 <= i <= 3, got %s" % i)
+
+    def get_size(self):
+        """ Get the size of the texture section. """
+        return self.__max - self.__min
+
+    def get_width(self):
+        """ Get the width of the texture section. """
+        return self.get_size[0]
+
+    def get_height(self):
+        """ Get the height of the texture section. """
+        return self.get_size[1]
+
+    def get_level(self):
+        """ Get the level of the texture section. """
+        return self.__level
+
+
 class TextureArray(object):
     """ A texture array for rendering many sprites without changing
     textures. """
 
-    def __init__(self, files):
+    def __init__(self):
+        self.__max_width = 0
+        self.__max_height = 0
+        self.__texture_dimensions = []
+        self.__texture = 0
+
+    def load(self, files):
 
         # Read in each image file and determine the maximum extents,
         # remembering the extents of each one.
@@ -245,6 +294,175 @@ class TextureArray(object):
         """ Stop rendering with the texture array. """
         pass
 
+
+class CommandBufferArray(object):
+    """ Command buffer array - stores a set of command buffers and knows what
+    buffer should be filled from a given job. """
+
+    def __init__(self, shader_program, texture_array):
+        """ Initialise the command buffer array. """
+        self.__shader_program = shader_program
+        self.__texture_array = texture_array
+        self.__buffers = {}
+
+    def get_buffer(self, coordinate_system, level, primitive_type):
+        """ Get the buffer to add vertices to. """
+        key = (level, coordinate_system, primitive_type)
+        if key not in self.__buffers:
+            self.__buffers[key] = CommandBuffer(
+                coordinate_system,
+                self.__shader_program,
+                self.__texture_array,
+                primitive_type
+            )
+        return self.__buffers[key]
+
+    def reset(self, view):
+        """ Reset the buffers so they can be re-used. """
+        for key in self.__buffers:
+            self.__buffers[key].reset(view)
+
+    def dispatch(self):
+        """ Dispatch commands to the GPU. """
+        for key in sorted(self.__buffers.keys()):
+            self.__buffers[key].dispatch()
+
+
+class VertexData(object):
+    """ A blob of vertex data. Each vertex can have a number of attributes. """
+
+    def __init__(self, shader_program, attribute_formats, default_size=128):
+        """ Initialise a vertex data block. """
+        self.__shader_program = shader_program
+        self.__arrays = {}
+        self.__vbos = {}
+        self.__sizes = {}
+        self.__numpy_types = {}
+        self.__n = 0
+        self.__max = default_size
+        for (name, size, data_type) in attribute_formats:
+            self.__sizes[name] = size
+            self.__arrays[name] = numpy.array(default_size * size, data_type)
+            self.__vbos[name] = OpenGL.arrays.vbo.VBO(self.__arrays[name])
+            self.__numpy_types[name] = data_type
+
+    def reset(self):
+        """ Reset the vertex data so it can be re-used. """
+        self.__n = 0
+
+    def add_vertex(self, **kwargs):
+        """ Add a vertex. """
+
+        # Expand the buffer if necessary.
+        if self.__n == self.__max:
+            self.__max *= 2
+            for name in self.__arrays:
+                self.__arrays[name].resize(self.__max * self.__sizes[name])
+
+        # Add the vertex attributes.
+        for key in kwargs:
+            if key in self.__arrays:
+                data = kwargs[key]
+                array = self.__arrays[key]
+                size = self.__sizes[key]
+                for (i, component) in enumerate(data):
+                    array[self.__n*size+i] = component
+
+        # we've added a vertex.
+        self.__n += 1
+
+    def bind_attributes(self):
+        """ Setup the vertex attributes for rendering. """
+        for name in self.__vbos:
+            vbo = self.__vbos[name]
+            size = self.__sizes[name]
+            vbo.copy_data()
+            vbo.bind()
+            GL.glEnableVertexAttribArray(self.__shader_program.get_attribute_location(name))
+            gl_type = {'f': GL.GL_FLOAT}[self.__numpy_types[name]]
+            GL.glVertexAttribPointer(self.__shader_program.get_attribute_location(name),
+                                     size, gl_type, GL.GL_TRUE, 0, 0)
+
+    def __len__(self):
+        """ Return the number of vertices. """
+        return self.__n
+
+
+class CommandBuffer(object):
+    """ A single draw call. """
+
+    def __init__(self, coordinate_system, shader_program, texture_array, primitive_type):
+        """ Constructor. """
+
+        # Uniform state.
+        self.__coordinate_system = coordinate_system
+        self.__shader_program = shader_program
+        self.__primitive_type = primitive_type
+        self.__texture_array = texture_array
+        self.__view_position = (0, 0)
+        self.__view_size = (0, 0)
+        self.__view_zoom = 1
+
+        # Per-vertex data.
+        self.__vertex_data = VertexData(self.__shader_program,
+                                        (("position", 2, 'f'),
+                                         ("texcoord", 3, 'f'),
+                                         ("colour", 3, 'f'),
+                                         ("orientation", 1, 'f'),
+                                         ("origin", 2, 'f')))
+
+    def reset(self, view):
+        """ Reset the command buffer so we can re-use it. """
+        self.__vertex_data.reset()
+        self.__view_position = view.position
+        self.__view_size = view.size
+        self.__view_zoom = view.zoom
+
+    def add_quad(self, position, size, texref, **kwargs):
+        """ Emit a quad. """
+
+        # The four corners of a quad.
+        tl = (0, 0)
+        tr = (size[0], 0)
+        br = (size[0], size[1])
+        bl = (0, size[1])
+        positions = (tl, tr, br, bl)
+
+        # Add a vertex for each corner.
+        for i in range(0, 4):
+            self.__vertex_data.add_vertex(origin=position,
+                                          position=positions[i],
+                                          texcoord=texref.texcoord(i),
+                                          **kwargs)
+
+    def dispatch(self):
+        """ Dispatch the command to the GPU. """
+
+        # Use the shader program.
+        self.__shader_program.begin()
+
+        # Use the texture array.
+        self.__texture_array.begin()
+
+        # Setup uniform data.
+        GL.glUniform1i(self.__shader_program.get_uniform_location("coordinate_system"), self.__coordinate_system)
+        GL.glUniform2f(self.__shader_program.get_uniform_location("view_position"), *self.__view_position)
+        GL.glUniform2f(self.__shader_program.get_uniform_location("view_size"), *self.__view_size)
+        GL.glUniform1f(self.__shader_program.get_uniform_location("view_zoom"), self.view_zoom)
+
+        # Specify vertex attributes.
+        self.__vertex_data.bind_attributes()
+
+        # Draw the quads.
+        GL.glDrawArrays(self.__primitive_type, 0, len(self.__vertex_data))
+
+        # Stop using the texture array.
+        self.__texture_array.end()
+
+        # Stop using the shader program.
+        self.__shader_program.end()
+
+
 class PygameOpenGLRenderer(Renderer):
     """ A pygame software renderer. """
 
@@ -252,6 +470,11 @@ class PygameOpenGLRenderer(Renderer):
         """ Constructor. """
         Renderer.__init__(self)
         self.__surface = None
+        self.__data_path = None
+        self.__filenames = []
+        self.__anim_shader = None
+        self.__texture_array = TextureArray()
+        self.__command_buffers = None
 
     def initialise(self, screen_size, data_path):
         """ Initialise the pygame display. """
@@ -271,15 +494,35 @@ class PygameOpenGLRenderer(Renderer):
             ((os.path.join(self.__data_path, "shaders/anim/anim.v.glsl"), GL.GL_VERTEX_SHADER),
              (os.path.join(self.__data_path, "shaders/anim/anim.f.glsl"), GL.GL_FRAGMENT_SHADER)),
             ("vertex"), # Attributes
-            () # Uniforms
+            ("window_size", "view_position", "scale", "tex") # Uniforms
         )
 
-        self.__filenames = []
-        self.__texture_array = None
+        self.__anim_shader.begin()
+        GL.glUniform2f(self.__anim_shader.get_uniform_location("window_size"),
+                       self.__surface.get_width(),
+                       self.__surface.get_height())
+        self.__anim_shader.end()
+
+        # Initialise command buffers.  Jobs will be sorted by layer and coordinate system and added
+        # to an appropriate command buffer for later dispatch.
+        self.__command_buffers = CommandBufferArray(self.__anim_shader, self.__texture_array)
+
 
     def post_preload(self):
         """ Initialise the texture array. """
-        self.__texture_array = TextureArray(self.__filenames)
+        self.__texture_array.load(self.__filenames)
+
+    def render_jobs(self):
+        """ Perform rendering. """
+
+        # Reset command buffers
+        self.__command_buffers.reset(view)
+
+        # Visit each job to fill command buffers
+        Renderer.render_jobs(self)
+
+        # Dispatch commands to the GPU.
+        self.__command_buffers.dispatch()
 
     def flip_buffers(self):
         """ Update the pygame display. """
@@ -316,130 +559,56 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobBackground(self, job):
         """ Render scrolling background. """
-        (w, h) = self.screen_size()
-        self.render_image(job.background_image, w, h, Vec2d(0, 0))
+        pass
+        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_QUADS)
+        #buffer.add_quad(job.position_lcs, job.image.get_size(), job.image)
 
     def render_RenderJobRect(self, job):
         """ Render rectangle. """
-        rect = job.rect
-        tl = rect.topleft
-        tr = rect.topright
-        br = rect.bottomright
-        bl = rect.bottomleft
-        GL.glColor3f(*self.colour_int_to_float(job.colour))
-        if job.width == 0:
-            GL.glBegin(GL.GL_QUADS)
-        else:
-            GL.glLineWidth(job.width)
-            GL.glBegin(GL.GL_LINE_LOOP)
-        GL.glVertex2f(tl[0], tl[1])
-        GL.glVertex2f(tr[0], tr[1])
-        GL.glVertex2f(br[0], br[1])
-        GL.glVertex2f(bl[0], bl[1])
-        GL.glEnd()
+        pass
+        # note: do outline in fragment shader.
+        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_QUADS)
+        #buffer.add_quad(job.position_lcs, job.image.get_size(), job.image)
 
     def render_RenderJobLine(self, job):
         """ Render a line. """
-        GL.glLineWidth(job.width)
-        GL.glColor3f(*self.colour_int_to_float(job.colour))
-        GL.glBegin(GL.GL_LINES)
-        GL.glVertex2f(job.p0[0], job.p0[1])
-        GL.glVertex2f(job.p1[0], job.p1[1])
-        GL.glEnd()
+        pass
+        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_LINES)
+        #buffer.add_lines((job.p0_lcs, job.p1_lcs), job.width, job.colour)
 
     def render_RenderJobLines(self, job):
         """ Render a polyline. """
-        GL.glLineWidth(job.width)
-        GL.glColor3f(*self.colour_int_to_float(job.colour))
-        GL.glBegin(GL.GL_LINE_STRIP)
-        for point in job.points:
-            GL.glVertex2f(point[0], point[1])
-        GL.glEnd()
+        pass
+        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_LINES)
+        #buffer.add_lines(job.points_lcs, job.width, job.colour)
 
     def render_RenderJobPolygon(self, job):
         """ Render a polygon. """
-        GL.glColor3f(*self.colour_int_to_float(job.colour))
-        GL.glBegin(GL.GL_POLYGON)
-        for point in job.points:
-            GL.glVertex2f(point[0], point[1])
-        GL.glEnd()
+        pass
+        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_TRIANGLES)
+        #buffer.add_triangulated_convex_polygon(job.points_lcs, job.colour)
 
     def render_RenderJobCircle(self, job):
         """ Render a circle. """
-        GL.glColor3f(*self.colour_int_to_float(job.colour))
-        if job.width == 0:
-            GL.glBegin(GL.GL_TRIANGLE_FAN)
-        else:
-            GL.glLineWidth(job.width)
-            GL.glBegin(GL.GL_LINE_LOOP)
-        circumference = 2*math.pi*job.radius
-        points = []
-        npoi = max(int(math.sqrt(circumference)), 6)
-        for i in range(0, npoi):
-            angle = i/float(npoi) * math.pi * 2
-            point = job.position + job.radius * Vec2d(math.cos(angle), math.sin(angle))
-            GL.glVertex2f(point[0], point[1])
-        GL.glEnd()
+        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_TRIANGLES)
+        #buffer.add_quad() # Do circle in fragment shader.
 
     def render_RenderJobText(self, job):
         """ Render some text. """
-        text_surface = job.font.render(job.text, True, job.colour)
-        texture = Texture.from_surface(text_surface)
-        self.render_image(texture, texture.get_width(), texture.get_height(), job.position)
-        texture.delete()
+        pass
 
     def render_RenderJobAnimation(self, job):
         """ Render an animation. """
-        width = job.length_to_screen(job.anim.frames.get_width())
-        height = job.length_to_screen(job.anim.frames.get_height())
-        self.render_image(
+        buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_TRIANGLES)
+        buffer.add_quad(
+            job.position_lcs,
+            job.anim.frames.get_size(),
             job.anim.frames.get_frame(job.anim.timer),
-            width,
-            height,
-            job.position,
-            origin=Vec2d(width/2, height/2),
-            orientation = math.radians(-job.orientation)
+            job.orientation
         )
 
     def render_RenderJobImage(self, job):
         """ Render an image. """
-        width = job.length_to_screen(job.image.get_width())
-        height = job.length_to_screen(job.image.get_height())
-        self.render_image(job.image, width, height, job.position)
-
-    def render_image(self, texture, width, height, position, **kwargs):
-        """ Render an image. """
-        texture.begin()
-        self.render_quad(width, height, position, **kwargs)
-        texture.end()
-
-    def render_quad(self, width, height, position, **kwargs):
-        """ Render a quad. """
-
-        # Rotation about origin.
-        orientation = 0
-        if "orientation" in kwargs:
-            orientation = kwargs["orientation"]
-
-        # Origin position in local coordinates.
-        origin = Vec2d(0, 0)
-        if "origin" in kwargs:
-            origin = kwargs["origin"]
-
-        # Get quad corners in local coordinates, relative to position.
-        tl = Vec2d(0, 0) - origin
-        tr = Vec2d(width, 0) - origin
-        br = Vec2d(width, height) - origin
-        bl = Vec2d(0, height) - origin
-
-        # Render the quad.
-        GL.glBegin(GL.GL_QUADS)
-        GL.glTexCoord2f(0, 1); GL.glVertex2f(*(position + tl.rotated(orientation)))
-        GL.glTexCoord2f(0, 0); GL.glVertex2f(*(position + bl.rotated(orientation)))
-        GL.glTexCoord2f(1, 0); GL.glVertex2f(*(position + br.rotated(orientation)))
-        GL.glTexCoord2f(1, 1); GL.glVertex2f(*(position + tr.rotated(orientation)))
-        GL.glEnd()
-
-    def colour_int_to_float(self, colour):
-        """ Convert colour to float format. """
-        return (float(colour[0])/255, float(colour[1])/255, float(colour[2])/255)
+        pass
+        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_QUADS)
+        #buffer.add_quad(job.position_lcs, job.image.get_size(), job.image)

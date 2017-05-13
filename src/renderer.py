@@ -70,6 +70,13 @@ class RenderJob(object):
         else:
             return self.view.world_to_screen(point)
 
+    def point_to_world(self, point):
+        """ Get the point in world coordinates. """
+        if self.coords == Renderer.COORDS_WORLD:
+            return point
+        else:
+            return self.view.screen_to_world(point)
+
     def rect_to_screen(self, rect):
         """ Ensure a rect is in screen coordinates. """
         if self.coords == Renderer.COORDS_SCREEN:
@@ -281,6 +288,11 @@ class RenderJobAnimation(RenderJob):
         """ Get the position. """
         return self.point_to_screen(self.__position)
 
+    @property
+    def position_world(self):
+        """ Get the position in world coordinates """
+        return self.point_to_world(self.__position)
+
     def dispatch(self, renderer):
         """ Dispatch the job. """
         renderer.render_RenderJobAnimation(self)
@@ -321,12 +333,14 @@ class Renderer(object):
     LEVEL_FORE_NEAR = 8
 
     # Coordinate systems
-    COORDS_WORLD = 1
-    COORDS_SCREEN = 2
+    COORDS_WORLD = 0
+    COORDS_SCREEN = 1
 
     def __init__(self):
         """ Constructor. """
-        self.__jobs = []
+        self.__levels = []
+        for level in range(Renderer.LEVEL_BACK_FAR, Renderer.LEVEL_FORE_NEAR+1):
+            self.__levels.append([])
 
     @abc.abstractmethod
     def initialise(self, screen_size, data_path):
@@ -339,9 +353,10 @@ class Renderer(object):
 
     def render_jobs(self):
         """ Render any queued jobs. This does not update the display. """
-        for job in self.__jobs:
-            job.dispatch(self)
-        self.__jobs = []
+        for level in self.__levels:
+            for job in level:
+                job.dispatch(self)
+            del level[:]
 
     @abc.abstractmethod
     def flip_buffers(self):
@@ -386,7 +401,7 @@ class Renderer(object):
 
     def add_job(self, job):
         """ Queue a render job. """
-        self.__jobs.append(job)
+        self.__levels[job.level].append(job)
 
     def add_job_background(self, view, background_image):
         """ Queue a job to render a background image. """
