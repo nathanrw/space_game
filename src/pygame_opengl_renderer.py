@@ -73,11 +73,11 @@ class ShaderProgram(object):
         for uniform in uniforms:
             self.__uniform_locations[uniform] = GL.glGetUniformLocation(self.__shader_program, uniform)
 
-    def bind(self):
+    def begin(self):
         """ Render using the shader program. """
         GL.glUseProgram(self.__shader_program)
 
-    def unbind(self):
+    def end(self):
         """ Render using the fixed function pipeline. """
         GL.glUseProgram(0)
 
@@ -185,6 +185,66 @@ class TextureSequence(object):
         idx = timer.pick_index(len(self.__textures))
         return self.__textures[idx]
 
+class TextureArray(object):
+    """ A texture array for rendering many sprites without changing
+    textures. """
+
+    def __init__(self, files):
+
+        # Read in each image file and determine the maximum extents,
+        # remembering the extents of each one.
+        self.__max_width = 0
+        self.__max_height = 0
+        self.__texture_dimensions = []
+        images = []
+        for filename in files:
+            surf = pygame.image.load(filename)
+            self.__max_width = max(self.__max_width, surf.get_width())
+            self.__max_height = max(self.__max_height, surf.get_height())
+            self.__texture_dimensions.append(surf.get_size())
+            images.append(surf)
+
+        # Allocate the texture array.
+        self.__texture = GL.glGenTextures(1)
+        GL.glBindTexture(GL.GL_TEXTURE_2D_ARRAY, self.__texture)
+        GL.glTexImage3D(
+            GL.GL_TEXTURE_2D_ARRAY,
+            0, #level
+            GL.GL_RGBA8, # internal format
+            self.__max_width,
+            self.__max_height,
+            len(images),
+            0, #border
+            GL.GL_RGBA, # format
+            GL.GL_UNSIGNED_BYTE, # data type
+            None # The data.
+        )
+
+        # Upload each image to the array.
+        for (i, image) in enumerate(images):
+            image_bytes = pygame.image.tostring(image, "RGBA", 1)
+            GL.glTexSubImage3D(
+                GL.GL_TEXTURE_2D_ARRAY,
+                0, # Mipmap number
+                0, # x offset
+                0, # y offset
+                i, # z offset
+                image.get_width(),
+                image.get_height(),
+                1, # Depth
+                GL.GL_RGBA, # format
+                GL.GL_UNSIGNED_BYTE, # data type
+                image_bytes # data
+            )
+
+    def begin(self):
+        """ Begin rendering with the texture array. """
+        GL.glBindTexture(GL.GL_TEXTURE_2D_ARRAY, self.__texture)
+
+    def end(self):
+        """ Stop rendering with the texture array. """
+        pass
+
 class PygameOpenGLRenderer(Renderer):
     """ A pygame software renderer. """
 
@@ -214,12 +274,20 @@ class PygameOpenGLRenderer(Renderer):
             () # Uniforms
         )
 
+        self.__filenames = []
+        self.__texture_array = None
+
+    def post_preload(self):
+        """ Initialise the texture array. """
+        self.__texture_array = TextureArray(self.__filenames)
+
     def flip_buffers(self):
         """ Update the pygame display. """
         pygame.display.flip()
 
     def load_compatible_image(self, filename):
         """ Load a pygame image. """
+        self.__filenames.append(filename)
         return Texture.from_file(filename)
 
     def load_compatible_anim_frames(self, filename_list):
@@ -227,6 +295,7 @@ class PygameOpenGLRenderer(Renderer):
         with the renderer.  The implementation can return its own
         image representation; the client should treat it as an opaque
         object. """
+        self.__filenames += filename_list
         return TextureSequence(filename_list)
 
     def load_compatible_font(self, filename, size):

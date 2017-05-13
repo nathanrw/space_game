@@ -333,6 +333,10 @@ class Renderer(object):
         """ Initialise the renderer. """
         pass
 
+    def post_preload(self):
+        """ A hook to be executed when the game has finished loading. """
+        pass
+
     def render_jobs(self):
         """ Render any queued jobs. This does not update the display. """
         for job in self.__jobs:

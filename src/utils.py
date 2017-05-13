@@ -779,6 +779,10 @@ class ResourceLoader(object):
             self.load_config_file(config)
             loading.increment()
 
+        # The renderer might like to return us proxy objects and initialise
+        # them in one go, so let it do that.
+        self.renderer.post_preload()
+
     def load_font(self, filename, size):
         """ Load a font from the file system. """
         if not (filename, size) in self.fonts:

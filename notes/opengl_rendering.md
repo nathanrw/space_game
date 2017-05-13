@@ -40,9 +40,23 @@ when it creates the opengl context.
 This means
 
  * We can use array textures.
- * We can't use glDrawArraysIndexed, which came in OpenGL 3.1.
+ * We can't use glDrawArraysInstanced, which came in OpenGL 3.1.
 
 I might be missing something.
+
+Aha:
+
+ * It looks like we can get instancing via an extension
+ * However it might not be worth doing, should try just submitting lots of redundant vertex data first.
+
+Font rendering
+--------------
+
+ * Don't want to go too far down this rabbit hole.
+ * Existing solution (render in software and upload texture) is good enough for static text.
+ * Not good for e.g. dynamically updating numbers as need to churn textures.
+ * I think simple VBO-based bitmap fonts, and if large blocks of text dont look good then
+   fall back to software (as there wont be too much of this going on at once)
 
 Rolling our own
 ---------------
