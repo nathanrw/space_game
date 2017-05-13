@@ -105,6 +105,9 @@ class Game(object):
         # The player
         self.player = None
 
+        # The input handling system.
+        self.input_handling = None
+
         # The main camera.
         self.camera = None
 
@@ -117,15 +120,11 @@ class Game(object):
         # The drawing system.
         self.drawing = Drawing(self.renderer)
 
-        # The input handling system.
-        self.input_handling = InputHandling()
-
         # Plug the systems in. Note that systems can be created dynamically,
         # but we want to manipulate them so we specify them up front.
         self.entity_manager = EntityManager(self.game_services)
         self.entity_manager.register_component_system(self.physics)
         self.entity_manager.register_component_system(self.drawing)
-        self.entity_manager.register_component_system(self.input_handling)
 
         # Configure the resource loader.
         self.resource_loader.minimise_image_loading = \
@@ -159,10 +158,9 @@ class Game(object):
 
             # Input
             for e in pygame.event.get():
-                if e.type == pygame.QUIT:
+                response = self.input_handling.handle_input(e)
+                if response.quit_requested:
                     self.running = False
-                elif self.input_handling.handle_input(e):
-                    pass
 
             # Update the systems.
             self.entity_manager.update(tick_time)
@@ -214,6 +212,9 @@ class Game(object):
 
         # Make the player
         self.player = self.entity_manager.create_entity("player.txt")
+
+        # Make the input handling system.
+        self.input_handling = InputHandling(self.game_services, self.player)
 
         # Make the camera follow the player.
         self.camera.get_component(Camera).track(self.player)

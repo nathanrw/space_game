@@ -46,6 +46,3 @@ components:
 
   # The ship can be drawn on the screen.
   src.drawing.Drawable: {}
-
-  # The ship can receive input from the player.
-  src.input_handling.PlayerInputHandler: {}
