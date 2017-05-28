@@ -150,7 +150,6 @@ class Texture(object):
         self.__width = surface.get_width()
         self.__height = surface.get_height()
         self.__texture = GL.glGenTextures(1)
-        GL.glEnable(GL.GL_TEXTURE_2D)
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.__texture)
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
@@ -161,7 +160,6 @@ class Texture(object):
     def begin(self):
         """ Set OpenGL state. """
         assert self.__texture is not None
-        GL.glEnable(GL.GL_TEXTURE_2D)
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.__texture)
         GL.glColor3f(1, 1, 1)
 
@@ -225,23 +223,31 @@ class AnimFrames(object):
 class TextureRef(object):
     """ A reference to a location in a texture. """
 
-    def __init__(self, u0, v0, u1, v1, level):
+    def __init__(self, u0, v0, u1, v1, max_width, max_height, level):
         """ Constructor. """
         self.__min = Vec2d(u0, v0)
         self.__max = Vec2d(u1, v1)
         self.__level = level
+        self.__max_width = float(max_width)
+        self.__max_height = float(max_height)
 
     def get_texcoord(self, i):
         """ 'i' corresponds to a rectangle corner, and is a number between 0 and 3. """
+        ret = None
         if i == 0:
-            return (self.__min[0], self.__min[1], self.__level)
-        if i == 1:
-            return (self.__max[0], self.__min[1], self.__level)
-        if i == 2:
-            return (self.__max[0], self.__max[1], self.__level)
-        if i == 3:
-            return (self.__min[0], self.__max[1], self.__level)
-        raise Exception("Expected 0 <= i <= 3, got %s" % i)
+            ret = (self.__min[0], self.__min[1], self.__level)
+        elif i == 1:
+            ret = (self.__max[0], self.__min[1], self.__level)
+        elif i == 2:
+            ret = (self.__max[0], self.__max[1], self.__level)
+        elif i == 3:
+            ret = (self.__min[0], self.__max[1], self.__level)
+        else:
+            raise Exception("Expected 0 <= i <= 3, got %s" % i)
+        if self.__max_width > 0 and self.__max_height > 0:
+            return (ret[0] / self.__max_width, ret[1] / self.__max_height, ret[2])
+        else:
+            return ret
 
     def get_size(self):
         """ Get the size of the texture section. """
@@ -249,11 +255,11 @@ class TextureRef(object):
 
     def get_width(self):
         """ Get the width of the texture section. """
-        return self.get_size[0]
+        return self.get_size()[0]
 
     def get_height(self):
         """ Get the height of the texture section. """
-        return self.get_size[1]
+        return self.get_size()[1]
 
     def get_level(self):
         """ Get the level of the texture section. """
@@ -290,6 +296,10 @@ class TextureArray(object):
         # Allocate the texture array.
         self.__texture = GL.glGenTextures(1)
         GL.glBindTexture(GL.GL_TEXTURE_2D_ARRAY, self.__texture)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D_ARRAY, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D_ARRAY, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D_ARRAY, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_EDGE)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D_ARRAY, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE)
         GL.glTexImage3D(
             GL.GL_TEXTURE_2D_ARRAY,
             0, #level
@@ -323,10 +333,10 @@ class TextureArray(object):
     def lookup_texture(self, filename):
         """ Lookup a texture in the atlas from its filename. """
         if not filename in self.__filename_indices:
-            return TextureRef(0, 0, 0, 0, 0)
+            return TextureRef(0, 0, 0, 0, 0, 0, 0)
         index = self.__filename_indices[filename]
         dims = self.__texture_dimensions[index]
-        return TextureRef(0, 0, dims[0], dims[1], index)
+        return TextureRef(0, 0, dims[0], dims[1], self.__max_width, self.__max_height, index)
 
     def begin(self):
         """ Begin rendering with the texture array. """
@@ -417,19 +427,23 @@ class VertexData(object):
                 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
                 self.__arrays[name].resize(self.__max * self.__sizes[name], refcheck=False)
 
-        # Add the vertex attributes.
-        for key in kwargs:
-            if key in self.__arrays:
+        # Add the vertex attributes. If the attribute has not been specified
+        # then we default it to zero, otherwise we'll end up rendering garbage.
+        for key in self.__vbos:
+            array = self.__arrays[key]
+            size = self.__sizes[key]
+            data = None
+            if key in kwargs:
                 data = kwargs[key]
-                array = self.__arrays[key]
-                size = self.__sizes[key]
-                try:
-                    # Try to interpret the data as a vector.
-                    for (i, component) in enumerate(data):
-                        array[self.__n*size+i] = component
-                except TypeError:
-                    # Ok, it's a scalar.
-                    array[self.__n*size] = data
+            else:
+                data = numpy.zeros(size)
+            try:
+                # Try to interpret the data as a vector.
+                for (i, component) in enumerate(data):
+                    array[self.__n*size+i] = component
+            except TypeError:
+                # Ok, it's a scalar.
+                array[self.__n*size] = data
 
         # we've added a vertex.
         self.__n += 1
@@ -496,7 +510,7 @@ class CommandBuffer(object):
         easily batched. """
 
         # Dummy texref in case one hasn't been specified.
-        texref=TextureRef(0, 0, 0, 0, 0)
+        texref=TextureRef(0, 0, 0, 0, 0, 0, -1)
         if "texref" in kwargs:
             texref = kwargs["texref"]
 
@@ -529,6 +543,15 @@ class CommandBuffer(object):
                                           texcoord=texref.get_texcoord(i),
                                           **kwargs)
 
+    def add_polygon(self, points, **kwargs):
+        """ Emit a polygon. """
+        i = 1
+        while i+1 < len(points):
+            self.__vertex_data.add_vertex(origin=points[0], **kwargs)
+            self.__vertex_data.add_vertex(origin=points[i], **kwargs)
+            self.__vertex_data.add_vertex(origin=points[i+1], **kwargs)
+            i += 1
+
     def dispatch(self):
         """ Dispatch the command to the GPU. """
 
@@ -539,6 +562,9 @@ class CommandBuffer(object):
         # Use the shader program.
         self.__shader_program.begin()
 
+        # Use texture unit 0.
+        GL.glActiveTexture(GL.GL_TEXTURE0)
+
         # Use the texture array.
         self.__texture_array.begin()
 
@@ -547,6 +573,7 @@ class CommandBuffer(object):
         GL.glUniform2f(self.__shader_program.get_uniform_location("view_position"), *self.__view_position)
         GL.glUniform2f(self.__shader_program.get_uniform_location("view_size"), *self.__view_size)
         GL.glUniform1f(self.__shader_program.get_uniform_location("view_zoom"), self.__view_zoom)
+        GL.glUniform1i(self.__shader_program.get_uniform_location("texture_array"), 0)
 
         # Specify vertex attributes.
         self.__vertex_data.bind_attributes()
@@ -620,7 +647,7 @@ class PygameOpenGLRenderer(Renderer):
     def load_compatible_image(self, filename):
         """ Load a pygame image. """
         self.__filenames.append(filename)
-        return Texture.from_file(filename)
+        return AnimFrames(self.__texture_array, (filename))
 
     def load_compatible_anim_frames(self, filename_list):
         """ Load the frames of an animation into a format compatible
@@ -648,9 +675,11 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobBackground(self, job):
         """ Render scrolling background. """
-        pass
-        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_QUADS)
-        #buffer.add_quad(job.position_lcs, job.image.get_size(), job.image)
+        buffer = self.__command_buffers.get_buffer(Renderer.COORDS_SCREEN,
+                                                   Renderer.LEVEL_BACK_FAR,
+                                                   GL.GL_TRIANGLES)
+        width, height = self.screen_size()
+        buffer.add_quad((width/2, height/2), (width, height), colour=(0.5, 0.5, 0.5))
 
     def render_RenderJobRect(self, job):
         """ Render rectangle. """
@@ -671,9 +700,8 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobPolygon(self, job):
         """ Render a polygon. """
-        pass
-        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_TRIANGLES)
-        #buffer.add_triangulated_convex_polygon(job.points_lcs, job.colour)
+        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
+        buffer.add_polygon(job.points, colour=job.colour)
 
     def render_RenderJobCircle(self, job):
         """ Render a circle. """
@@ -697,12 +725,23 @@ class PygameOpenGLRenderer(Renderer):
         buffer.add_quad(job.position,
                         texref.get_size(),
                         texref=texref,
-                        orientation=job.orientation)
+                        orientation=job.orientation,
+                        colour=(1.0, 1.0, 1.0))
 
     def render_RenderJobImage(self, job):
         """ Render an image. """
-        #buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
-        #buffer.add_quad(job.position,
-        #                job.image.get_size(),
-        #                texref=job.image)
-        pass
+        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
+        # NOTE: for statically loaded images we can load them into the texture
+        # array, so we can use the same code as animations. For dynamically created
+        # images we can't yet, we'd need to dynamically add images to the texture array and
+        # i havent done that. Hence the two paths here at present.
+        if isinstance(job.image, AnimFrames):
+            texref = job.image.get_frame_by_index(0)
+            buffer.add_quad(job.position,
+                            texref.get_size(),
+                            texref=texref,
+                            colour=(1.0, 1.0, 1.0))
+        else:
+            buffer.add_quad(job.position,
+                            job.image.get_size(),
+                            colour=(1.0, 1.0, 1.0))

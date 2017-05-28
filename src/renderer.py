@@ -125,6 +125,7 @@ class RenderJobPolygon(RenderJob):
         self.poly = poly
         self.width = width
 
+    @property
     def points(self):
         """ Get the points. """
         return self.poly.points
@@ -183,13 +184,8 @@ class RenderJobImage(RenderJob):
     def __init__(self, view, level, coords, position, image):
         """ Constructor. """
         RenderJob.__init__(self, view, level, coords)
-        self.__position = position
+        self.position = position
         self.image = image
-
-    @property
-    def position(self):
-        """ Get the position. """
-        return self.point_to_screen(self.__position)
 
     def dispatch(self, renderer):
         """ Dispatch the job. """

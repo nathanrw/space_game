@@ -31,6 +31,10 @@ attribute vec3 texcoord;
 // Vertex colour.
 attribute vec3 colour;
 
+// Outputs to fragment shader.
+varying vec3 v_colour;
+varying vec3 v_texcoord;
+
 // Pi
 const float PI = 3.1415926535897932384626433832795;
 
@@ -54,12 +58,13 @@ float to_radians(float degrees) {
 // Get a point into screen coordinates - it might be already.
 vec2 get_screen_coords(vec2 point,
                        vec2 view_position,
+                       vec2 view_size,
                        float view_zoom,
                        int coordinate_system) {
   if (coordinate_system == COORDS_SCREEN) {
-    return flip_y(point);
+    return flip_y(point - view_size / 2) / (view_size/2);
   } else {
-    return flip_y(point - view_position) * view_zoom;
+    return (flip_y(point - view_position) * view_zoom) / (view_size/2);
   }
 }
 
@@ -69,14 +74,12 @@ void main() {
   // Convert the 'model' coordinates to world.
   vec2 position_world = rotate(position, -to_radians(orientation)) + origin;
 
-  // Convert world coordinates to screen pixels, this might be the case already
-  // depending on the specified coordinate system.
-  vec2 position_screen_pixels =
-    get_screen_coords(position_world, view_position, view_zoom, coordinate_system);
-
-  // Convert to normalised screen coordinates.
-  vec2 position_normalised = position_screen_pixels / (view_size/2);
+  // Convert world coordinates to normalised screen coordinates
+  vec2 position_screen=
+    get_screen_coords(position_world, view_position, view_size, view_zoom, coordinate_system);
 
   // Output the vertex.
-  gl_Position = vec4(position_normalised, 0, 1);
+  gl_Position = vec4(position_screen, 0, 1);
+  v_colour = colour;
+  v_texcoord = texcoord;
 }
