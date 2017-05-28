@@ -59,5 +59,5 @@ class LoadingScreen(object):
         self.renderer.add_job_rect(self.view, bar_rect, colour=(255, 255, 255), coords=Renderer.COORDS_SCREEN)
 
         # Refresh the screen.
-        self.renderer.render_jobs()
+        self.renderer.render_jobs(self.view)
         self.renderer.flip_buffers()

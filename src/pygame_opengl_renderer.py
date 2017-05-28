@@ -1,10 +1,15 @@
 import pygame
 import OpenGL
+
+# Switch on more debugging facilities
+#OpenGL.FULL_LOGGING = True
+
 import OpenGL.GL as GL
 import math
 import os
 import os.path
 import numpy
+import re
 
 from pymunk import Vec2d
 
@@ -17,21 +22,8 @@ class ShaderProgram(object):
     is that there won't be many shaders, and so we will leave them to be
     cleaned up when the program terminates. """
 
-    def __init__(self, filename_type_pairs, attribs, uniforms):
+    def __init__(self, shader_dir):
         """ Constructor - create and initialise a shader program.
-
-        'filename_type_pairs' is a list of (filename, enum) tuples
-        that specify the shader source to load and what type of
-        shaders they are.
-
-        'attribs' is a list of vertex attributes used in the shader
-        program.
-
-        'uniforms' is a list of uniform state used in the shader
-        program.
-
-        These will correspond to variables declared in the shader
-        source.
         """
 
         # Note: see the following, which was referenced in the PyOpenGL
@@ -42,15 +34,18 @@ class ShaderProgram(object):
         # Create the program object.
         self.__shader_program = GL.glCreateProgram()
 
-        # Assign locations to vertex attributes. We'll bind them in the program later...
-        self.__attrib_locations = dict((k, v) for (v, k) in enumerate(attribs))
-
-        # Uniform locations will be determined by OpenGL, we'll get them later.
-        self.__uniform_locations = {}
+        # We're going to build up a list of inputs.
+        program_uniforms = set()
+        program_attributes = set()
 
         # Compile all of the source files and attach the resulting
         # shader objects to our shader program.
-        for (filename, shader_type) in filename_type_pairs:
+        for (filename, shader_type) in self.__list_shader_files(shader_dir):
+            print (filename, shader_type)
+            (file_uniforms, file_attributes) = self.__parse_uniforms_and_attributes(filename)
+            print (file_uniforms, file_attributes)
+            program_uniforms.update(file_uniforms);
+            program_attributes.update(file_attributes);
             shader = GL.glCreateShader(shader_type)
             GL.glShaderSource(shader, open(filename, 'r').read())
             GL.glCompileShader(shader)
@@ -58,9 +53,15 @@ class ShaderProgram(object):
                 raise Exception(GL.glGetShaderInfoLog(shader))
             GL.glAttachShader(self.__shader_program, shader)
 
+        # Assign locations to vertex attributes. We'll bind them in the program later...
+        self.__attrib_locations = dict((k, v) for (v, k) in enumerate(program_attributes))
+
+        # Uniform locations will be determined by OpenGL, we'll get them later.
+        self.__uniform_locations = {}
+
         # Now we can bind all of the vertex attributes to their
         # assigned locations.
-        for attrib in attribs:
+        for attrib in program_attributes:
             GL.glBindAttribLocation(self.__shader_program,
                                     self.__attrib_locations[attrib],
                                     attrib)
@@ -71,10 +72,45 @@ class ShaderProgram(object):
             raise Exception(GL.glGetProgramInfoLog(self.__shader_program))
 
         # Retrieve the uniform locations and remember them.
-        for uniform in uniforms:
+        for uniform in program_uniforms:
             self.__uniform_locations[uniform] = GL.glGetUniformLocation(self.__shader_program, uniform)
             if self.__uniform_locations[uniform] == -1:
                 print ("Warning: Uniform '%s' does not exist." % uniform)
+
+    def __parse_uniforms_and_attributes(self, filename):
+        """ Given a shader source file, return the names of attribute and
+        uniform inputs. """
+        uniforms = set()
+        attributes = set()
+        stream = open(filename, 'r')
+        for line in stream:
+            pattern = "(attribute|uniform) [a-zA-Z0-9_]+ ([a-zA-Z0-9_]+)"
+            match = re.match(pattern, line)
+            if match:
+                storage_type = match.group(1)
+                variable_name = match.group(2)
+                if storage_type == "attribute":
+                    attributes.add(variable_name)
+                elif storage_type == "uniform":
+                    uniforms.add(variable_name)
+        return (uniforms, attributes)
+
+    def __list_shader_files(self, dirname):
+        """ List the shader files in a directory, inferring their types. """
+        files = os.listdir(dirname)
+        for filename in files:
+            pattern = ".*\\.(v|f)\\.glsl$"
+            match = re.match(pattern, filename)
+            if match:
+                type_str = match.group(1)
+                type_enum = None
+                if type_str == 'v':
+                    type_enum = GL.GL_VERTEX_SHADER
+                elif type_str == 'f':
+                    type_enum = GL.GL_FRAGMENT_SHADER
+                else:
+                    continue
+                yield (os.path.join(dirname, filename), type_enum)
 
     def begin(self):
         """ Render using the shader program. """
@@ -82,7 +118,13 @@ class ShaderProgram(object):
 
     def get_uniform_location(self, name):
         """ Get the location of a uniform. """
+        if not name in self.__uniform_locations: return -1
         return self.__uniform_locations[name]
+
+    def get_attribute_location(self, name):
+        """ Get the location of an attribute. """
+        if not name in self.__attrib_locations: return -1
+        return self.__attrib_locations[name]
 
     def end(self):
         """ Render using the fixed function pipeline. """
@@ -150,44 +192,34 @@ class Texture(object):
             self.__texture = None
 
 
-class TextureSequence(object):
+class AnimFrames(object):
     """ A sequence of textures. """
 
-    # Note: this is not really a practical implementation, we have lots of
-    # large frames per anim so that's lots of textures. It would be good to
-    # use a texture atlas or array texture for the frames rather than a
-    # texture per frame.
-
-    def __init__(self, filenames):
+    def __init__(self, texture_array, filenames):
         """ Constructor. """
-        self.__textures = [Texture.from_file(f) for f in filenames]
-        self.__bound_texture = None
+        self.__texture_array = texture_array
+        self.__filenames = filenames
 
-    def begin(self, timer):
-        """ Set the state. """
-        assert self.__bound_texture is None
-        idx = timer.pick_index(len(self.__textures))
-        self.__bound_texture = self.__textures[idx]
-        self.__bound_texture.begin()
-
-    def end(self):
-        """ Unset the state. """
-        assert self.__bound_texture is not None
-        self.__bound_texture.end()
-        self.__bound_texture = None
+    def get_size(self):
+        """ The texture size. """
+        return (self.get_width(), self.get_height())
 
     def get_width(self):
         """ The texture width. """
-        return self.__textures[0].get_width()
+        return self.get_frame_by_index(0).get_width()
 
     def get_height(self):
         """ The texture height. """
-        return self.__textures[0].get_height()
+        return self.get_frame_by_index(0).get_height()
+
+    def get_frame_by_index(self, index):
+        """ Get texture coordinates for the frame. """
+        return self.__texture_array.lookup_texture(self.__filenames[index])
 
     def get_frame(self, timer):
         """ Get a frame from a timer. """
-        idx = timer.pick_index(len(self.__textures))
-        return self.__textures[idx]
+        idx = timer.pick_index(len(self.__filenames))
+        return self.get_frame_by_index(idx)
 
 
 class TextureRef(object):
@@ -237,6 +269,7 @@ class TextureArray(object):
         self.__max_height = 0
         self.__texture_dimensions = []
         self.__texture = 0
+        self.__filename_indices = {}
 
     def load(self, files):
 
@@ -246,7 +279,8 @@ class TextureArray(object):
         self.__max_height = 0
         self.__texture_dimensions = []
         images = []
-        for filename in files:
+        for (i, filename) in enumerate(files):
+            self.__filename_indices[filename] = i
             surf = pygame.image.load(filename)
             self.__max_width = max(self.__max_width, surf.get_width())
             self.__max_height = max(self.__max_height, surf.get_height())
@@ -285,6 +319,14 @@ class TextureArray(object):
                 GL.GL_UNSIGNED_BYTE, # data type
                 image_bytes # data
             )
+
+    def lookup_texture(self, filename):
+        """ Lookup a texture in the atlas from its filename. """
+        if not filename in self.__filename_indices:
+            return TextureRef(0, 0, 0, 0, 0)
+        index = self.__filename_indices[filename]
+        dims = self.__texture_dimensions[index]
+        return TextureRef(0, 0, dims[0], dims[1], index)
 
     def begin(self):
         """ Begin rendering with the texture array. """
@@ -331,7 +373,7 @@ class CommandBufferArray(object):
 class VertexData(object):
     """ A blob of vertex data. Each vertex can have a number of attributes. """
 
-    def __init__(self, shader_program, attribute_formats, default_size=128):
+    def __init__(self, shader_program, attribute_formats, default_size=32):
         """ Initialise a vertex data block. """
         self.__shader_program = shader_program
         self.__arrays = {}
@@ -342,7 +384,7 @@ class VertexData(object):
         self.__max = default_size
         for (name, size, data_type) in attribute_formats:
             self.__sizes[name] = size
-            self.__arrays[name] = numpy.array(default_size * size, data_type)
+            self.__arrays[name] = numpy.zeros(default_size * size, data_type)
             self.__vbos[name] = OpenGL.arrays.vbo.VBO(self.__arrays[name])
             self.__numpy_types[name] = data_type
 
@@ -353,11 +395,27 @@ class VertexData(object):
     def add_vertex(self, **kwargs):
         """ Add a vertex. """
 
+        # NOTE: Since this function is going to be called once per vertex
+        # I should imagine it is going to be performance critical. The current
+        # implementation not very efficient, looking up lots of string in
+        # hash tables etc. Will probably need to optimise or do this in a
+        # different way (e.g. specify more than one vertex at a time, have
+        # calling code specify vertex components directly...)
+
         # Expand the buffer if necessary.
         if self.__n == self.__max:
             self.__max *= 2
             for name in self.__arrays:
-                self.__arrays[name].resize(self.__max * self.__sizes[name])
+                # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+                # NOTE: not doing refcheck here since it fails. I'm not sure
+                # why, something in the vbo code must be creating a view onto
+                # the array. This shuts up the exception, but it could mean
+                # that the code is going to go horribly wrong. Dont try this
+                # at home kids.
+                #
+                # Need to work out what the right thing to do here is.
+                # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+                self.__arrays[name].resize(self.__max * self.__sizes[name], refcheck=False)
 
         # Add the vertex attributes.
         for key in kwargs:
@@ -365,23 +423,37 @@ class VertexData(object):
                 data = kwargs[key]
                 array = self.__arrays[key]
                 size = self.__sizes[key]
-                for (i, component) in enumerate(data):
-                    array[self.__n*size+i] = component
+                try:
+                    # Try to interpret the data as a vector.
+                    for (i, component) in enumerate(data):
+                        array[self.__n*size+i] = component
+                except TypeError:
+                    # Ok, it's a scalar.
+                    array[self.__n*size] = data
 
         # we've added a vertex.
         self.__n += 1
 
     def bind_attributes(self):
         """ Setup the vertex attributes for rendering. """
+
+        # We store each attribute in its own buffer.
         for name in self.__vbos:
+
+            # Get the attribute vbo.
             vbo = self.__vbos[name]
-            size = self.__sizes[name]
-            vbo.copy_data()
+
+            # Update the array data, since it will change per-frame.
+            vbo.set_array(self.__arrays[name])
+
+            # Bind the vbo (this does also does some data wrangling I believe.)
             vbo.bind()
+
+            # Switch on the attribute and describe the data format to OpenGL.
             GL.glEnableVertexAttribArray(self.__shader_program.get_attribute_location(name))
             gl_type = {'f': GL.GL_FLOAT}[self.__numpy_types[name]]
             GL.glVertexAttribPointer(self.__shader_program.get_attribute_location(name),
-                                     size, gl_type, GL.GL_TRUE, 0, 0)
+                                     self.__sizes[name], gl_type, GL.GL_FALSE, 0, None)
 
     def __len__(self):
         """ Return the number of vertices. """
@@ -418,25 +490,51 @@ class CommandBuffer(object):
         self.__view_size = view.size
         self.__view_zoom = view.zoom
 
-    def add_quad(self, position, size, texref, **kwargs):
-        """ Emit a quad. """
+    def add_quad(self, position, size, **kwargs):
+        """ Emit a quad. Note that we say quad, but we actually emit
+        a pair of triangles since this type of geometry can be more
+        easily batched. """
+
+        # Dummy texref in case one hasn't been specified.
+        texref=TextureRef(0, 0, 0, 0, 0)
+        if "texref" in kwargs:
+            texref = kwargs["texref"]
+
+        # (0, 0) -------------------- (1, 0)
+        #    |                          |
+        #    |                          |
+        #    |                          |
+        # (0, 1) -------------------- (1, 1)
 
         # The four corners of a quad.
-        tl = (0, 0)
-        tr = (size[0], 0)
-        br = (size[0], size[1])
-        bl = (0, size[1])
+        w = size[0]
+        h = size[1]
+        tl = (-w/2, -h/2)
+        tr = (w/2, -h/2)
+        br = (w/2, h/2)
+        bl = (-w/2, h/2)
         positions = (tl, tr, br, bl)
 
-        # Add a vertex for each corner.
-        for i in range(0, 4):
+        # Emit the top left triangle.
+        for i in (0, 1, 3):
             self.__vertex_data.add_vertex(origin=position,
                                           position=positions[i],
-                                          texcoord=texref.texcoord(i),
+                                          texcoord=texref.get_texcoord(i),
+                                          **kwargs)
+
+        # Emit the bottom right triangle.
+        for i in (3, 1, 2):
+            self.__vertex_data.add_vertex(origin=position,
+                                          position=positions[i],
+                                          texcoord=texref.get_texcoord(i),
                                           **kwargs)
 
     def dispatch(self):
         """ Dispatch the command to the GPU. """
+
+        # If there's nothing to do then avoid doing any work.
+        if len(self.__vertex_data) == 0:
+            return
 
         # Use the shader program.
         self.__shader_program.begin()
@@ -448,7 +546,7 @@ class CommandBuffer(object):
         GL.glUniform1i(self.__shader_program.get_uniform_location("coordinate_system"), self.__coordinate_system)
         GL.glUniform2f(self.__shader_program.get_uniform_location("view_position"), *self.__view_position)
         GL.glUniform2f(self.__shader_program.get_uniform_location("view_size"), *self.__view_size)
-        GL.glUniform1f(self.__shader_program.get_uniform_location("view_zoom"), self.view_zoom)
+        GL.glUniform1f(self.__shader_program.get_uniform_location("view_zoom"), self.__view_zoom)
 
         # Specify vertex attributes.
         self.__vertex_data.bind_attributes()
@@ -490,33 +588,24 @@ class PygameOpenGLRenderer(Renderer):
         print ("OpenGL version: %s" % GL.glGetString(GL.GL_VERSION))
         print ("OpenGL vendor: %s" % GL.glGetString(GL.GL_VENDOR))
 
-        self.__anim_shader = ShaderProgram(
-            ((os.path.join(self.__data_path, "shaders/anim/anim.v.glsl"), GL.GL_VERTEX_SHADER),
-             (os.path.join(self.__data_path, "shaders/anim/anim.f.glsl"), GL.GL_FRAGMENT_SHADER)),
-            ("vertex"), # Attributes
-            ("window_size", "view_position", "scale", "tex") # Uniforms
-        )
-
-        self.__anim_shader.begin()
-        GL.glUniform2f(self.__anim_shader.get_uniform_location("window_size"),
-                       self.__surface.get_width(),
-                       self.__surface.get_height())
-        self.__anim_shader.end()
+        self.__anim_shader = ShaderProgram(os.path.join(self.__data_path, "shaders/anim"))
 
         # Initialise command buffers.  Jobs will be sorted by layer and coordinate system and added
         # to an appropriate command buffer for later dispatch.
         self.__command_buffers = CommandBufferArray(self.__anim_shader, self.__texture_array)
 
-
     def post_preload(self):
         """ Initialise the texture array. """
         self.__texture_array.load(self.__filenames)
 
-    def render_jobs(self):
+    def render_jobs(self, view):
         """ Perform rendering. """
 
         # Reset command buffers
         self.__command_buffers.reset(view)
+
+        # Clear the screen
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT)
 
         # Visit each job to fill command buffers
         Renderer.render_jobs(self)
@@ -539,7 +628,7 @@ class PygameOpenGLRenderer(Renderer):
         image representation; the client should treat it as an opaque
         object. """
         self.__filenames += filename_list
-        return TextureSequence(filename_list)
+        return AnimFrames(self.__texture_array, filename_list)
 
     def load_compatible_font(self, filename, size):
         """ Load a pygame font. """
@@ -565,10 +654,8 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobRect(self, job):
         """ Render rectangle. """
-        pass
-        # note: do outline in fragment shader.
-        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_QUADS)
-        #buffer.add_quad(job.position_lcs, job.image.get_size(), job.image)
+        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
+        buffer.add_quad(job.rect.center, job.rect.size, colour=job.colour)
 
     def render_RenderJobLine(self, job):
         """ Render a line. """
@@ -599,16 +686,23 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobAnimation(self, job):
         """ Render an animation. """
-        buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_TRIANGLES)
-        buffer.add_quad(
-            job.position_lcs,
-            job.anim.frames.get_size(),
-            job.anim.frames.get_frame(job.anim.timer),
-            job.orientation
-        )
+
+        # Get command buffer to which to dispatch.
+        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
+
+        # Get texture information about current animation frame.
+        texref = job.anim.frames.get_frame(job.anim.timer)
+
+        # Dispatch a quad to the command buffer.
+        buffer.add_quad(job.position,
+                        texref.get_size(),
+                        texref=texref,
+                        orientation=job.orientation)
 
     def render_RenderJobImage(self, job):
         """ Render an image. """
+        #buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
+        #buffer.add_quad(job.position,
+        #                job.image.get_size(),
+        #                texref=job.image)
         pass
-        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_QUADS)
-        #buffer.add_quad(job.position_lcs, job.image.get_size(), job.image)

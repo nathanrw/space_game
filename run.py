@@ -3,6 +3,7 @@
 import src.game
 import sys
 import cProfile
+import logging
 
 def main():
     """ Run the game! """
@@ -17,8 +18,16 @@ if __name__ == '__main__':
 
     # Braindead arg parsing.
     do_profile=False
-    if len(sys.argv) > 1:
-        do_profile = sys.argv[1] == "--profile"
+    do_logging=False
+    for arg in sys.argv[1:]:
+        if arg == "--profile":
+            do_profile = True
+        elif arg == "--log":
+            do_logging = True
+
+    # Set up logging.
+    if do_logging:
+        logging.basicConfig(filename="debug_log")
 
     # Do profiling if we've asked for it.
     if do_profile:

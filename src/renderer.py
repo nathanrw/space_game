@@ -5,7 +5,7 @@ from pymunk.vec2d import Vec2d
 
 class View(object):
     """ A view. """
-    
+
     def __init__(self, renderer):
         """ Constructor. """
         self.__renderer = renderer
@@ -25,6 +25,11 @@ class View(object):
         """ Get the zoom factor. """
         return 1
 
+    @property
+    def size(self):
+        """ Get the screen size. """
+        return self.__renderer.screen_size()
+
     def world_to_screen(self, world):
         """ Convert from world coordinates to screen coordinates. """
         centre = Vec2d(self.__renderer.screen_size())/2
@@ -39,20 +44,6 @@ class View(object):
         centre = Vec2d(self.__renderer.screen_size())/2
         return (screen - centre) / self.zoom + self.position
 
-    def check_bounds_world(self, bbox):
-        """ Check whether a world space bounding box is on the screen. """
-        if bbox is None: return True
-        self_box = self.__renderer.screen_rect()
-        self_box.width /= self.zoom
-        self_box.height /= self.zoom
-        self_box.center = self.position
-        return bbox.colliderect(self_box)
-
-    def check_bounds_screen(self, bbox):
-        """ Check whether a screen space bounding box is on the screen. """
-        if bbox is None: return True
-        return self.__renderer.screen_rect().colliderect(bbox)
-
 class RenderJob(object):
     """ Describes a rendering job. """
     __metaclass__ = abc.ABCMeta
@@ -62,47 +53,7 @@ class RenderJob(object):
         self.view = view
         self.level = level
         self.coords = coords
-
-    def point_to_screen(self, point):
-        """ Ensure a point is in screen coordinates. """
-        if self.coords == Renderer.COORDS_SCREEN:
-            return point
-        else:
-            return self.view.world_to_screen(point)
-
-    def point_to_world(self, point):
-        """ Get the point in world coordinates. """
-        if self.coords == Renderer.COORDS_WORLD:
-            return point
-        else:
-            return self.view.screen_to_world(point)
-
-    def rect_to_screen(self, rect):
-        """ Ensure a rect is in screen coordinates. """
-        if self.coords == Renderer.COORDS_SCREEN:
-            return rect
-        else:
-            ret = rect.copy()
-            ret.width = self.view.scale_length(ret.width)
-            ret.height = self.view.scale_length(ret.height)
-            ret.center = self.view.world_to_screen(ret.center)
-            return ret
-
-    def points_to_screen(self, points):
-        """ Ensure a set of points is in screen coordinates. """
-        return [ self.point_to_screen(p) for p in points ]
-
-    def length_to_screen(self, length):
-        """ Ensure a length is in screen coordinates. """
-        if self.coords == Renderer.COORDS_SCREEN:
-            return length
-        else:
-            return self.view.scale_length(length)
-
-    def scale_size(self, size):
-        """ Scale a size. """
-        return Vec2d(self.length_to_screen(size[0]),
-                     self.length_to_screen(size[1]))
+        self.colour = (0, 0, 0)
 
     @abc.abstractmethod
     def dispatch(self, renderer):
@@ -128,18 +79,8 @@ class RenderJobRect(RenderJob):
         """ Constructor. """
         RenderJob.__init__(self, view, level, coords)
         self.colour = colour
-        self.__rect = rect.copy()
-        self.__width = width
-
-    @property
-    def rect(self):
-        """ Get the rectangle. """
-        return self.rect_to_screen(self.__rect)
-
-    @property
-    def width(self):
-        """ Get the width. """
-        return self.length_to_screen(self.__width)
+        self.rect = rect.copy()
+        self.width = width
 
     def dispatch(self, renderer):
         """ Dispatch the job. """
@@ -152,25 +93,10 @@ class RenderJobLine(RenderJob):
         """ Constructor. """
         RenderJob.__init__(self, view, level, coords)
         self.colour = colour
-        self.__p0 = p0
-        self.__p1 = p1
-        self.__width = width
+        self.p0 = p0
+        self.p1 = p1
+        self.width = width
 
-    @property
-    def p0(self):
-        """ Get the start point. """
-        return self.point_to_screen(self.__p0)
-
-    @property
-    def p1(self):
-        """ Get the end point. """
-        return self.point_to_screen(self.__p1)
-
-    @property
-    def width(self):
-        """ Get the width. """
-        return self.length_to_screen(self.__width)
-        
     def dispatch(self, renderer):
         """ Dispatch the job. """
         renderer.render_RenderJobLine(self)
@@ -182,18 +108,8 @@ class RenderJobLines(RenderJob):
         """ Constructor. """
         RenderJob.__init__(self, view, level, coords)
         self.colour = colour
-        self.__points = points
-        self.__width = width
-
-    @property
-    def points(self):
-        """ Get the points. """
-        return self.points_to_screen(self.__points)
-
-    @property
-    def width(self):
-        """ Get the width. """
-        return self.length_to_screen(self.__width)
+        self.points = points
+        self.width = width
 
     def dispatch(self, renderer):
         """ Dispatch the job. """
@@ -206,18 +122,12 @@ class RenderJobPolygon(RenderJob):
         """ Constructor. """
         RenderJob.__init__(self, view, level, coords)
         self.colour = colour
-        self.__poly = poly
-        self.__width = width
+        self.poly = poly
+        self.width = width
 
-    @property
     def points(self):
         """ Get the points. """
-        return self.points_to_screen(self.__poly.points)
-
-    @property
-    def width(self):
-        """ Get the width. """
-        return self.length_to_screen(self.__width)
+        return self.poly.points
 
     def dispatch(self, renderer):
         """ Dispatch the job. """
@@ -230,24 +140,9 @@ class RenderJobCircle(RenderJob):
         """ Constructor. """
         RenderJob.__init__(self, view, level, coords)
         self.colour = colour
-        self.__position = position
-        self.__radius = radius
-        self.__width = width
-
-    @property
-    def position(self):
-        """ Get the position. """
-        return self.point_to_screen(self.__position)
-
-    @property
-    def radius(self):
-        """ Get the radius. """
-        return self.length_to_screen(self.__radius)
-
-    @property
-    def width(self):
-        """ Get the width. """
-        return self.length_to_screen(self.__width)
+        self.position = position
+        self.radius = radius
+        self.width = width
 
     def dispatch(self, renderer):
         """ Dispatch the job. """
@@ -262,12 +157,7 @@ class RenderJobText(RenderJob):
         self.font = font
         self.text = text
         self.colour = colour
-        self.__position = position
-
-    @property
-    def position(self):
-        """ Get the position. """
-        return self.point_to_screen(self.__position)
+        self.position = position
 
     def dispatch(self, renderer):
         """ Dispatch the job. """
@@ -280,18 +170,8 @@ class RenderJobAnimation(RenderJob):
         """ Constructor. """
         RenderJob.__init__(self, view, level, coords)
         self.orientation = orientation
-        self.__position = position
+        self.position = position
         self.anim = anim
-
-    @property
-    def position(self):
-        """ Get the position. """
-        return self.point_to_screen(self.__position)
-
-    @property
-    def position_world(self):
-        """ Get the position in world coordinates """
-        return self.point_to_world(self.__position)
 
     def dispatch(self, renderer):
         """ Dispatch the job. """

@@ -756,22 +756,18 @@ class ResourceLoader(object):
 
         # List all animation frames.
         anims = self.__list_animations()
-        images = []
-        for anim in anims:
-            anim = self.__load_animation_definition(anim)
-            images += anim["frames"]
 
         # List all config files.
         configs = self.__list_configs()
 
         # Number of steps.
-        count = len(images) + len(configs)
+        count = len(anims) + len(configs)
         assert count > 0
         loading = LoadingScreen(count, self.renderer)
 
         # Read in the frames.
-        for filename in images:
-            self.load_image(filename)
+        for anim in anims:
+            self.load_animation(anim)
             loading.increment()
 
         # Read in the configs.

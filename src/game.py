@@ -167,7 +167,7 @@ class Game(object):
 
             # Draw
             self.drawing.draw(self.renderer, self.camera.get_component(Camera))
-            self.renderer.render_jobs()
+            self.renderer.render_jobs(self.camera.get_component(Camera))
             self.renderer.flip_buffers()
 
             # Maintain frame rate.
