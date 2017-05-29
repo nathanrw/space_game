@@ -545,11 +545,21 @@ class CommandBuffer(object):
 
     def add_polygon(self, points, **kwargs):
         """ Emit a polygon. """
+
+        # Emit the polygon vertices. We assume the polygon is convex, and draw
+        # a triangle between the first vertex and each subsequent pair of
+        # vertices.
         i = 1
         while i+1 < len(points):
-            self.__vertex_data.add_vertex(origin=points[0], **kwargs)
-            self.__vertex_data.add_vertex(origin=points[i], **kwargs)
-            self.__vertex_data.add_vertex(origin=points[i+1], **kwargs)
+            self.__vertex_data.add_vertex(origin=points[0],
+                                          texcoord=(0, 0, -1),
+                                          **kwargs)
+            self.__vertex_data.add_vertex(origin=points[i],
+                                          texcoord=(0, 0, -1),
+                                          **kwargs)
+            self.__vertex_data.add_vertex(origin=points[i+1],
+                                          texcoord=(0, 0, -1),
+                                          **kwargs)
             i += 1
 
     def dispatch(self):
