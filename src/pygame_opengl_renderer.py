@@ -412,6 +412,18 @@ class VertexData(object):
         # different way (e.g. specify more than one vertex at a time, have
         # calling code specify vertex components directly...)
 
+        # TODO: Use DrawElements not DrawArrays so we can emit fewer vertices
+        # and use TRIANGLE_STRIP and TRIANGLE_FAN primitives. Would need to
+        # use primitive restart to render different triangle strips in a single
+        # call.  Not sure if supported on this hardware.
+        #
+        # I *think* the restart is done in hardware, not a loop in the driver,
+        # but even if it is I should think that's faster than a loop in python.
+        #
+        # This function would then return the vertex index and the caller would
+        # then call e.g. add_primitive(indices) which would take care of the
+        # primitive restart.
+
         # Expand the buffer if necessary.
         if self.__n == self.__max:
             self.__max *= 2
