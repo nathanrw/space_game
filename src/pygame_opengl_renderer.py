@@ -562,6 +562,20 @@ class CommandBuffer(object):
                                           **kwargs)
             i += 1
 
+    def add_lines(self, points, **kwargs):
+        """ Emit a line. """
+
+        # Add a line segment for each pair of vertices.
+        i = 0
+        while i+1 < len(points):
+            self.__vertex_data.add_vertex(origin=points[i],
+                                          texcoord=(0, 0, -1),
+                                          **kwargs)
+            self.__vertex_data.add_vertex(origin=points[i+1],
+                                          texcoord=(0, 0, -1),
+                                          **kwargs)
+            i += 1
+
     def dispatch(self):
         """ Dispatch the command to the GPU. """
 
@@ -698,15 +712,13 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobLine(self, job):
         """ Render a line. """
-        pass
-        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_LINES)
-        #buffer.add_lines((job.p0_lcs, job.p1_lcs), job.width, job.colour)
+        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_LINES)
+        buffer.add_lines((job.p0, job.p1), width=job.width, colour=job.colour)
 
     def render_RenderJobLines(self, job):
         """ Render a polyline. """
-        pass
-        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_LINES)
-        #buffer.add_lines(job.points_lcs, job.width, job.colour)
+        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_LINES)
+        buffer.add_lines(job.points, width=job.width, colour=job.colour)
 
     def render_RenderJobPolygon(self, job):
         """ Render a polygon. """
