@@ -20,7 +20,14 @@ class ShaderProgram(object):
 
     Note that the program will currently never be deleted. My thinking
     is that there won't be many shaders, and so we will leave them to be
-    cleaned up when the program terminates. """
+    cleaned up when the program terminates.
+
+    Uniform and attribute locations are determined automatically by
+    parsing the shader source, the same is true of vertex buffer format
+    information. You can get a set of vertex buffers compatible with
+    the shader by calling create_vertex_buffers().
+
+    """
 
     def __init__(self, shader_dir):
         """ Constructor - create and initialise a shader program.
@@ -94,6 +101,11 @@ class ShaderProgram(object):
         attribute_types = {}
         stream = open(filename, 'r')
         for line in stream:
+            # NOTE: Here we assume a simple subset of the syntax for glsl
+            # declarations, this is all I am using at the moment and we can
+            # handle more cases as needed. We're also using the old 'attribute'
+            # form, not 'in'. This is because we're targetting glsl 130 (opengl
+            # 3.0) since that's what my laptop supports!
             pattern = "(attribute|uniform) ([a-zA-Z0-9_]+) ([a-zA-Z0-9_]+)"
             match = re.match(pattern, line)
             if match:
