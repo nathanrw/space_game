@@ -37,15 +37,16 @@ class ShaderProgram(object):
         # We're going to build up a list of inputs.
         program_uniforms = set()
         program_attributes = set()
+        self.__attribute_types = {}
 
         # Compile all of the source files and attach the resulting
         # shader objects to our shader program.
         for (filename, shader_type) in self.__list_shader_files(shader_dir):
-            print (filename, shader_type)
-            (file_uniforms, file_attributes) = self.__parse_uniforms_and_attributes(filename)
-            print (file_uniforms, file_attributes)
+            (file_uniforms, file_attributes, attribute_types) = \
+                self.__parse_uniforms_and_attributes(filename)
             program_uniforms.update(file_uniforms);
             program_attributes.update(file_attributes);
+            self.__attribute_types.update(attribute_types)
             shader = GL.glCreateShader(shader_type)
             GL.glShaderSource(shader, open(filename, 'r').read())
             GL.glCompileShader(shader)
@@ -77,23 +78,47 @@ class ShaderProgram(object):
             if self.__uniform_locations[uniform] == -1:
                 print ("Warning: Uniform '%s' does not exist." % uniform)
 
+    def create_vertex_buffers(self):
+        """ Create a set of vertex buffers compatible with the shader. """
+        buffer_formats = []
+        for name in self.__attribute_types:
+            size, data_type = self.__attribute_types[name]
+            buffer_formats.append((name, size, data_type))
+        return VertexData(self, buffer_formats)
+
     def __parse_uniforms_and_attributes(self, filename):
         """ Given a shader source file, return the names of attribute and
         uniform inputs. """
         uniforms = set()
         attributes = set()
+        attribute_types = {}
         stream = open(filename, 'r')
         for line in stream:
-            pattern = "(attribute|uniform) [a-zA-Z0-9_]+ ([a-zA-Z0-9_]+)"
+            pattern = "(attribute|uniform) ([a-zA-Z0-9_]+) ([a-zA-Z0-9_]+)"
             match = re.match(pattern, line)
             if match:
                 storage_type = match.group(1)
-                variable_name = match.group(2)
+                data_type = match.group(2)
+                variable_name = match.group(3)
                 if storage_type == "attribute":
                     attributes.add(variable_name)
+                    data_dims = 0
+                    data_array_type = None
+                    if data_type == "float":
+                        data_dims = 1
+                        data_array_type = "f"
+                    elif data_type == "vec2":
+                        data_dims = 2
+                        data_array_type = "f"
+                    elif data_type == "vec3":
+                        data_dims = 3
+                        data_array_type = "f"
+                    else:
+                        raise Exception("Unknown attribute data type: %s" % data_type)
+                    attribute_types[variable_name] = (data_dims, data_array_type)
                 elif storage_type == "uniform":
                     uniforms.add(variable_name)
-        return (uniforms, attributes)
+        return (uniforms, attributes, attribute_types)
 
     def __list_shader_files(self, dirname):
         """ List the shader files in a directory, inferring their types. """
@@ -502,12 +527,7 @@ class CommandBuffer(object):
         self.__view_zoom = 1
 
         # Per-vertex data.
-        self.__vertex_data = VertexData(self.__shader_program,
-                                        (("position", 2, 'f'),
-                                         ("texcoord", 3, 'f'),
-                                         ("colour", 3, 'f'),
-                                         ("orientation", 1, 'f'),
-                                         ("origin", 2, 'f')))
+        self.__vertex_data = self.__shader_program.create_vertex_buffers()
 
     def reset(self, view):
         """ Reset the command buffer so we can re-use it. """
