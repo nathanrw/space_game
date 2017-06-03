@@ -659,19 +659,23 @@ class PygameOpenGLRenderer(Renderer):
 
     def initialise(self, screen_size, data_path):
         """ Initialise the pygame display. """
+
+        # We want an OpenGL display.
         self.__surface = pygame.display.set_mode(screen_size, pygame.DOUBLEBUF|pygame.OPENGL)
+
+        # This is needed to load shaders.
         self.__data_path = data_path
-        GL.glViewport(0, 0, self.__surface.get_width(), self.__surface.get_height())
-        GL.glMatrixMode(GL.GL_PROJECTION)
-        GL.glLoadIdentity()
-        GL.glOrtho(0, self.__surface.get_width(), self.__surface.get_height(), 0, 0, 1)
+
+        # Enable alpha blending.
         GL.glEnable(GL.GL_BLEND)
         GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
 
+        # Output opengl version info.
         print ("OpenGL version: %s" % GL.glGetString(GL.GL_VERSION))
         print ("OpenGL vendor: %s" % GL.glGetString(GL.GL_VENDOR))
 
-        self.__anim_shader = ShaderProgram(os.path.join(self.__data_path, "shaders/anim"))
+        # Load the shader program.
+        self.__anim_shader = self.load_shader_program("anim")
 
         # Initialise command buffers.  Jobs will be sorted by layer and coordinate system and added
         # to an appropriate command buffer for later dispatch.
@@ -799,3 +803,7 @@ class PygameOpenGLRenderer(Renderer):
             buffer.add_quad(job.position,
                             job.image.get_size(),
                             colour=(1.0, 1.0, 1.0))
+
+    def load_shader_program(self, name):
+        """ Load a shader program. """
+        return ShaderProgram(os.path.join(self.__data_path, os.path.join("shaders", name)))
