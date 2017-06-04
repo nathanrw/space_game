@@ -828,31 +828,31 @@ class PygameOpenGLRenderer(Renderer):
     def render_RenderJobRect(self, job):
         """ Render rectangle. """
         buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
-        buffer.add_quad(job.rect.center, job.rect.size, colour=job.colour)
+        buffer.add_quad(job.rect.center, job.rect.size, colour=self.colour_int_to_float(job.colour))
 
     def render_RenderJobLine(self, job):
         """ Render a line. """
         buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_LINES)
-        buffer.add_lines((job.p0, job.p1), width=job.width, colour=job.colour)
+        buffer.add_lines((job.p0, job.p1), width=job.width, colour=self.colour_int_to_float(job.colour))
 
     def render_RenderJobLines(self, job):
         """ Render a polyline. """
         buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_LINES)
-        buffer.add_lines(job.points, width=job.width, colour=job.colour)
+        buffer.add_lines(job.points, width=job.width, colour=self.colour_int_to_float(job.colour))
 
     def render_RenderJobPolygon(self, job):
         """ Render a polygon. """
         buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
-        buffer.add_polygon(job.points, colour=job.colour)
+        buffer.add_polygon(job.points, colour=self.colour_int_to_float(job.colour))
 
     def render_RenderJobCircle(self, job):
         """ Render a circle. """
         if job.width == 0:
             buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
-            buffer.add_circle(job.position, job.radius, colour=job.colour)
+            buffer.add_circle(job.position, job.radius, colour=self.colour_int_to_float(job.colour))
         else:
             buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_LINES)
-            buffer.add_circle_lines(job.position, job.radius, colour=job.colour, width=job.width)
+            buffer.add_circle_lines(job.position, job.radius, colour=self.colour_int_to_float(job.colour), width=job.width)
 
     def render_RenderJobText(self, job):
         """ Render some text. """
@@ -887,3 +887,7 @@ class PygameOpenGLRenderer(Renderer):
     def load_shader_program(self, name):
         """ Load a shader program. """
         return ShaderProgram(os.path.join(self.__data_path, os.path.join("shaders", name)))
+
+    def colour_int_to_float(self, colour):
+        """ Convert colour to float format. """
+        return (float(colour[0])/255, float(colour[1])/255, float(colour[2])/255)
