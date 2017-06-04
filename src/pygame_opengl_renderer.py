@@ -343,8 +343,11 @@ class TextureArray(object):
             None # The data.
         )
 
-        # Each page of the atlas has a cursor, this is the point where a new
-        # texture should be inserted.
+        # We insert images one at a time, and keep track of the current
+        # insertion point.  When we reach the end of the row, the next
+        # row starts at a y coordinate flush with the bottom of the tallest
+        # item in the current row. Note that this will end up with lots of
+        # wasted space, we don't do any work to optimise the packing!
         self.__current_page = 0
         self.__row_x = 0
         self.__row_y = 0
