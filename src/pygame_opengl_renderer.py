@@ -656,6 +656,27 @@ class CommandBuffer(object):
                                           **kwargs)
             i += 1
 
+    def __get_circle_points(self, position, radius):
+        """ Get points for a polygonised circle. """
+        points = []
+        circumference = 2*math.pi*radius
+        npoi = max(int(math.sqrt(circumference)), 6)
+        for i in range(0, npoi):
+            angle = i/float(npoi) * math.pi * 2
+            point = position + radius * Vec2d(math.cos(angle), math.sin(angle))
+            points.append(point)
+        return points
+
+    def add_circle(self, position, radius, **kwargs):
+        """ Emit a circular polygon. """
+        self.add_polygon(self.__get_circle_points(position, radius), **kwargs)
+
+    def add_circle_lines(self, position, radius, **kwargs):
+        """ Emit a loop of line segments. """
+        points = self.__get_circle_points(position, radius)
+        points.append(points[0])
+        self.add_lines(points, **kwargs)
+
     def add_lines(self, points, **kwargs):
         """ Emit a line. """
 
@@ -826,8 +847,12 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobCircle(self, job):
         """ Render a circle. """
-        #buffer = self.__command_buffers.get_buffer(job.coordinates, job.level, GL.GL_TRIANGLES)
-        #buffer.add_quad() # Do circle in fragment shader.
+        if job.width == 0:
+            buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
+            buffer.add_circle(job.position, job.radius, colour=job.colour)
+        else:
+            buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_LINES)
+            buffer.add_circle_lines(job.position, job.radius, colour=job.colour, width=job.width)
 
     def render_RenderJobText(self, job):
         """ Render some text. """
