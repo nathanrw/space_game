@@ -192,18 +192,15 @@ class Texture(object):
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
         GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.get_width(), self.get_height(),
                         0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, data)
-        GL.glDisable(GL.GL_TEXTURE_2D)
 
     def begin(self):
         """ Set OpenGL state. """
         assert self.__texture is not None
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.__texture)
-        GL.glColor3f(1, 1, 1)
 
     def end(self):
         """ Unset the state. """
         assert self.__texture is not None
-        GL.glDisable(GL.GL_TEXTURE_2D)
 
     def get_width(self):
         """ Get the texture width in pixels. """
@@ -230,10 +227,9 @@ class Texture(object):
 class AnimFrames(object):
     """ A sequence of textures. """
 
-    def __init__(self, texture_array, filenames):
+    def __init__(self, frames):
         """ Constructor. """
-        self.__texture_array = texture_array
-        self.__filenames = filenames
+        self.__frames = frames
 
     def get_size(self):
         """ The texture size. """
@@ -249,40 +245,46 @@ class AnimFrames(object):
 
     def get_frame_by_index(self, index):
         """ Get texture coordinates for the frame. """
-        return self.__texture_array.lookup_texture(self.__filenames[index])
+        return self.__frames[index]
 
     def get_frame(self, timer):
         """ Get a frame from a timer. """
-        idx = timer.pick_index(len(self.__filenames))
+        idx = timer.pick_index(len(self.__frames))
         return self.get_frame_by_index(idx)
 
 
-class TextureRef(object):
+class VirtualTexture(object):
     """ A reference to a location in a texture. """
 
-    def __init__(self, u0, v0, u1, v1, max_width, max_height, level):
+    def __init__(self, atlas, x, y, w, h, level):
         """ Constructor. """
-        self.__min = Vec2d(u0, v0)
-        self.__max = Vec2d(u1, v1)
+        self.__atlas = atlas
+        self.__min = Vec2d(x, y)
+        self.__max = Vec2d(x+w, y+h)
         self.__level = level
-        self.__max_width = float(max_width)
-        self.__max_height = float(max_height)
+
+    @classmethod
+    def create_null_texture(klass):
+        """ Create a texture that returns dummy texcoords. """
+        return VirtualTexture(None, 0, 0, 0, 0, -1)
 
     def get_texcoord(self, i):
         """ 'i' corresponds to a rectangle corner, and is a number between 0 and 3. """
         ret = None
-        if i == 0:
+        if i == 3:
             ret = (self.__min[0], self.__min[1], self.__level)
-        elif i == 1:
-            ret = (self.__max[0], self.__min[1], self.__level)
         elif i == 2:
+            ret = (self.__max[0], self.__min[1], self.__level)
+        elif i == 1:
             ret = (self.__max[0], self.__max[1], self.__level)
-        elif i == 3:
+        elif i == 0:
             ret = (self.__min[0], self.__max[1], self.__level)
         else:
             raise Exception("Expected 0 <= i <= 3, got %s" % i)
-        if self.__max_width > 0 and self.__max_height > 0:
-            return (ret[0] / self.__max_width, ret[1] / self.__max_height, ret[2])
+        if self.__atlas is not None:
+            return (ret[0] / float(self.__atlas.get_width()),
+                    ret[1] / float(self.__atlas.get_height()),
+                    ret[2])
         else:
             return ret
 
@@ -308,30 +310,21 @@ class TextureArray(object):
     textures. """
 
     def __init__(self):
-        self.__max_width = 0
-        self.__max_height = 0
-        self.__texture_dimensions = []
-        self.__texture = 0
-        self.__filename_indices = {}
+        """ Initialise the texture array, this creates storage for the
+        array but does not load any textures. """
 
-    def load(self, files):
-
-        # Read in each image file and determine the maximum extents,
-        # remembering the extents of each one.
-        self.__max_width = 0
-        self.__max_height = 0
-        self.__texture_dimensions = []
-        images = []
-        for (i, filename) in enumerate(files):
-            self.__filename_indices[filename] = i
-            surf = pygame.image.load(filename)
-            self.__max_width = max(self.__max_width, surf.get_width())
-            self.__max_height = max(self.__max_height, surf.get_height())
-            self.__texture_dimensions.append(surf.get_size())
-            images.append(surf)
+        # Dimensions of the texture array.
+        self.__width = 1024
+        self.__height = 1024
+        self.__depth = 20
 
         # Allocate the texture array.
+        # NOTE: If this goes wrong, we're probably trying to do this before
+        # the opengl context has been created, and things will go horribly
+        # wrong later! For some reason glGetError() is returning 0 anyway.
         self.__texture = GL.glGenTextures(1)
+
+        # Ok, initialise the texture.
         GL.glBindTexture(GL.GL_TEXTURE_2D_ARRAY, self.__texture)
         GL.glTexParameteri(GL.GL_TEXTURE_2D_ARRAY, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
         GL.glTexParameteri(GL.GL_TEXTURE_2D_ARRAY, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
@@ -341,39 +334,96 @@ class TextureArray(object):
             GL.GL_TEXTURE_2D_ARRAY,
             0, #level
             GL.GL_RGBA8, # internal format
-            self.__max_width,
-            self.__max_height,
-            len(images),
+            self.__width,
+            self.__height,
+            self.__depth,
             0, #border
             GL.GL_RGBA, # format
             GL.GL_UNSIGNED_BYTE, # data type
             None # The data.
         )
 
-        # Upload each image to the array.
-        for (i, image) in enumerate(images):
-            image_bytes = pygame.image.tostring(image, "RGBA", 1)
-            GL.glTexSubImage3D(
-                GL.GL_TEXTURE_2D_ARRAY,
-                0, # Mipmap number
-                0, # x offset
-                0, # y offset
-                i, # z offset
-                image.get_width(),
-                image.get_height(),
-                1, # Depth
-                GL.GL_RGBA, # format
-                GL.GL_UNSIGNED_BYTE, # data type
-                image_bytes # data
-            )
+        # Each page of the atlas has a cursor, this is the point where a new
+        # texture should be inserted.
+        self.__current_page = 0
+        self.__row_x = 0
+        self.__row_y = 0
+        self.__row_height = 0
+
+        # Map from filenames to virtual textures.
+        self.__filename_map = {}
+
+    def get_width(self):
+        """ Get the width of the atlas. """
+        return self.__width
+
+    def get_height(self):
+        """ Get the height of the atlas. """
+        return self.__height
+
+    def load_file(self, filename):
+        """ Load a texture from a file. """
+        image = pygame.image.load(filename)
+        virtual_texture = self.load_image(image)
+        self.__filename_map[filename] = virtual_texture
+        return virtual_texture
+
+    def load_image(self, image):
+        """ Load a texture from a pygame surface. """
+
+        # If the image is too big then tough luck...
+        if image.get_width() > self.__width or image.get_height() > self.__height:
+            raise Exception("Image is too large for texture array")
+
+        # If it doesn't fit on the current row then advance the row.
+        if image.get_width() > self.__width - self.__row_x:
+            self.__row_y += self.__row_height
+            self.__row_x = 0
+
+        # If it doesnt fit on the page advance the page.
+        if image.get_height() > self.__height - self.__row_y:
+            self.__current_page += 1
+            self.__row_x = 0
+            self.__row_y = 0
+            self.__row_height = 0
+
+        # Ok, upload the image to the texture array.
+        image_bytes = pygame.image.tostring(image, "RGBA", 1)
+        GL.glBindTexture(GL.GL_TEXTURE_2D_ARRAY, self.__texture)
+        GL.glTexSubImage3D(
+            GL.GL_TEXTURE_2D_ARRAY,
+            0, # Mipmap number
+            self.__row_x, # x offset
+            self.__row_y, # y offset
+            self.__current_page, # z offset
+            image.get_width(),
+            image.get_height(),
+            1, # Depth
+            GL.GL_RGBA, # format
+            GL.GL_UNSIGNED_BYTE, # data type
+            image_bytes # data
+        )
+
+        # Remember the location of this texture in the atlas.
+        ret = VirtualTexture(self,
+                             self.__row_x,
+                             self.__row_y,
+                             image.get_width(),
+                             image.get_height(),
+                             self.__current_page)
+
+        # Advance the cursor.
+        self.__row_x += image.get_width()
+        self.__row_height = max(self.__row_height, image.get_height())
+
+        # Return the texture info.
+        return ret
 
     def lookup_texture(self, filename):
         """ Lookup a texture in the atlas from its filename. """
-        if not filename in self.__filename_indices:
-            return TextureRef(0, 0, 0, 0, 0, 0, 0)
-        index = self.__filename_indices[filename]
-        dims = self.__texture_dimensions[index]
-        return TextureRef(0, 0, dims[0], dims[1], self.__max_width, self.__max_height, index)
+        if not filename in self.__filename_map:
+            return VirtualTexture.create_null_texture()
+        return self.__filename_map[filename]
 
     def begin(self):
         """ Begin rendering with the texture array. """
@@ -554,7 +604,7 @@ class CommandBuffer(object):
         easily batched. """
 
         # Dummy texref in case one hasn't been specified.
-        texref=TextureRef(0, 0, 0, 0, 0, 0, -1)
+        texref=VirtualTexture.create_null_texture()
         if "texref" in kwargs:
             texref = kwargs["texref"]
 
@@ -664,9 +714,8 @@ class PygameOpenGLRenderer(Renderer):
         Renderer.__init__(self)
         self.__surface = None
         self.__data_path = None
-        self.__filenames = []
         self.__anim_shader = None
-        self.__texture_array = TextureArray()
+        self.__texture_array = None
         self.__command_buffers = None
 
     def initialise(self, screen_size, data_path):
@@ -685,17 +734,18 @@ class PygameOpenGLRenderer(Renderer):
         # Output opengl version info.
         print ("OpenGL version: %s" % GL.glGetString(GL.GL_VERSION))
         print ("OpenGL vendor: %s" % GL.glGetString(GL.GL_VENDOR))
+        print ("OpenGL max texture size: %s" % GL.glGetInteger(GL.GL_MAX_TEXTURE_SIZE))
+        print ("OpenGL max array texture layers: %s" % GL.glGetInteger(GL.GL_MAX_ARRAY_TEXTURE_LAYERS))
 
         # Load the shader program.
         self.__anim_shader = self.load_shader_program("anim")
 
+        # Create the texture array.
+        self.__texture_array = TextureArray()
+
         # Initialise command buffers.  Jobs will be sorted by layer and coordinate system and added
         # to an appropriate command buffer for later dispatch.
         self.__command_buffers = CommandBufferArray(self.__anim_shader, self.__texture_array)
-
-    def post_preload(self):
-        """ Initialise the texture array. """
-        self.__texture_array.load(self.__filenames)
 
     def render_jobs(self, view):
         """ Perform rendering. """
@@ -718,16 +768,14 @@ class PygameOpenGLRenderer(Renderer):
 
     def load_compatible_image(self, filename):
         """ Load a pygame image. """
-        self.__filenames.append(filename)
-        return AnimFrames(self.__texture_array, (filename))
+        return self.__texture_array.load_file(filename)
 
     def load_compatible_anim_frames(self, filename_list):
         """ Load the frames of an animation into a format compatible
         with the renderer.  The implementation can return its own
         image representation; the client should treat it as an opaque
         object. """
-        self.__filenames += filename_list
-        return AnimFrames(self.__texture_array, filename_list)
+        return AnimFrames([self.__texture_array.load_file(f) for f in filename_list])
 
     def load_compatible_font(self, filename, size):
         """ Load a pygame font. """
@@ -735,7 +783,7 @@ class PygameOpenGLRenderer(Renderer):
 
     def compatible_image_from_text(self, text, font, colour):
         """ Create an image by rendering a text string. """
-        return Texture.from_surface(font.render(text, True, colour))
+        return self.__texture_array.load_image(font.render(text, True, colour))
 
     def screen_size(self):
         """ Get the display size. """
@@ -751,7 +799,10 @@ class PygameOpenGLRenderer(Renderer):
                                                    Renderer.LEVEL_BACK_FAR,
                                                    GL.GL_TRIANGLES)
         width, height = self.screen_size()
-        buffer.add_quad((width/2, height/2), (width, height), colour=(0.5, 0.5, 0.5))
+        buffer.add_quad((width/2, height/2),
+                        (width, height),
+                        texref=job.background_image,
+                        colour=(0.5, 0.5, 0.5))
 
     def render_RenderJobRect(self, job):
         """ Render rectangle. """
@@ -801,20 +852,12 @@ class PygameOpenGLRenderer(Renderer):
     def render_RenderJobImage(self, job):
         """ Render an image. """
         buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
-        # NOTE: for statically loaded images we can load them into the texture
-        # array, so we can use the same code as animations. For dynamically created
-        # images we can't yet, we'd need to dynamically add images to the texture array and
-        # i havent done that. Hence the two paths here at present.
-        if isinstance(job.image, AnimFrames):
-            texref = job.image.get_frame_by_index(0)
-            buffer.add_quad(job.position,
-                            texref.get_size(),
-                            texref=texref,
-                            colour=(1.0, 1.0, 1.0))
-        else:
-            buffer.add_quad(job.position,
-                            job.image.get_size(),
-                            colour=(1.0, 1.0, 1.0))
+        rect = pygame.Rect((0, 0), job.image.get_size())
+        rect.topleft = job.position
+        buffer.add_quad(rect.center,
+                        job.image.get_size(),
+                        texref=job.image,
+                        colour=(1.0, 1.0, 1.0))
 
     def load_shader_program(self, name):
         """ Load a shader program. """
