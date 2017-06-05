@@ -62,32 +62,47 @@ class PygameRenderer(Renderer):
 
     def render_RenderJobRect(self, job):
         """ Render rectangle. """
-        pygame.draw.rect(self.__surface, job.colour, job.rect, job.width)
+        pygame.draw.rect(self.__surface,
+                         job.colour,
+                         job.view.rect_to_screen(job.rect, job.coords),
+                         int(job.view.length_to_screen(job.width, job.coords)))
 
     def render_RenderJobLine(self, job):
         """ Render a line. """
-        pygame.draw.line(self.__surface, job.colour, job.p0, job.p1, job.width)
+        pygame.draw.line(self.__surface,
+                         job.colour,
+                         job.view.point_to_screen(job.p0, job.coords),
+                         job.view.point_to_screen(job.p1, job.coords),
+                         job.view.length_to_screen(job.width, job.coords))
 
     def render_RenderJobLines(self, job):
         """ Render a polyline. """
-        pygame.draw.lines(self.__surface, job.colour, False, job.points, job.width)
+        pygame.draw.lines(self.__surface,
+                          job.colour,
+                          False,
+                          job.view.points_to_screen(job.points, job.coords),
+                          int(job.view.length_to_screen(job.width, job.coords)))
 
     def render_RenderJobPolygon(self, job):
         """ Render a polygon. """
-        pygame.draw.polygon(self.__surface, job.colour, job.points)
+        pygame.draw.polygon(self.__surface,
+                            job.colour,
+                            job.view.points_to_screen(job.points, job.coords))
 
     def render_RenderJobCircle(self, job):
         """ Render a circle. """
+        pos = job.view.point_to_screen(job.position, job.coords)
         pygame.draw.circle(self.__surface,
                            job.colour,
-                           (int(job.position[0]), int(job.position[1])),
-                           int(job.radius),
-                           int(job.width))
+                           (int(pos[0]), int(pos[1])),
+                           max(1, int(job.view.length_to_screen(job.radius, job.coords))),
+                           int(job.view.length_to_screen(job.width, job.coords)))
 
     def render_RenderJobText(self, job):
         """ Render some text. """
         text_surface = job.font.render(job.text, True, job.colour)
-        self.__surface.blit(text_surface, job.position)
+        self.__surface.blit(text_surface,
+                            job.view.point_to_screen(job.position, job.coords))
 
     def render_RenderJobAnimation(self, job):
         """ Render an animation. """
@@ -95,11 +110,12 @@ class PygameRenderer(Renderer):
         if (job.orientation != 0):
             img = pygame.transform.rotate(img, job.orientation)
         if (job.view.zoom != 1):
-            size = job.scale_size(img.get_size())
+            size = job.view.size_to_screen(img.get_size(), job.coords)
             img = pygame.transform.scale(img, (int(size[0]), int(size[1])))
-        screen_pos = job.position - Vec2d(img.get_rect().center)
+        screen_pos = job.view.point_to_screen(job.position, job.coords) - Vec2d(img.get_rect().center)
         self.__surface.blit(img, screen_pos)
 
     def render_RenderJobImage(self, job):
         """ Render an image. """
-        self.__surface.blit(job.image, job.position)
+        self.__surface.blit(job.image,
+                            job.view.point_to_screen(job.position, job.coords))

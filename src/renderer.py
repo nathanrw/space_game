@@ -44,6 +44,48 @@ class View(object):
         centre = Vec2d(self.__renderer.screen_size())/2
         return (screen - centre) / self.zoom + self.position
 
+    def point_to_screen(self, point, coords):
+        """ Convert a point to world coordinates. """
+        if coords == Renderer.COORDS_SCREEN:
+            return point
+        else:
+            return self.world_to_screen(point)
+
+    def length_to_screen(self, length, coords):
+        """ Convert a length to world coordinates. """
+        if coords == Renderer.COORDS_SCREEN:
+            return length
+        else:
+            return self.scale_length(length)
+
+    def points_to_screen(self, points, coords):
+        """ Convert a list of points to world coordinates. """
+        if coords == Renderer.COORDS_SCREEN:
+            return points
+        else:
+            return [ self.world_to_screen(p) for p in points ]
+
+    def rect_to_screen(self, rect, coords):
+        """ Convert a rectangle into screen coordinates. """
+        if coords == Renderer.COORDS_SCREEN:
+            return rect
+        else:
+            tl = self.world_to_screen(rect.topleft)
+            br = self.world_to_screen(rect.bottomright)
+            ret = Rect()
+            ret.topleft = tl
+            ret.bottomright = br
+            return ret
+
+    def size_to_screen(self, size, coords):
+        """ Convert a size into screen coordinates """
+        if coords == Renderer.COORDS_SCREEN:
+            return size
+        else:
+            return (self.scale_length(size[0]),
+                    self.scale_length(size[1]))
+
+
 class RenderJob(object):
     """ Describes a rendering job. """
     __metaclass__ = abc.ABCMeta
@@ -227,7 +269,7 @@ class Renderer(object):
         """ A hook to be executed when the game has finished loading. """
         pass
 
-    def render_jobs(self):
+    def render_jobs(self, view):
         """ Render any queued jobs. This does not update the display. """
         for level in self.__levels:
             for job in level:

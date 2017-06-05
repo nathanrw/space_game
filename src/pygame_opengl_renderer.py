@@ -781,7 +781,7 @@ class PygameOpenGLRenderer(Renderer):
         GL.glClear(GL.GL_COLOR_BUFFER_BIT)
 
         # Visit each job to fill command buffers
-        Renderer.render_jobs(self)
+        Renderer.render_jobs(self, view)
 
         # Dispatch commands to the GPU.
         self.__command_buffers.dispatch()
