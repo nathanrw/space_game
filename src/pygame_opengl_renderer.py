@@ -851,11 +851,20 @@ class PygameOpenGLRenderer(Renderer):
         buffer = self.__command_buffers.get_buffer(Renderer.COORDS_SCREEN,
                                                    Renderer.LEVEL_BACK_FAR,
                                                    GL.GL_TRIANGLES)
-        width, height = self.screen_size()
-        buffer.add_quad((width/2, height/2),
-                        (width, height),
-                        texref=job.background_image,
-                        colour=(0.5, 0.5, 0.5))
+        """ Render scrolling background. """
+        (image_width, image_height) = job.background_image.get_size()
+        (screen_width, screen_height) = self.screen_size()
+        pos = job.view.position
+        x = int(pos.x)
+        y = int(pos.y)
+        start_i = -(x%image_width)
+        start_j = -(y%image_width)
+        for i in range(start_i, screen_width, image_width):
+            for j in range(start_j, screen_height, image_height):
+                buffer.add_quad((i+image_width/2.0, j+image_width/2.0),
+                                (image_width, image_height),
+                                texref=job.background_image,
+                                colour=(1.0, 1.0, 1.0))
 
     def render_RenderJobRect(self, job):
         """ Render rectangle. """
