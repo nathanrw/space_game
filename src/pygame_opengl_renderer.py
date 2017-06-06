@@ -683,15 +683,44 @@ class CommandBuffer(object):
     def add_lines(self, points, **kwargs):
         """ Emit a line. """
 
+        # Determine the width of the line.
+        width = 1
+        if "width" in kwargs:
+            width = kwargs["width"]
+
         # Add a line segment for each pair of vertices.
         i = 0
         while i+1 < len(points):
-            self.__vertex_data.add_vertex(origin=points[i],
-                                          texcoord=(0, 0, -1),
-                                          **kwargs)
-            self.__vertex_data.add_vertex(origin=points[i+1],
-                                          texcoord=(0, 0, -1),
-                                          **kwargs)
+
+            # Get the segment.
+            p0 = points[i]
+            p1 = points[i+1]
+
+            # Skip 0-length segment.
+            if (p0 - p1).length == 0:
+                continue
+
+            # Determine the corners of a quad for the line segment.
+            normal = (p0 - p1).perpendicular_normal() * width / 2.0
+            tl = p1 - normal
+            tr = p1 + normal
+            br = p0 + normal
+            bl = p0 - normal
+            positions = (tl, tr, br, bl)
+
+            # Emit the top left triangle.
+            for j in (0, 1, 3):
+                self.__vertex_data.add_vertex(origin=positions[j],
+                                              texcoord=(0, 0, -1),
+                                              **kwargs)
+
+            # Emit the bottom right triangle.
+            for j in (3, 1, 2):
+                self.__vertex_data.add_vertex(origin=positions[j],
+                                              texcoord=(0, 0, -1),
+                                              **kwargs)
+
+            # Move on to the next segment.
             i += 1
 
     def dispatch(self):
@@ -835,12 +864,12 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobLine(self, job):
         """ Render a line. """
-        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_LINES)
+        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
         buffer.add_lines((job.p0, job.p1), width=job.width, colour=self.colour_int_to_float(job.colour))
 
     def render_RenderJobLines(self, job):
         """ Render a polyline. """
-        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_LINES)
+        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
         buffer.add_lines(job.points, width=job.width, colour=self.colour_int_to_float(job.colour))
 
     def render_RenderJobPolygon(self, job):
@@ -850,11 +879,10 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_RenderJobCircle(self, job):
         """ Render a circle. """
+        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
         if job.width == 0:
-            buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
             buffer.add_circle(job.position, job.radius, colour=self.colour_int_to_float(job.colour))
         else:
-            buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_LINES)
             buffer.add_circle_lines(job.position, job.radius, colour=self.colour_int_to_float(job.colour), width=job.width)
 
     def render_RenderJobText(self, job):
