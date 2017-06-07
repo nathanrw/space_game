@@ -757,33 +757,17 @@ class CommandBuffer(object):
         if len(self.__vertex_data) == 0:
             return
 
-        # Use the shader program.
-        self.__shader_program.begin()
-
-        # Use texture unit 0.
-        GL.glActiveTexture(GL.GL_TEXTURE0)
-
-        # Use the texture array.
-        self.__texture_array.begin()
-
         # Setup uniform data.
         GL.glUniform1i(self.__shader_program.get_uniform_location("coordinate_system"), self.__coordinate_system)
         GL.glUniform2f(self.__shader_program.get_uniform_location("view_position"), *self.__view_position)
         GL.glUniform2f(self.__shader_program.get_uniform_location("view_size"), *self.__view_size)
         GL.glUniform1f(self.__shader_program.get_uniform_location("view_zoom"), self.__view_zoom)
-        GL.glUniform1i(self.__shader_program.get_uniform_location("texture_array"), 0)
 
         # Specify vertex attributes.
         self.__vertex_data.bind_attributes()
 
         # Draw the quads.
         GL.glDrawArrays(self.__primitive_type, 0, len(self.__vertex_data))
-
-        # Stop using the texture array.
-        self.__texture_array.end()
-
-        # Stop using the shader program.
-        self.__shader_program.end()
 
 
 class PygameOpenGLRenderer(Renderer):
@@ -826,6 +810,16 @@ class PygameOpenGLRenderer(Renderer):
         # Initialise command buffers.  Jobs will be sorted by layer and coordinate system and added
         # to an appropriate command buffer for later dispatch.
         self.__command_buffers = CommandBufferArray(self.__anim_shader, self.__texture_array)
+
+        # Use the shader program.
+        self.__anim_shader.begin()
+
+        # Use texture unit 0.
+        GL.glActiveTexture(GL.GL_TEXTURE0)
+        GL.glUniform1i(self.__anim_shader.get_uniform_location("texture_array"), 0)
+
+        # Use the texture array.
+        self.__texture_array.begin()
 
     def render_jobs(self, view):
         """ Perform rendering. """
