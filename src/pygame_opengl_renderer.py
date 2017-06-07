@@ -1,3 +1,30 @@
+"""
+A modern OpenGL renderer aiming to render textured quads and simple 2D geometry
+efficiently and with the potential to add fancy post processing effects.
+
+The current stategy is to try and do as little work in python as possible
+(since it is very slow) and get the GPU to do the heavy lifting - but this
+involves compromise in terms of uploading redundant data, shader program
+efficiency etc. The optimal approach has not yet been found.
+
+Features:
+
+  * All textures stored in a single large texture array so no need change
+    the bound texture.
+
+  * Attributes & uniforms automatically parsed from shader source, and
+    vertex data arrays allocated automatically based on this.
+
+  * Geometry batched into very few draw calls by adding quads to 'command
+    buffers' keyed on attributes that change.
+
+Testing on an old laptop with intel integrated graphics reveals that (a) the
+OpenGL renderer is currently slower than the software implementation at least
+for few sprites and (b) a lot of time gets spent in add_vertex() which does a
+lot of work parsing arguments and fiddling with arrays.  This may be different
+on a beefier machine.
+"""
+
 import pygame
 import OpenGL
 
