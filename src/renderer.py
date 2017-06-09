@@ -120,10 +120,12 @@ class Renderer(object):
         """ A hook to be executed when the game has finished loading. """
         pass
 
+    @abc.abstractmethod
     def pre_render(self, view):
         """ Hook to set up any state necessary for rendering. """
         pass
 
+    @abc.abstractmethod
     def post_render(self):
         """ Hook to do any work after all jobs have been submitted. """
         pass
@@ -169,78 +171,78 @@ class Renderer(object):
         """ Get the screen dimensions as a rect. """
         pass
 
-    def add_job_background(self, view, background_image, **kwargs):
+    def add_job_background(self, background_image, **kwargs):
         """ Queue a job to render a background image. """
-        self.render_background(view, background_image, **kwargs)
+        self.render_background(background_image, **kwargs)
 
-    def add_job_rect(self, view, rect, **kwargs):
+    def add_job_rect(self, rect, **kwargs):
         """ Queue a job to render a rectangle. """
-        self.set_defaults(kwargs,
-                          level=Renderer.LEVEL_MID,
-                          coords=Renderer.COORDS_WORLD,
-                          colour=(255, 255, 255),
-                          width=0)
+        self.__set_defaults(kwargs,
+                            level=Renderer.LEVEL_MID,
+                            coords=Renderer.COORDS_WORLD,
+                            colour=(255, 255, 255),
+                            width=0)
         self.render_rect(rect, **kwargs)
 
-    def add_job_line(self, view, p0, p1, **kwargs):
+    def add_job_line(self, p0, p1, **kwargs):
         """ Queue a job to render a line. """
-        self.set_defaults(kwargs,
-                          level=Renderer.LEVEL_MID,
-                          coords=Renderer.COORDS_WORLD,
-                          colour=(255, 255, 255),
-                          width=0)
+        self.__set_defaults(kwargs,
+                            level=Renderer.LEVEL_MID,
+                            coords=Renderer.COORDS_WORLD,
+                            colour=(255, 255, 255),
+                            width=0)
         self.render_line(p0, p1, **kwargs)
 
-    def add_job_lines(self, view, points, **kwargs):
+    def add_job_lines(self, points, **kwargs):
         """ Queue a job to render lines """
-        self.set_defaults(kwargs,
-                          level=Renderer.LEVEL_MID,
-                          coords=Renderer.COORDS_WORLD,
-                          colour=(255, 255, 255),
-                          width=0)
+        self.__set_defaults(kwargs,
+                            level=Renderer.LEVEL_MID,
+                            coords=Renderer.COORDS_WORLD,
+                            colour=(255, 255, 255),
+                            width=0)
         self.render_lines(points, **kwargs)
 
-    def add_job_polygon(self, view, poly, **kwargs):
+    def add_job_polygon(self, poly, **kwargs):
         """ Queue a job to render a polygon. """
-        self.set_defaults(kwargs,
-                          level=Renderer.LEVEL_MID,
-                          coords=Renderer.COORDS_WORLD,
-                          colour=(255, 255, 255),
-                          width=0)
+        self.__set_defaults(kwargs,
+                            level=Renderer.LEVEL_MID,
+                            coords=Renderer.COORDS_WORLD,
+                            colour=(255, 255, 255),
+                            width=0)
         self.render_polygon(poly.points, **kwargs)
 
-    def add_job_circle(self, view, position, radius, **kwargs):
+    def add_job_circle(self, position, radius, **kwargs):
         """ Queue a job to render a circle. """
-        self.set_defaults(kwargs,
-                          level=Renderer.LEVEL_MID,
-                          coords=Renderer.COORDS_WORLD,
-                          colour=(255, 255, 255),
-                          width=0)
+        self.__set_defaults(kwargs,
+                            level=Renderer.LEVEL_MID,
+                            coords=Renderer.COORDS_WORLD,
+                            colour=(255, 255, 255),
+                            width=0)
         self.render_circle(position, radius, **kwargs)
 
-    def add_job_text(self, view, font, text, position, **kwargs):
+    def add_job_text(self, font, text, position, **kwargs):
         """ Queue a job to render text. """
-        self.set_defaults(kwargs,
-                          level=Renderer.LEVEL_FORE_NEAR,
-                          coords=Renderer.COORDS_SCREEN,
-                          colour=(255, 255, 255))
+        self.__set_defaults(kwargs,
+                            level=Renderer.LEVEL_FORE_NEAR,
+                            coords=Renderer.COORDS_SCREEN,
+                            colour=(255, 255, 255))
         self.render_text(font, text, position, **kwargs)
 
-    def add_job_animation(self, view, orientation, position, anim, **kwargs):
+    def add_job_animation(self, orientation, position, anim, **kwargs):
         """ Queue a job to render an animation. """
-        self.set_defaults(kwargs,
-                          level=Renderer.LEVEL_MID,
-                          coords=Renderer.COORDS_WORLD)
+        self.__set_defaults(kwargs,
+                            level=Renderer.LEVEL_MID,
+                            coords=Renderer.COORDS_WORLD)
         self.render_animation(position, orientation, anim, **kwargs)
 
-    def add_job_image(self, view, position, image, **kwargs):
+    def add_job_image(self, position, image, **kwargs):
         """ Queue a job to render an image. """
-        self.set_defaults(kwargs,
-                          level=Renderer.LEVEL_FORE_NEAR,
-                          coords=Renderer.COORDS_SCREEN)
+        self.__set_defaults(kwargs,
+                            level=Renderer.LEVEL_FORE_NEAR,
+                            coords=Renderer.COORDS_SCREEN)
         self.render_image(position, image, **kwargs)
 
-    def set_defaults(self, got_kwargs, **kwargs):
+    def __set_defaults(self, got_kwargs, **kwargs):
         """ Set default kwargs."""
         for key in kwargs:
             if not key in got_kwargs:

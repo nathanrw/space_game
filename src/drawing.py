@@ -30,10 +30,8 @@ class Drawing(ComponentSystem):
             y = position[1] + size[1] - size[1] * (value/float(maximum))
             points.append((x, y))
         if len(points) > 2:
-            renderer.add_job_rect(camera, Rect(position, size), width=1,
-                                  colour=(255,255,255), coords=Renderer.COORDS_SCREEN)
-            renderer.add_job_lines(camera, points, width=2,
-                                   colour=(200,200,200), coords=Renderer.COORDS_SCREEN)
+            renderer.add_job_rect(Rect(position, size), width=1, colour=(255, 255, 255), coords=Renderer.COORDS_SCREEN)
+            renderer.add_job_lines(points, width=2, colour=(200, 200, 200), coords=Renderer.COORDS_SCREEN)
 
     def draw_debug_info(self, renderer, camera):
         """ Draw the information. """
@@ -52,31 +50,22 @@ class Drawing(ComponentSystem):
         game_info = self.game_services.get_info()
 
         # Draw the framerate.
-        renderer.add_job_text(camera,
-                             self.__font,
-                             "FPS (limited): %04.1f" % game_info.framerate,
-                             (10, 10))
+        renderer.add_job_text(self.__font, "FPS (limited): %04.1f" % game_info.framerate, (10, 10))
 
         # Draw the unlimited framerate.
-        renderer.add_job_text(camera,
-                             self.__font,
-                             "FPS (raw): %04.1f" % game_info.raw_framerate,
-                             (10, 30))
+        renderer.add_job_text(self.__font, "FPS (raw): %04.1f" % game_info.raw_framerate, (10, 30))
 
         # Draw a graph of the framerate over time.
         self.draw_graph(renderer, camera, game_info.framerates, 70, (10, 50), (100, 15))
 
         # Draw the time ratio.
-        renderer.add_job_text(camera,
-                             self.__font,
-                             "Time scale: %03.1f" % game_info.time_ratio,
-                             (10, 70))
+        renderer.add_job_text(self.__font, "Time scale: %03.1f" % game_info.time_ratio, (10, 70))
 
     def draw(self, renderer, camera):
         """ Draw the drawables in order of layer. """
 
         # Draw the background
-        renderer.add_job_background(camera, self.__background_image)
+        renderer.add_job_background(self.__background_image)
 
         # Draw each drawable.
         for drawable in self.components:
@@ -145,21 +134,13 @@ class Drawable(Component):
                         radius = weapon.config.get_or_default("radius", 2)
                         red = (255,100,100)
                         white = (255,255,255)
-                        renderer.add_job_line(camera,
-                                              p0,
-                                              p1,
-                                              colour=red,
-                                              width=radius)
+                        renderer.add_job_line(p0, p1, colour=red, width=radius)
                         core_radius = radius//3
                         if core_radius > 0:
-                            renderer.add_job_line(camera,
-                                                  p0,
-                                                  p1,
-                                                  colour=white,
-                                                  width=core_radius)
+                            renderer.add_job_line(p0, p1, colour=white, width=core_radius)
                         size = int(radius+random.random()*radius*2)
-                        renderer.add_job_circle(camera, p1, size, colour=red)
-                        renderer.add_job_circle(camera, p1, size-2, colour=white)
+                        renderer.add_job_circle(p1, size, colour=red)
+                        renderer.add_job_circle(p1, size - 2, colour=white)
 
     def draw_shields(self, body, renderer, camera):
         """ Draw any shields the entity might have. """
@@ -168,11 +149,7 @@ class Drawable(Component):
         if shields is not None:
             width = int((shields.hp/float(shields.max_hp)) * 5)
             if width > 0:
-                renderer.add_job_circle(camera,
-                                        body.position,
-                                        int(body.size*2),
-                                        colour=(200, 220, 255),
-                                        width=width)
+                renderer.add_job_circle(body.position, int(body.size * 2), colour=(200, 220, 255), width=width)
 
     def draw_animation(self, body, renderer, camera):
         """ Draw an animation on the screen. """
@@ -186,7 +163,7 @@ class Drawable(Component):
         anim = component.get_anim()
 
         # Draw the animation
-        renderer.add_job_animation(camera, -body.orientation, body.position, anim)
+        renderer.add_job_animation(-body.orientation, body.position, anim)
 
     def draw_thrusters(self, body, renderer, camera):
         """ Draw the thrusters affecting the body. """
@@ -197,22 +174,22 @@ class Drawable(Component):
                 dir = thruster.world_direction(body)
                 length = thruster.thrust() / 500.0
                 poly = Polygon.make_bullet_polygon(pos, pos-(dir*length))
-                renderer.add_job_polygon(camera, poly, colour=(255,255,255))
+                renderer.add_job_polygon(poly, colour=(255, 255, 255))
 
     def draw_bar(self, arg_rect, fraction, col_back, col_0, col_1, renderer, camera):
         """ Draw a progress bar """
 
         # The background
-        renderer.add_job_rect(camera, arg_rect, colour=col_back, coords=Renderer.COORDS_SCREEN)
+        renderer.add_job_rect(arg_rect, colour=col_back, coords=Renderer.COORDS_SCREEN)
 
         # The empty portion.
         rect = Rect(arg_rect)
         rect.inflate_ip(-4, -4)
-        renderer.add_job_rect(camera, rect, colour=col_0, coords=Renderer.COORDS_SCREEN)
+        renderer.add_job_rect(rect, colour=col_0, coords=Renderer.COORDS_SCREEN)
 
         # The full portion.
         rect.width = int(fraction * rect.width)
-        renderer.add_job_rect(camera, rect, colour=col_1, coords=Renderer.COORDS_SCREEN)
+        renderer.add_job_rect(rect, colour=col_1, coords=Renderer.COORDS_SCREEN)
 
     def draw_hitpoints(self, body, renderer, camera):
         """ Draw the entity's hitpoints, or a marker showing where it
@@ -313,7 +290,7 @@ class TextDrawer(object):
         # Now draw the image, if we have one.
         if self.__visible:
             pos = Vec2d(renderer.screen_rect().center) - Vec2d(self.__image.get_size()) / 2
-            renderer.add_job_image(camera, pos, self.__image, coords=Renderer.COORDS_SCREEN)
+            renderer.add_job_image(pos, self.__image, coords=Renderer.COORDS_SCREEN)
 
         # Get positions of the 'WARNING' strips
         pos = Vec2d(renderer.screen_rect().center) - Vec2d(self.__image.get_size()) / 2
@@ -330,10 +307,10 @@ class TextDrawer(object):
                     x = -x
                 start_i = -(x%(image_width+self.__padding))
                 for i in range(int(start_i), screen_width, image_width + self.__padding):
-                    renderer.add_job_image(camera, (i, y), self.__warning, coords=Renderer.COORDS_SCREEN)
+                    renderer.add_job_image((i, y), self.__warning, coords=Renderer.COORDS_SCREEN)
                 rect = renderer.screen_rect()
                 rect.height = 5
                 rect.bottom = y-5
-                renderer.add_job_rect(camera, rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN)
+                renderer.add_job_rect(rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN)
                 rect.top=y+self.__warning.get_height()+5
-                renderer.add_job_rect(camera, rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN)
+                renderer.add_job_rect(rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN)

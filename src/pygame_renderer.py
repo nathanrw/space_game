@@ -60,13 +60,13 @@ class PygameRenderer(Renderer):
                 job(self.__view)
         self.__jobs = {}
 
-    def render_background(self, view, background_image, **kwargs):
+    def render_background(self, background_image, **kwargs):
         """ Render scrolling background. """
         def do_it(the_view):
             screen = self.__surface
             (image_width, image_height) = background_image.get_size()
             (screen_width, screen_height) = screen.get_size()
-            pos = view.position
+            pos = the_view.position
             x = int(pos.x)
             y = int(pos.y)
             start_i = -(x%image_width)

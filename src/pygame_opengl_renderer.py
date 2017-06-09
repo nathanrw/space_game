@@ -781,6 +781,7 @@ class PygameOpenGLRenderer(Renderer):
         self.__anim_shader = None
         self.__texture_array = None
         self.__command_buffers = None
+        self.__view = None
 
     def initialise(self, screen_size, data_path):
         """ Initialise the pygame display. """
@@ -824,6 +825,9 @@ class PygameOpenGLRenderer(Renderer):
     def pre_render(self, view):
         """ Prepare to build commands. """
 
+        # Cache the view.
+        self.__view = view
+
         # Reset command buffers
         self.__command_buffers.reset(view)
 
@@ -835,6 +839,9 @@ class PygameOpenGLRenderer(Renderer):
 
         # Dispatch commands to the GPU.
         self.__command_buffers.dispatch()
+
+        # We're not rendering any more.
+        self.__view = None
 
     def flip_buffers(self):
         """ Update the pygame display. """
@@ -867,7 +874,7 @@ class PygameOpenGLRenderer(Renderer):
         """ Get the display size. """
         return self.__surface.get_rect()
 
-    def render_background(self, view, background_image, **kwargs):
+    def render_background(self, background_image, **kwargs):
         """ Render scrolling background. """
         buffer = self.__command_buffers.get_buffer(Renderer.COORDS_SCREEN,
                                                    Renderer.LEVEL_BACK_FAR,
@@ -875,7 +882,7 @@ class PygameOpenGLRenderer(Renderer):
         """ Render scrolling background. """
         (image_width, image_height) = background_image.get_size()
         (screen_width, screen_height) = self.screen_size()
-        pos = view.position
+        pos = self.__view.position
         x = int(pos.x)
         y = int(pos.y)
         start_i = -(x%image_width)
