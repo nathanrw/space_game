@@ -802,7 +802,7 @@ class PygameOpenGLRenderer(Renderer):
         print ("OpenGL max array texture layers: %s" % GL.glGetInteger(GL.GL_MAX_ARRAY_TEXTURE_LAYERS))
 
         # Load the shader program.
-        self.__anim_shader = self.load_shader_program("anim")
+        self.__anim_shader = self.__load_shader_program("anim")
 
         # Create the texture array.
         self.__texture_array = TextureArray()
@@ -821,8 +821,8 @@ class PygameOpenGLRenderer(Renderer):
         # Use the texture array.
         self.__texture_array.begin()
 
-    def render_jobs(self, view):
-        """ Perform rendering. """
+    def pre_render(self, view):
+        """ Prepare to build commands. """
 
         # Reset command buffers
         self.__command_buffers.reset(view)
@@ -830,8 +830,8 @@ class PygameOpenGLRenderer(Renderer):
         # Clear the screen
         GL.glClear(GL.GL_COLOR_BUFFER_BIT)
 
-        # Visit each job to fill command buffers
-        Renderer.render_jobs(self, view)
+    def post_render(self):
+        """ Dispatch commands to gpu. """
 
         # Dispatch commands to the GPU.
         self.__command_buffers.dispatch()
@@ -867,15 +867,15 @@ class PygameOpenGLRenderer(Renderer):
         """ Get the display size. """
         return self.__surface.get_rect()
 
-    def render_RenderJobBackground(self, job):
+    def render_background(self, view, background_image, **kwargs):
         """ Render scrolling background. """
         buffer = self.__command_buffers.get_buffer(Renderer.COORDS_SCREEN,
                                                    Renderer.LEVEL_BACK_FAR,
                                                    GL.GL_TRIANGLES)
         """ Render scrolling background. """
-        (image_width, image_height) = job.background_image.get_size()
+        (image_width, image_height) = background_image.get_size()
         (screen_width, screen_height) = self.screen_size()
-        pos = job.view.position
+        pos = view.position
         x = int(pos.x)
         y = int(pos.y)
         start_i = -(x%image_width)
@@ -884,71 +884,95 @@ class PygameOpenGLRenderer(Renderer):
             for j in range(start_j, screen_height, image_height):
                 buffer.add_quad((i+image_width/2.0, j+image_width/2.0),
                                 (image_width, image_height),
-                                texref=job.background_image,
+                                texref=background_image,
                                 colour=(1.0, 1.0, 1.0))
 
-    def render_RenderJobRect(self, job):
+    def render_rect(self, rect, **kwargs):
         """ Render rectangle. """
-        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
-        buffer.add_quad(job.rect.center, job.rect.size, colour=self.colour_int_to_float(job.colour))
+        (coords, level) = self.__parse_kwargs(kwargs)
+        buffer = self.__command_buffers.get_buffer(coords, level, GL.GL_TRIANGLES)
+        buffer.add_quad(rect.center, rect.size, **kwargs)
 
-    def render_RenderJobLine(self, job):
+    def render_line(self, p0, p1, **kwargs):
         """ Render a line. """
-        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
-        buffer.add_lines((job.p0, job.p1), width=job.width, colour=self.colour_int_to_float(job.colour))
+        (coords, level) = self.__parse_kwargs(kwargs)
+        buffer = self.__command_buffers.get_buffer(coords, level, GL.GL_TRIANGLES)
+        buffer.add_lines((p0, p1), **kwargs)
 
-    def render_RenderJobLines(self, job):
+    def render_lines(self, points, **kwargs):
         """ Render a polyline. """
-        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
-        buffer.add_lines(job.points, width=job.width, colour=self.colour_int_to_float(job.colour))
+        (coords, level) = self.__parse_kwargs(kwargs)
+        buffer = self.__command_buffers.get_buffer(coords, level, GL.GL_TRIANGLES)
+        buffer.add_lines(points, **kwargs)
 
-    def render_RenderJobPolygon(self, job):
+    def render_polygon(self, points, **kwargs):
         """ Render a polygon. """
-        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
-        buffer.add_polygon(job.points, colour=self.colour_int_to_float(job.colour))
+        (coords, level) = self.__parse_kwargs(kwargs)
+        buffer = self.__command_buffers.get_buffer(coords, level, GL.GL_TRIANGLES)
+        buffer.add_polygon(points, **kwargs)
 
-    def render_RenderJobCircle(self, job):
+    def render_circle(self, position, radius, **kwargs):
         """ Render a circle. """
-        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
-        if job.width == 0:
-            buffer.add_circle(job.position, job.radius, colour=self.colour_int_to_float(job.colour))
+        (coords, level) = self.__parse_kwargs(kwargs)
+        width = 0
+        if "width" in kwargs:
+            width = kwargs["width"]
+        buffer = self.__command_buffers.get_buffer(coords, level, GL.GL_TRIANGLES)
+        if width == 0:
+            buffer.add_circle(position, radius, **kwargs)
         else:
-            buffer.add_circle_lines(job.position, job.radius, colour=self.colour_int_to_float(job.colour), width=job.width)
+            buffer.add_circle_lines(position, radius, **kwargs)
 
-    def render_RenderJobText(self, job):
+    def render_text(self, font, position, text, **kwargs):
         """ Render some text. """
         pass
 
-    def render_RenderJobAnimation(self, job):
+    def render_animation(self, position, orientation, anim, **kwargs):
         """ Render an animation. """
+        (coords, level) = self.__parse_kwargs(kwargs)
 
         # Get command buffer to which to dispatch.
-        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
+        buffer = self.__command_buffers.get_buffer(coords, level, GL.GL_TRIANGLES)
 
         # Get texture information about current animation frame.
-        texref = job.anim.frames.get_frame(job.anim.timer)
+        texref = anim.frames.get_frame(anim.timer)
 
         # Dispatch a quad to the command buffer.
-        buffer.add_quad(job.position,
+        buffer.add_quad(position,
                         texref.get_size(),
                         texref=texref,
-                        orientation=job.orientation,
+                        orientation=orientation,
                         colour=(1.0, 1.0, 1.0))
 
-    def render_RenderJobImage(self, job):
+    def render_image(self, position, image, **kwargs):
         """ Render an image. """
-        buffer = self.__command_buffers.get_buffer(job.coords, job.level, GL.GL_TRIANGLES)
-        rect = pygame.Rect((0, 0), job.image.get_size())
-        rect.topleft = job.position
+        (coords, level) = self.__parse_kwargs(kwargs)
+        buffer = self.__command_buffers.get_buffer(coords, level, GL.GL_TRIANGLES)
+        rect = pygame.Rect((0, 0), image.get_size())
+        rect.topleft = position
         buffer.add_quad(rect.center,
-                        job.image.get_size(),
-                        texref=job.image,
+                        image.get_size(),
+                        texref=image,
                         colour=(1.0, 1.0, 1.0))
 
-    def load_shader_program(self, name):
+    def __load_shader_program(self, name):
         """ Load a shader program. """
         return ShaderProgram(os.path.join(self.__data_path, os.path.join("shaders", name)))
 
-    def colour_int_to_float(self, colour):
+    def __colour_int_to_float(self, colour):
         """ Convert colour to float format. """
         return (float(colour[0])/255, float(colour[1])/255, float(colour[2])/255)
+
+    def __parse_kwargs(self, kwargs_dict):
+        """ Extract level and coordinate system, map colour. """
+        level = Renderer.LEVEL_MID
+        if "level" in kwargs_dict:
+            level = kwargs_dict["level"]
+        coords = Renderer.COORDS_WORLD
+        if "coords" in kwargs_dict:
+            coords = kwargs_dict["coords"]
+        del kwargs_dict["level"]
+        del kwargs_dict["coords"]
+        if "colour" in kwargs_dict:
+            kwargs_dict["colour"] = self.__colour_int_to_float(kwargs_dict["colour"])
+        return (coords, level)

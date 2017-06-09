@@ -86,153 +86,6 @@ class View(object):
                     self.scale_length(size[1]))
 
 
-class RenderJob(object):
-    """ Describes a rendering job. """
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self, view, level, coords):
-        """ Initialise the job data. """
-        self.view = view
-        self.level = level
-        self.coords = coords
-        self.colour = (0, 0, 0)
-
-    @abc.abstractmethod
-    def dispatch(self, renderer):
-        """ Tell the renderer to render the job. """
-        pass
-
-class RenderJobBackground(RenderJob):
-    """ Render a scrolling background image. """
-
-    def __init__(self, view, level, coords, background_image):
-        """ Constructor. """
-        RenderJob.__init__(self, view, level, coords)
-        self.background_image = background_image
-
-    def dispatch(self, renderer):
-        """ Dispatch the job."""
-        renderer.render_RenderJobBackground(self)
-
-class RenderJobRect(RenderJob):
-    """ Render a rectangle. """
-
-    def __init__(self, view, level, coords, colour, rect, width):
-        """ Constructor. """
-        RenderJob.__init__(self, view, level, coords)
-        self.colour = colour
-        self.rect = rect.copy()
-        self.width = width
-
-    def dispatch(self, renderer):
-        """ Dispatch the job. """
-        renderer.render_RenderJobRect(self)
-
-class RenderJobLine(RenderJob):
-    """ Render a line. """
-
-    def __init__(self, view, level, coords, colour, p0, p1, width):
-        """ Constructor. """
-        RenderJob.__init__(self, view, level, coords)
-        self.colour = colour
-        self.p0 = p0
-        self.p1 = p1
-        self.width = width
-
-    def dispatch(self, renderer):
-        """ Dispatch the job. """
-        renderer.render_RenderJobLine(self)
-
-class RenderJobLines(RenderJob):
-    """ Render a polyline. """
-
-    def __init__(self, view, level, coords, colour, points, width):
-        """ Constructor. """
-        RenderJob.__init__(self, view, level, coords)
-        self.colour = colour
-        self.points = points
-        self.width = width
-
-    def dispatch(self, renderer):
-        """ Dispatch the job. """
-        renderer.render_RenderJobLines(self)
-
-class RenderJobPolygon(RenderJob):
-    """ Render a polygon. """
-
-    def __init__(self, view, level, coords, colour, poly, width):
-        """ Constructor. """
-        RenderJob.__init__(self, view, level, coords)
-        self.colour = colour
-        self.poly = poly
-        self.width = width
-
-    @property
-    def points(self):
-        """ Get the points. """
-        return self.poly.points
-
-    def dispatch(self, renderer):
-        """ Dispatch the job. """
-        renderer.render_RenderJobPolygon(self)
-
-class RenderJobCircle(RenderJob):
-    """ Render a circle. """
-
-    def __init__(self, view, level, coords, colour, position, radius, width):
-        """ Constructor. """
-        RenderJob.__init__(self, view, level, coords)
-        self.colour = colour
-        self.position = position
-        self.radius = radius
-        self.width = width
-
-    def dispatch(self, renderer):
-        """ Dispatch the job. """
-        renderer.render_RenderJobCircle(self)
-
-class RenderJobText(RenderJob):
-    """ Render some text. """
-
-    def __init__(self, view, level, coords, font, text, colour, position):
-        """ Constructor. """
-        RenderJob.__init__(self, view, level, coords)
-        self.font = font
-        self.text = text
-        self.colour = colour
-        self.position = position
-
-    def dispatch(self, renderer):
-        """ Dispatch the job. """
-        renderer.render_RenderJobText(self)
-
-class RenderJobAnimation(RenderJob):
-    """ Render an animation. """
-
-    def __init__(self, view, level, coords, orientation, position, anim):
-        """ Constructor. """
-        RenderJob.__init__(self, view, level, coords)
-        self.orientation = orientation
-        self.position = position
-        self.anim = anim
-
-    def dispatch(self, renderer):
-        """ Dispatch the job. """
-        renderer.render_RenderJobAnimation(self)
-
-class RenderJobImage(RenderJob):
-    """ Render an image. """
-
-    def __init__(self, view, level, coords, position, image):
-        """ Constructor. """
-        RenderJob.__init__(self, view, level, coords)
-        self.position = position
-        self.image = image
-
-    def dispatch(self, renderer):
-        """ Dispatch the job. """
-        renderer.render_RenderJobImage(self)
-
 class Renderer(object):
     """ An abstract render that knows how to draw things. """
 
@@ -256,9 +109,7 @@ class Renderer(object):
 
     def __init__(self):
         """ Constructor. """
-        self.__levels = []
-        for level in range(Renderer.LEVEL_BACK_FAR, Renderer.LEVEL_FORE_NEAR+1):
-            self.__levels.append([])
+        pass
 
     @abc.abstractmethod
     def initialise(self, screen_size, data_path):
@@ -269,12 +120,13 @@ class Renderer(object):
         """ A hook to be executed when the game has finished loading. """
         pass
 
-    def render_jobs(self, view):
-        """ Render any queued jobs. This does not update the display. """
-        for level in self.__levels:
-            for job in level:
-                job.dispatch(self)
-            del level[:]
+    def pre_render(self, view):
+        """ Hook to set up any state necessary for rendering. """
+        pass
+
+    def post_render(self):
+        """ Hook to do any work after all jobs have been submitted. """
+        pass
 
     @abc.abstractmethod
     def flip_buffers(self):
@@ -317,171 +169,124 @@ class Renderer(object):
         """ Get the screen dimensions as a rect. """
         pass
 
-    def add_job(self, job):
-        """ Queue a render job. """
-        self.__levels[job.level].append(job)
-
-    def add_job_background(self, view, background_image):
+    def add_job_background(self, view, background_image, **kwargs):
         """ Queue a job to render a background image. """
-        self.add_job(RenderJobBackground(view,
-                                         Renderer.LEVEL_BACK_FAR,
-                                         Renderer.COORDS_SCREEN,
-                                         background_image))
+        self.render_background(view, background_image, **kwargs)
 
     def add_job_rect(self, view, rect, **kwargs):
         """ Queue a job to render a rectangle. """
-        level=Renderer.LEVEL_MID
-        if "level" in kwargs:
-            level=kwargs["level"]
-        coords=Renderer.COORDS_WORLD
-        if "coords" in kwargs:
-            coords=kwargs["coords"]
-        width=0
-        if "width" in kwargs:
-            width=kwargs["width"]
-        colour=(255, 255, 255)
-        if "colour" in kwargs:
-            colour=kwargs["colour"]
-        self.add_job(RenderJobRect(view, level, coords, colour, rect, width))
+        self.set_defaults(kwargs,
+                          level=Renderer.LEVEL_MID,
+                          coords=Renderer.COORDS_WORLD,
+                          colour=(255, 255, 255),
+                          width=0)
+        self.render_rect(rect, **kwargs)
 
     def add_job_line(self, view, p0, p1, **kwargs):
         """ Queue a job to render a line. """
-        level=Renderer.LEVEL_MID
-        if "level" in kwargs:
-            level=kwargs["level"]
-        coords=Renderer.COORDS_WORLD
-        if "coords" in kwargs:
-            coords=kwargs["coords"]
-        width=0
-        if "width" in kwargs:
-            width=kwargs["width"]
-        colour=(255, 255, 255)
-        if "colour" in kwargs:
-            colour=kwargs["colour"]
-        self.add_job(RenderJobLine(view, level, coords, colour, p0, p1, width))
+        self.set_defaults(kwargs,
+                          level=Renderer.LEVEL_MID,
+                          coords=Renderer.COORDS_WORLD,
+                          colour=(255, 255, 255),
+                          width=0)
+        self.render_line(p0, p1, **kwargs)
 
     def add_job_lines(self, view, points, **kwargs):
         """ Queue a job to render lines """
-        level=Renderer.LEVEL_MID
-        if "level" in kwargs:
-            level=kwargs["level"]
-        coords=Renderer.COORDS_WORLD
-        if "coords" in kwargs:
-            coords=kwargs["coords"]
-        width=0
-        if "width" in kwargs:
-            width=kwargs["width"]
-        colour=(255, 255, 255)
-        if "colour" in kwargs:
-            colour=kwargs["colour"]
-        self.add_job(RenderJobLines(view, level, coords, colour, points, width))
+        self.set_defaults(kwargs,
+                          level=Renderer.LEVEL_MID,
+                          coords=Renderer.COORDS_WORLD,
+                          colour=(255, 255, 255),
+                          width=0)
+        self.render_lines(points, **kwargs)
 
     def add_job_polygon(self, view, poly, **kwargs):
         """ Queue a job to render a polygon. """
-        level=Renderer.LEVEL_MID
-        if "level" in kwargs:
-            level=kwargs["level"]
-        coords=Renderer.COORDS_WORLD
-        if "coords" in kwargs:
-            coords=kwargs["coords"]
-        width=0
-        if "width" in kwargs:
-            width=kwargs["width"]
-        colour=(255, 255, 255)
-        if "colour" in kwargs:
-            colour=kwargs["colour"]
-        self.add_job(RenderJobPolygon(view, level, coords, colour, poly, width))
+        self.set_defaults(kwargs,
+                          level=Renderer.LEVEL_MID,
+                          coords=Renderer.COORDS_WORLD,
+                          colour=(255, 255, 255),
+                          width=0)
+        self.render_polygon(poly.points, **kwargs)
 
     def add_job_circle(self, view, position, radius, **kwargs):
         """ Queue a job to render a circle. """
-        level=Renderer.LEVEL_MID
-        if "level" in kwargs:
-            level=kwargs["level"]
-        coords=Renderer.COORDS_WORLD
-        if "coords" in kwargs:
-            coords=kwargs["coords"]
-        width=0
-        if "width" in kwargs:
-            width=kwargs["width"]
-        colour=(255, 255, 255)
-        if "colour" in kwargs:
-            colour=kwargs["colour"]
-        self.add_job(RenderJobCircle(view, level, coords, colour, position, radius, width))
+        self.set_defaults(kwargs,
+                          level=Renderer.LEVEL_MID,
+                          coords=Renderer.COORDS_WORLD,
+                          colour=(255, 255, 255),
+                          width=0)
+        self.render_circle(position, radius, **kwargs)
 
     def add_job_text(self, view, font, text, position, **kwargs):
         """ Queue a job to render text. """
-        level=Renderer.LEVEL_FORE_NEAR
-        if "level" in kwargs:
-            level=kwargs["level"]
-        coords=Renderer.COORDS_SCREEN
-        if "coords" in kwargs:
-            coords=kwargs["coords"]
-        colour=(255, 255, 255)
-        if "colour" in kwargs:
-            colour=kwargs["colour"]
-        self.add_job(RenderJobText(view, level, coords, font, text, colour, position))
+        self.set_defaults(kwargs,
+                          level=Renderer.LEVEL_FORE_NEAR,
+                          coords=Renderer.COORDS_SCREEN,
+                          colour=(255, 255, 255))
+        self.render_text(font, text, position, **kwargs)
 
     def add_job_animation(self, view, orientation, position, anim, **kwargs):
         """ Queue a job to render an animation. """
-        level=Renderer.LEVEL_MID
-        if "level" in kwargs:
-            level=kwargs["level"]
-        coords=Renderer.COORDS_WORLD
-        if "coords" in kwargs:
-            coords=kwargs["coords"]
-        self.add_job(RenderJobAnimation(view, level, coords, orientation, position, anim))
+        self.set_defaults(kwargs,
+                          level=Renderer.LEVEL_MID,
+                          coords=Renderer.COORDS_WORLD)
+        self.render_animation(position, orientation, anim, **kwargs)
 
     def add_job_image(self, view, position, image, **kwargs):
         """ Queue a job to render an image. """
-        level=Renderer.LEVEL_FORE_NEAR
-        if "level" in kwargs:
-            level=kwargs["level"]
-        coords=Renderer.COORDS_SCREEN
-        if "coords" in kwargs:
-            coords=kwargs["coords"]
-        self.add_job(RenderJobImage(view, level, coords, position, image))
+        self.set_defaults(kwargs,
+                          level=Renderer.LEVEL_FORE_NEAR,
+                          coords=Renderer.COORDS_SCREEN)
+        self.render_image(position, image, **kwargs)
+
+    def set_defaults(self, got_kwargs, **kwargs):
+        """ Set default kwargs."""
+        for key in kwargs:
+            if not key in got_kwargs:
+                got_kwargs[key] = kwargs[key]
 
     @abc.abstractmethod
-    def render_RenderJobBackground(self, job):
+    def render_background(self, background_image, **kwargs):
         """ Render a scrolling background. """
         pass
 
     @abc.abstractmethod
-    def render_RenderJobRect(self, job):
+    def render_rect(self, rect, **kwargs):
         """ Render a rectangle. """
         pass
 
     @abc.abstractmethod
-    def render_RenderJobLine(self, job):
+    def render_line(self, p0, p1, **kwargs):
         """ Render a line. """
         pass
 
     @abc.abstractmethod
-    def render_RenderJobLines(self, job):
+    def render_lines(self, points, **kwargs):
         """ Render a polyline. """
         pass
 
     @abc.abstractmethod
-    def render_RenderJobPolygon(self, job):
+    def render_polygon(self, points, **kwargs):
         """ Render a polygon. """
         pass
 
     @abc.abstractmethod
-    def render_RenderJobCircle(self, job):
+    def render_circle(self, position, radius, **kwargs):
         """ Render a circle. """
         pass
 
     @abc.abstractmethod
-    def render_RenderJobText(self, job):
+    def render_text(self, font, text, position, **kwargs):
         """ Render text. """
         pass
 
     @abc.abstractmethod
-    def render_RenderJobAnimation(self, job):
+    def render_animation(self, position, orientation, animation, **kwargs):
         """ Render an animation. """
         pass
 
     @abc.abstractmethod
-    def render_RenderJobImage(self, job):
+    def render_image(self, position, image, **kwargs):
         """ Render an image. """
         pass

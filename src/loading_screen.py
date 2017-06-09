@@ -30,6 +30,9 @@ class LoadingScreen(object):
     def __draw(self):
         """ Do the actual drawing and screen refresh. """
 
+        # Prepare the renderer.
+        self.renderer.pre_render(self.view)
+
         # Define the geometry of the loading bar.
         screen_rect = self.renderer.screen_rect()
         bar_rect = pygame.Rect((0, 0), (0, 0))
@@ -59,5 +62,5 @@ class LoadingScreen(object):
         self.renderer.add_job_rect(self.view, bar_rect, colour=(255, 255, 255), coords=Renderer.COORDS_SCREEN)
 
         # Refresh the screen.
-        self.renderer.render_jobs(self.view)
+        self.renderer.post_render()
         self.renderer.flip_buffers()

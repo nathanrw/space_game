@@ -9,6 +9,8 @@ class PygameRenderer(Renderer):
         """ Constructor. """
         Renderer.__init__(self)
         self.__surface = None
+        self.__view = None
+        self.__jobs = {}
 
     def initialise(self, screen_size, data_path):
         """ Initialise the pygame display. """
@@ -46,76 +48,145 @@ class PygameRenderer(Renderer):
         """ Get the display size. """
         return self.__surface.get_rect()
 
-    def render_RenderJobBackground(self, job):
+    def pre_render(self, view):
+        """ Start rendering. """
+        self.__view = view
+
+    def post_render(self):
+        """ Finish rendering. """
+        for key in sorted(self.__jobs.keys()):
+            jobs = self.__jobs[key]
+            for job in jobs:
+                job(self.__view)
+        self.__jobs = {}
+
+    def render_background(self, view, background_image, **kwargs):
         """ Render scrolling background. """
-        screen = self.__surface
-        (image_width, image_height) = job.background_image.get_size()
-        (screen_width, screen_height) = screen.get_size()
-        pos = job.view.position
-        x = int(pos.x)
-        y = int(pos.y)
-        start_i = -(x%image_width)
-        start_j = -(y%image_width)
-        for i in range(start_i, screen_width, image_width):
-            for j in range(start_j, screen_height, image_height):
-                screen.blit(job.background_image, (i, j))
+        def do_it(the_view):
+            screen = self.__surface
+            (image_width, image_height) = background_image.get_size()
+            (screen_width, screen_height) = screen.get_size()
+            pos = view.position
+            x = int(pos.x)
+            y = int(pos.y)
+            start_i = -(x%image_width)
+            start_j = -(y%image_width)
+            for i in range(start_i, screen_width, image_width):
+                for j in range(start_j, screen_height, image_height):
+                    screen.blit(background_image, (i, j))
+        self.__add_job((Renderer.COORDS_SCREEN, Renderer.LEVEL_BACK_FAR), do_it)
 
-    def render_RenderJobRect(self, job):
+    def render_rect(self, rect, **kwargs):
         """ Render rectangle. """
-        pygame.draw.rect(self.__surface,
-                         job.colour,
-                         job.view.rect_to_screen(job.rect, job.coords),
-                         int(job.view.length_to_screen(job.width, job.coords)))
+        (coords, level) = self.__parse_kwargs(kwargs)
+        colour = self.__get_or_default(kwargs, "colour", (255, 255, 255))
+        width = self.__get_or_default(kwargs, "width", 0)
+        rect = rect.copy()
+        def do_it(view):
+            pygame.draw.rect(self.__surface,
+                             colour,
+                             view.rect_to_screen(rect, coords),
+                             int(view.length_to_screen(width, coords)))
+        self.__add_job((level, coords), do_it)
 
-    def render_RenderJobLine(self, job):
+    def render_line(self, p0, p1, **kwargs):
         """ Render a line. """
-        pygame.draw.line(self.__surface,
-                         job.colour,
-                         job.view.point_to_screen(job.p0, job.coords),
-                         job.view.point_to_screen(job.p1, job.coords),
-                         job.view.length_to_screen(job.width, job.coords))
+        (coords, level) = self.__parse_kwargs(kwargs)
+        colour = self.__get_or_default(kwargs, "colour", (255, 255, 255))
+        width = self.__get_or_default(kwargs, "width", 0)
+        def do_it(view):
+            pygame.draw.line(self.__surface,
+                             colour,
+                             view.point_to_screen(p0, coords),
+                             view.point_to_screen(p1, coords),
+                             view.length_to_screen(width, coords))
+        self.__add_job((level, coords), do_it)
 
-    def render_RenderJobLines(self, job):
+    def render_lines(self, points, **kwargs):
         """ Render a polyline. """
-        pygame.draw.lines(self.__surface,
-                          job.colour,
-                          False,
-                          job.view.points_to_screen(job.points, job.coords),
-                          int(job.view.length_to_screen(job.width, job.coords)))
+        (coords, level) = self.__parse_kwargs(kwargs)
+        colour = self.__get_or_default(kwargs, "colour", (255, 255, 255))
+        width = self.__get_or_default(kwargs, "width", 0)
+        def do_it(view):
+            pygame.draw.lines(self.__surface,
+                              colour,
+                              False,
+                              view.points_to_screen(points, coords),
+                              int(view.length_to_screen(width, coords)))
+        self.__add_job((level, coords), do_it)
 
-    def render_RenderJobPolygon(self, job):
+    def render_polygon(self, points, **kwargs):
         """ Render a polygon. """
-        pygame.draw.polygon(self.__surface,
-                            job.colour,
-                            job.view.points_to_screen(job.points, job.coords))
+        (coords, level) = self.__parse_kwargs(kwargs)
+        colour = self.__get_or_default(kwargs, "colour", (255, 255, 255))
+        def do_it(view):
+            pygame.draw.polygon(self.__surface,
+                                colour,
+                                view.points_to_screen(points, coords))
+        self.__add_job((level, coords), do_it)
 
-    def render_RenderJobCircle(self, job):
+    def render_circle(self, position, radius, **kwargs):
         """ Render a circle. """
-        pos = job.view.point_to_screen(job.position, job.coords)
-        pygame.draw.circle(self.__surface,
-                           job.colour,
-                           (int(pos[0]), int(pos[1])),
-                           max(1, int(job.view.length_to_screen(job.radius, job.coords))),
-                           int(job.view.length_to_screen(job.width, job.coords)))
+        (coords, level) = self.__parse_kwargs(kwargs)
+        colour = self.__get_or_default(kwargs, "colour", (255, 255, 255))
+        def do_it(view):
+            pos = view.point_to_screen(position, coords)
+            width = self.__get_or_default(kwargs, "width", 0)
+            pygame.draw.circle(self.__surface,
+                               colour,
+                               (int(pos[0]), int(pos[1])),
+                               max(1, int(view.length_to_screen(radius, coords))),
+                               int(view.length_to_screen(width, coords)))
+        self.__add_job((level, coords), do_it)
 
-    def render_RenderJobText(self, job):
+    def render_text(self, font, text, position, **kwargs):
         """ Render some text. """
-        text_surface = job.font.render(job.text, True, job.colour)
-        self.__surface.blit(text_surface,
-                            job.view.point_to_screen(job.position, job.coords))
+        (coords, level) = self.__parse_kwargs(kwargs)
+        colour = self.__get_or_default(kwargs, "colour", (255, 255, 255))
+        def do_it(view):
+            text_surface = font.render(text, True, colour)
+            self.__surface.blit(text_surface,
+                                view.point_to_screen(position, coords))
+        self.__add_job((level, coords), do_it)
 
-    def render_RenderJobAnimation(self, job):
+    def render_animation(self, position, orientation, anim, **kwargs):
         """ Render an animation. """
-        img = job.anim.frames[job.anim.timer.pick_index(len(job.anim.frames))]
-        if (job.orientation != 0):
-            img = pygame.transform.rotate(img, job.orientation)
-        if (job.view.zoom != 1):
-            size = job.view.size_to_screen(img.get_size(), job.coords)
-            img = pygame.transform.scale(img, (int(size[0]), int(size[1])))
-        screen_pos = job.view.point_to_screen(job.position, job.coords) - Vec2d(img.get_rect().center)
-        self.__surface.blit(img, screen_pos)
+        (coords, level) = self.__parse_kwargs(kwargs)
+        def do_it(view):
+            img = anim.frames[anim.timer.pick_index(len(anim.frames))]
+            if (orientation != 0):
+                img = pygame.transform.rotate(img, orientation)
+            if (view.zoom != 1):
+                size = view.size_to_screen(img.get_size(), coords)
+                img = pygame.transform.scale(img, (int(size[0]), int(size[1])))
+            screen_pos = view.point_to_screen(position, coords) - Vec2d(img.get_rect().center)
+            self.__surface.blit(img, screen_pos)
+        self.__add_job((level, coords), do_it)
 
-    def render_RenderJobImage(self, job):
+    def render_image(self, position, image, **kwargs):
         """ Render an image. """
-        self.__surface.blit(job.image,
-                            job.view.point_to_screen(job.position, job.coords))
+        (coords, level) = self.__parse_kwargs(kwargs)
+        def do_it(view):
+            self.__surface.blit(image, view.point_to_screen(position, coords))
+        self.__add_job((level, coords), do_it)
+
+    def __parse_kwargs(self, kwargs_dict):
+        """ Extract level and coordinate system, map colour. """
+        coords = self.__get_or_default(kwargs_dict, "coords", Renderer.COORDS_WORLD)
+        level = self.__get_or_default(kwargs_dict, "level", Renderer.LEVEL_MID)
+        del kwargs_dict["level"]
+        del kwargs_dict["coords"]
+        return (coords, level)
+
+    def __get_or_default(self, dictionary, name, default):
+        """ Get a value from a dictionary. """
+        if name in dictionary:
+            return dictionary[name]
+        else:
+            return default
+
+    def __add_job(self, key, job):
+        """ Add a job to the appropriate list. """
+        if not key in self.__jobs:
+            self.__jobs[key] = []
+        self.__jobs[key].append(job)

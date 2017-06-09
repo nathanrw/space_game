@@ -166,8 +166,9 @@ class Game(object):
             self.entity_manager.update(tick_time)
 
             # Draw
+            self.renderer.pre_render(self.camera.get_component(Camera))
             self.drawing.draw(self.renderer, self.camera.get_component(Camera))
-            self.renderer.render_jobs(self.camera.get_component(Camera))
+            self.renderer.post_render()
             self.renderer.flip_buffers()
 
             # Maintain frame rate.
