@@ -194,6 +194,49 @@ class ShaderProgram(object):
         """ Render using the fixed function pipeline. """
         GL.glUseProgram(0)
 
+
+class Framebuffer(object):
+    """ Wrap an OpenGL framebuffer object. """
+
+    def __init__(self, width, height):
+        """ Initialise an FBO given a width and height. """
+
+        # Create and initialise an FBO with a colour attachment of
+        # the appropriate size.
+        self.__fbo = GL.glGenFramebuffers(1)
+        self.__texture_0 = Texture.blank(width, height, GL.GL_RGB)
+        self.__texture_1 = Texture.blank(width, height, GL.GL_RGB)
+        with Bind(self):
+            GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER,
+                                      GL.GL_COLOR_ATTACHMENT0,
+                                      GL.GL_TEXTURE_2D,
+                                      self.__texture_0.get_texture(),
+                                      0)
+            GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER,
+                                      GL.GL_COLOR_ATTACHMENT1,
+                                      GL.GL_TEXTURE_2D,
+                                      self.__texture_1.get_texture(),
+                                      0)
+            assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
+
+    def get_texture_0(self):
+        """ Get the framebuffer texture. """
+        return self.__texture_0
+
+    def get_texture_1(self):
+        """ Get the framebuffer texture. """
+        return self.__texture_1
+
+    def begin(self):
+        """ Bind the framebuffer. """
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.__fbo)
+        GL.glDrawBuffers((GL.GL_COLOR_ATTACHMENT0, GL.GL_COLOR_ATTACHMENT1))
+
+    def end(self):
+        """ Bind the default framebuffer. """
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, 0)
+
+
 class Texture(object):
     """ An OpenGL texture. """
 
@@ -208,16 +251,25 @@ class Texture(object):
         """ Create a texture from a surface. """
         return Texture(surface)
 
-    def __init__(self, surface):
+    @classmethod
+    def blank(klass, width, height, internal_format=GL.GL_RGBA):
+        """ Create a blank texture of a particular size. """
+        return Texture((width, height), internal_format)
+
+    def __init__(self, surface, internal_format=GL.GL_RGBA):
         """ Constructor. """
-        data = pygame.image.tostring(surface, "RGBA", 1)
-        self.__width = surface.get_width()
-        self.__height = surface.get_height()
+        data = None
+        try:
+            (self.__width, self.__height) = surface
+        except:
+            data = pygame.image.tostring(surface, "RGBA", 1)
+            self.__width = surface.get_width()
+            self.__height = surface.get_height()
         self.__texture = GL.glGenTextures(1)
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.__texture)
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
-        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.get_width(), self.get_height(),
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, internal_format, self.get_width(), self.get_height(),
                         0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, data)
 
     def begin(self):
@@ -243,6 +295,10 @@ class Texture(object):
         """ Get the texture size in pixels. """
         assert self.__texture is not None
         return (self.__width, self.__height)
+
+    def get_texture(self):
+        """ Get the texture ID. """
+        return self.__texture
 
     def delete(self):
         """ Free the texture. """
@@ -468,10 +524,9 @@ class CommandBufferArray(object):
     """ Command buffer array - stores a set of command buffers and knows what
     buffer should be filled from a given job. """
 
-    def __init__(self, shader_program, texture_array):
+    def __init__(self, shader_program):
         """ Initialise the command buffer array. """
         self.__shader_program = shader_program
-        self.__texture_array = texture_array
         self.__buffers = {}
 
     def get_buffer(self, coordinate_system, level, primitive_type):
@@ -479,17 +534,16 @@ class CommandBufferArray(object):
         key = (level, coordinate_system, primitive_type)
         if key not in self.__buffers:
             self.__buffers[key] = CommandBuffer(
-                coordinate_system,
                 self.__shader_program,
-                self.__texture_array,
-                primitive_type
+                primitive_type,
+                coordinate_system
             )
         return self.__buffers[key]
 
-    def reset(self, view):
+    def reset(self):
         """ Reset the buffers so they can be re-used. """
         for key in self.__buffers:
-            self.__buffers[key].reset(view)
+            self.__buffers[key].reset()
 
     def dispatch(self):
         """ Dispatch commands to the GPU. """
@@ -506,14 +560,24 @@ class VertexData(object):
         self.__arrays = {}
         self.__vbos = {}
         self.__sizes = {}
-        self.__numpy_types = {}
         self.__n = 0
         self.__max = default_size
+        self.__vao = GL.glGenVertexArrays(1)
+        GL.glBindVertexArray(self.__vao)
         for (name, size, data_type) in attribute_formats:
             self.__sizes[name] = size
             self.__arrays[name] = numpy.zeros(default_size * size, data_type)
             self.__vbos[name] = OpenGL.arrays.vbo.VBO(self.__arrays[name])
-            self.__numpy_types[name] = data_type
+            self.__vbos[name].bind()
+            GL.glEnableVertexAttribArray(self.__shader_program.get_attribute_location(name))
+            gl_type = {'f': GL.GL_FLOAT}[data_type]
+            GL.glVertexAttribPointer(self.__shader_program.get_attribute_location(name),
+                                     self.__sizes[name], gl_type, GL.GL_FALSE, 0, None)
+        GL.glBindVertexArray(0)
+
+    def draw(self, primitive_type):
+        """ Draw the vertices. """
+        GL.glDrawArrays(primitive_type, 0, len(self))
 
     def reset(self):
         """ Reset the vertex data so it can be re-used. """
@@ -577,26 +641,23 @@ class VertexData(object):
         # we've added a vertex.
         self.__n += 1
 
-    def bind_attributes(self):
+    def begin(self):
         """ Setup the vertex attributes for rendering. """
 
-        # We store each attribute in its own buffer.
+        # Update each data array.  I'm not entirely sure whether we need
+        # to do this or not, and 'set_array()' might be sufficient on its
+        # own (doing 'bind()' as well)
         for name in self.__vbos:
-
-            # Get the attribute vbo.
             vbo = self.__vbos[name]
-
-            # Update the array data, since it will change per-frame.
             vbo.set_array(self.__arrays[name])
-
-            # Bind the vbo (this does also does some data wrangling I believe.)
             vbo.bind()
 
-            # Switch on the attribute and describe the data format to OpenGL.
-            GL.glEnableVertexAttribArray(self.__shader_program.get_attribute_location(name))
-            gl_type = {'f': GL.GL_FLOAT}[self.__numpy_types[name]]
-            GL.glVertexAttribPointer(self.__shader_program.get_attribute_location(name),
-                                     self.__sizes[name], gl_type, GL.GL_FALSE, 0, None)
+        # Bind the attributes.
+        GL.glBindVertexArray(self.__vao)
+
+    def end(self):
+        """ Unbind the VAO. """
+        GL.glBindVertexArray(0)
 
     def __len__(self):
         """ Return the number of vertices. """
@@ -606,27 +667,20 @@ class VertexData(object):
 class CommandBuffer(object):
     """ A single draw call. """
 
-    def __init__(self, coordinate_system, shader_program, texture_array, primitive_type):
+    def __init__(self, shader_program, primitive_type, coordinate_system):
         """ Constructor. """
 
         # Uniform state.
         self.__coordinate_system = coordinate_system
         self.__shader_program = shader_program
         self.__primitive_type = primitive_type
-        self.__texture_array = texture_array
-        self.__view_position = (0, 0)
-        self.__view_size = (0, 0)
-        self.__view_zoom = 1
 
         # Per-vertex data.
         self.__vertex_data = self.__shader_program.create_vertex_buffers()
 
-    def reset(self, view):
+    def reset(self):
         """ Reset the command buffer so we can re-use it. """
         self.__vertex_data.reset()
-        self.__view_position = view.position
-        self.__view_size = view.size
-        self.__view_zoom = view.zoom
 
     def add_quad(self, position, size, **kwargs):
         """ Emit a quad. Note that we say quad, but we actually emit
@@ -759,15 +813,22 @@ class CommandBuffer(object):
 
         # Setup uniform data.
         GL.glUniform1i(self.__shader_program.get_uniform_location("coordinate_system"), self.__coordinate_system)
-        GL.glUniform2f(self.__shader_program.get_uniform_location("view_position"), *self.__view_position)
-        GL.glUniform2f(self.__shader_program.get_uniform_location("view_size"), *self.__view_size)
-        GL.glUniform1f(self.__shader_program.get_uniform_location("view_zoom"), self.__view_zoom)
 
-        # Specify vertex attributes.
-        self.__vertex_data.bind_attributes()
+        # Draw the vertices.
+        with Bind(self.__vertex_data):
+            self.__vertex_data.draw(self.__primitive_type)
 
-        # Draw the quads.
-        GL.glDrawArrays(self.__primitive_type, 0, len(self.__vertex_data))
+
+class Bind(object):
+    """ Lets us pass a number of objects with begin/end to 'with'. """
+    def __init__(self, *args):
+        self.__objects = args
+    def __enter__(self):
+        for arg in self.__objects:
+            arg.begin()
+    def __exit__(self, type, value, traceback):
+        for arg in reversed(self.__objects):
+            arg.end()
 
 
 class PygameOpenGLRenderer(Renderer):
@@ -779,6 +840,7 @@ class PygameOpenGLRenderer(Renderer):
         self.__surface = None
         self.__data_path = None
         self.__anim_shader = None
+        self.__fbo_shader = None
         self.__texture_array = None
         self.__command_buffers = None
         self.__view = None
@@ -805,22 +867,21 @@ class PygameOpenGLRenderer(Renderer):
         # Load the shader program.
         self.__anim_shader = self.__load_shader_program("anim")
 
+        # Framebuffer to render into and shader for rendering from it.
+        self.__fbo = Framebuffer(screen_size[0], screen_size[1])
+        self.__fbo_shader = self.__load_shader_program("simple_quad")
+        self.__fbo_quad = self.__fbo_shader.create_vertex_buffers()
+        self.__fbo_quad.add_vertex(position=(-1, -1), texcoord=(0, 0))
+        self.__fbo_quad.add_vertex(position=(1, -1), texcoord=(1, 0))
+        self.__fbo_quad.add_vertex(position=(1, 1), texcoord=(1, 1))
+        self.__fbo_quad.add_vertex(position=(-1, 1), texcoord=(0, 1))
+
         # Create the texture array.
         self.__texture_array = TextureArray()
 
         # Initialise command buffers.  Jobs will be sorted by layer and coordinate system and added
         # to an appropriate command buffer for later dispatch.
-        self.__command_buffers = CommandBufferArray(self.__anim_shader, self.__texture_array)
-
-        # Use the shader program.
-        self.__anim_shader.begin()
-
-        # Use texture unit 0.
-        GL.glActiveTexture(GL.GL_TEXTURE0)
-        GL.glUniform1i(self.__anim_shader.get_uniform_location("texture_array"), 0)
-
-        # Use the texture array.
-        self.__texture_array.begin()
+        self.__command_buffers = CommandBufferArray(self.__anim_shader)
 
     def pre_render(self, view):
         """ Prepare to build commands. """
@@ -829,16 +890,52 @@ class PygameOpenGLRenderer(Renderer):
         self.__view = view
 
         # Reset command buffers
-        self.__command_buffers.reset(view)
-
-        # Clear the screen
-        GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+        self.__command_buffers.reset()
 
     def post_render(self):
         """ Dispatch commands to gpu. """
 
-        # Dispatch commands to the GPU.
-        self.__command_buffers.dispatch()
+        # Render to the FBO
+        with Bind(self.__fbo, self.__anim_shader, self.__texture_array):
+
+            # Clear the buffer.
+            GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+
+            # Use texture unit 0 - we bind it to a uniform later.
+            GL.glActiveTexture(GL.GL_TEXTURE0)
+
+            # Set uniform state.
+            GL.glUniform1i(self.__anim_shader.get_uniform_location("texture_array"), 0)
+            GL.glUniform2f(self.__anim_shader.get_uniform_location("view_position"),
+                           *self.__view.position)
+            GL.glUniform2f(self.__anim_shader.get_uniform_location("view_size"),
+                           *self.__view.size)
+            GL.glUniform1f(self.__anim_shader.get_uniform_location("view_zoom"),
+                           self.__view.zoom)
+
+            # Dispatch commands to the GPU.
+            self.__command_buffers.dispatch()
+
+        # Draw the FBO as a quad.
+        with Bind(self.__fbo_shader, self.__fbo_quad):
+
+            # Bind the textures to the right texture units.
+            GL.glActiveTexture(GL.GL_TEXTURE0)
+            self.__fbo.get_texture_0().begin()
+            GL.glActiveTexture(GL.GL_TEXTURE1)
+            self.__fbo.get_texture_1().begin()
+
+            # Set uniform state and render a quad.
+            GL.glUniform1i(self.__fbo_shader.get_uniform_location("rendered_scene"), 0)
+            GL.glUniform1i(self.__fbo_shader.get_uniform_location("bright_regions"), 1)
+            GL.glUniform2f(self.__fbo_shader.get_uniform_location("view_size"),
+                           *self.__view.size)
+            self.__fbo_quad.draw(GL.GL_QUADS)
+
+            # Unbind the textures.
+            self.__fbo.get_texture_1().end()
+            GL.glActiveTexture(GL.GL_TEXTURE0)
+            self.__fbo.get_texture_0().end()
 
         # We're not rendering any more.
         self.__view = None
