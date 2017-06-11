@@ -198,39 +198,32 @@ class ShaderProgram(object):
 class Framebuffer(object):
     """ Wrap an OpenGL framebuffer object. """
 
-    def __init__(self, width, height):
+    def __init__(self, width, height, attachments):
         """ Initialise an FBO given a width and height. """
 
-        # Create and initialise an FBO with a colour attachment of
+        # Create and initialise an FBO with colour attachments of
         # the appropriate size.
         self.__fbo = GL.glGenFramebuffers(1)
-        self.__texture_0 = Texture.blank(width, height, GL.GL_RGB)
-        self.__texture_1 = Texture.blank(width, height, GL.GL_RGB)
-        with Bind(self):
+        self.__textures = {}
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.__fbo)
+        for attachment in attachments:
+            texture = Texture.blank(width, height, GL.GL_RGB)
             GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER,
-                                      GL.GL_COLOR_ATTACHMENT0,
+                                      attachment,
                                       GL.GL_TEXTURE_2D,
-                                      self.__texture_0.get_texture(),
+                                      texture.get_texture(),
                                       0)
-            GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER,
-                                      GL.GL_COLOR_ATTACHMENT1,
-                                      GL.GL_TEXTURE_2D,
-                                      self.__texture_1.get_texture(),
-                                      0)
-            assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
+            self.__textures[attachment] = texture
+        assert GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) == GL.GL_FRAMEBUFFER_COMPLETE
 
-    def get_texture_0(self):
+    def get_texture(self, attachment):
         """ Get the framebuffer texture. """
-        return self.__texture_0
-
-    def get_texture_1(self):
-        """ Get the framebuffer texture. """
-        return self.__texture_1
+        return self.__textures[attachment]
 
     def begin(self):
         """ Bind the framebuffer. """
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.__fbo)
-        GL.glDrawBuffers((GL.GL_COLOR_ATTACHMENT0, GL.GL_COLOR_ATTACHMENT1))
+        GL.glDrawBuffers(self.__textures.keys())
 
     def end(self):
         """ Bind the default framebuffer. """
@@ -830,6 +823,17 @@ class Bind(object):
         for arg in reversed(self.__objects):
             arg.end()
 
+class TextureUnitBinding(object):
+    def __init__(self, texture, unit):
+        self.__texture = texture
+        self.__unit = unit
+    def begin(self):
+        GL.glActiveTexture(self.__unit)
+        self.__texture.begin()
+    def end(self):
+        GL.glActiveTexture(self.__unit)
+        self.__texture.end()
+        GL.glActiveTexture(GL.GL_TEXTURE0)
 
 class PygameOpenGLRenderer(Renderer):
     """ A pygame software renderer. """
@@ -868,13 +872,26 @@ class PygameOpenGLRenderer(Renderer):
         self.__anim_shader = self.__load_shader_program("anim")
 
         # Framebuffer to render into and shader for rendering from it.
-        self.__fbo = Framebuffer(screen_size[0], screen_size[1])
+        self.__fbo = Framebuffer(screen_size[0],
+                                 screen_size[1],
+                                 (GL.GL_COLOR_ATTACHMENT0, GL.GL_COLOR_ATTACHMENT1))
         self.__fbo_shader = self.__load_shader_program("simple_quad")
-        self.__fbo_quad = self.__fbo_shader.create_vertex_buffers()
-        self.__fbo_quad.add_vertex(position=(-1, -1), texcoord=(0, 0))
-        self.__fbo_quad.add_vertex(position=(1, -1), texcoord=(1, 0))
-        self.__fbo_quad.add_vertex(position=(1, 1), texcoord=(1, 1))
-        self.__fbo_quad.add_vertex(position=(-1, 1), texcoord=(0, 1))
+
+        # A quad in normalised device coordinates for framebuffer effects.
+        self.__ndc_quad = self.__fbo_shader.create_vertex_buffers()
+        self.__ndc_quad.add_vertex(position=(-1, -1), texcoord=(0, 0))
+        self.__ndc_quad.add_vertex(position=(1, -1), texcoord=(1, 0))
+        self.__ndc_quad.add_vertex(position=(1, 1), texcoord=(1, 1))
+        self.__ndc_quad.add_vertex(position=(-1, 1), texcoord=(0, 1))
+
+        # Framebuffers and shader for gaussian blur.
+        self.__gaussian_blur_shader = self.__load_shader_program("gaussian_blur")
+        self.__gaussian_blur_fbo0 = Framebuffer(screen_size[0],
+                                                screen_size[1],
+                                                [GL.GL_COLOR_ATTACHMENT0])
+        self.__gaussian_blur_fbo1 = Framebuffer(screen_size[0],
+                                                screen_size[1],
+                                                [GL.GL_COLOR_ATTACHMENT0])
 
         # Create the texture array.
         self.__texture_array = TextureArray()
@@ -895,14 +912,17 @@ class PygameOpenGLRenderer(Renderer):
     def post_render(self):
         """ Dispatch commands to gpu. """
 
-        # Render to the FBO
-        with Bind(self.__fbo, self.__anim_shader, self.__texture_array):
+        # Use texture unit 0 - we bind it to a uniform later.
+        GL.glActiveTexture(GL.GL_TEXTURE0)
+
+        # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+        # Render the scene to the FBO
+        with Bind(self.__fbo,
+                  self.__anim_shader,
+                  TextureUnitBinding(self.__texture_array, GL.GL_TEXTURE0)):
 
             # Clear the buffer.
             GL.glClear(GL.GL_COLOR_BUFFER_BIT)
-
-            # Use texture unit 0 - we bind it to a uniform later.
-            GL.glActiveTexture(GL.GL_TEXTURE0)
 
             # Set uniform state.
             GL.glUniform1i(self.__anim_shader.get_uniform_location("texture_array"), 0)
@@ -916,26 +936,42 @@ class PygameOpenGLRenderer(Renderer):
             # Dispatch commands to the GPU.
             self.__command_buffers.dispatch()
 
-        # Draw the FBO as a quad.
-        with Bind(self.__fbo_shader, self.__fbo_quad):
+        # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+        # Ping pong gaussian blur the brightness image.
+        passes = 1
+        with Bind(self.__gaussian_blur_shader,
+                  self.__ndc_quad):
+            GL.glUniform1i(self.__gaussian_blur_shader.get_uniform_location("image"), 0)
 
-            # Bind the textures to the right texture units.
-            GL.glActiveTexture(GL.GL_TEXTURE0)
-            self.__fbo.get_texture_0().begin()
-            GL.glActiveTexture(GL.GL_TEXTURE1)
-            self.__fbo.get_texture_1().begin()
+            # The first pass, using the main fbo colour attachment as input.
+            with Bind(self.__gaussian_blur_fbo0,
+                      self.__fbo.get_texture(GL.GL_COLOR_ATTACHMENT1)):
+                GL.glUniform1i(self.__gaussian_blur_shader.get_uniform_location("horizontal"), 0)
+                GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+                self.__ndc_quad.draw(GL.GL_QUADS)
 
-            # Set uniform state and render a quad.
+            # Subsequent passes, do a 'ping pong'.  The result should end up in the second
+            # fbo, so 'passes' should be an odd number.
+            assert passes % 2 == 1
+            for i in range(1, passes+1):
+                fbos = (self.__gaussian_blur_fbo0, self.__gaussian_blur_fbo1)
+                from_fbo = fbos[(i+1)%2]
+                to_fbo = fbos[i%2]
+                with Bind(to_fbo, from_fbo.get_texture(GL.GL_COLOR_ATTACHMENT0)):
+                    GL.glUniform1i(self.__gaussian_blur_shader.get_uniform_location("horizontal"), i%2)
+                    GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+                    self.__ndc_quad.draw(GL.GL_QUADS)
+
+        # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+        # Blend the brightness image with the main framebuffer.
+        with Bind(self.__fbo_shader,
+                  self.__ndc_quad,
+                  TextureUnitBinding(self.__fbo.get_texture(GL.GL_COLOR_ATTACHMENT0), GL.GL_TEXTURE0),
+                  TextureUnitBinding(self.__gaussian_blur_fbo1.get_texture(GL.GL_COLOR_ATTACHMENT0),
+                                     GL.GL_TEXTURE1)):
             GL.glUniform1i(self.__fbo_shader.get_uniform_location("rendered_scene"), 0)
             GL.glUniform1i(self.__fbo_shader.get_uniform_location("bright_regions"), 1)
-            GL.glUniform2f(self.__fbo_shader.get_uniform_location("view_size"),
-                           *self.__view.size)
-            self.__fbo_quad.draw(GL.GL_QUADS)
-
-            # Unbind the textures.
-            self.__fbo.get_texture_1().end()
-            GL.glActiveTexture(GL.GL_TEXTURE0)
-            self.__fbo.get_texture_0().end()
+            self.__ndc_quad.draw(GL.GL_QUADS)
 
         # We're not rendering any more.
         self.__view = None
