@@ -40,22 +40,32 @@ class LoadingScreen(object):
         bar_rect.height = 60
         bar_rect.center = screen_rect.center
         bar_rect.top += self.title.get_height() / 2
+        brightness = 2.0 * (float(self.progress)/self.total)
 
         # Draw the title image above the loading bar.
         self.renderer.add_job_image(Vec2d(bar_rect.center[0], bar_rect.top)
                                     - Vec2d(self.title.get_width() / 2, self.title.get_height() + 10), self.title,
-                                    coords=Renderer.COORDS_SCREEN)
+                                    coords=Renderer.COORDS_SCREEN,
+                                    brightness=brightness)
 
         # Draw the loading bar
         sz = 8
-        self.renderer.add_job_rect(bar_rect, colour=(255, 255, 255), coords=Renderer.COORDS_SCREEN)
+        self.renderer.add_job_rect(bar_rect,
+                                   colour=(255, 255, 255),
+                                   coords=Renderer.COORDS_SCREEN,
+                                   brightness=brightness)
         bar_rect.inflate_ip(-sz, -sz)
-        self.renderer.add_job_rect(bar_rect, colour=(0, 0, 0), coords=Renderer.COORDS_SCREEN)
+        self.renderer.add_job_rect(bar_rect,
+                                   colour=(0, 0, 0),
+                                   coords=Renderer.COORDS_SCREEN)
         bar_rect.inflate_ip(-sz, -sz)
         left = bar_rect.left
         bar_rect.width = int(bar_rect.width * (float(self.progress)/self.total))
         bar_rect.left = left
-        self.renderer.add_job_rect(bar_rect, colour=(255, 255, 255), coords=Renderer.COORDS_SCREEN)
+        self.renderer.add_job_rect(bar_rect,
+                                   colour=(255, 255, 255),
+                                   coords=Renderer.COORDS_SCREEN,
+                                   brightness=brightness)
 
         # Refresh the screen.
         self.renderer.post_render()

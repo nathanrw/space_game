@@ -198,7 +198,7 @@ class ShaderProgram(object):
 class Framebuffer(object):
     """ Wrap an OpenGL framebuffer object. """
 
-    def __init__(self, width, height, attachments):
+    def __init__(self, width, height, attachments, pixel_format=GL.GL_RGBA16F):
         """ Initialise an FBO given a width and height. """
 
         # Create and initialise an FBO with colour attachments of
@@ -207,7 +207,7 @@ class Framebuffer(object):
         self.__textures = {}
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.__fbo)
         for attachment in attachments:
-            texture = Texture.blank(width, height, GL.GL_RGB)
+            texture = Texture.blank(width, height, pixel_format)
             GL.glFramebufferTexture2D(GL.GL_FRAMEBUFFER,
                                       attachment,
                                       GL.GL_TEXTURE_2D,
@@ -824,6 +824,7 @@ class Bind(object):
             arg.end()
 
 class TextureUnitBinding(object):
+    """ Bind a texture to a texture unit. """
     def __init__(self, texture, unit):
         self.__texture = texture
         self.__unit = unit
@@ -836,7 +837,8 @@ class TextureUnitBinding(object):
         GL.glActiveTexture(GL.GL_TEXTURE0)
 
 class PygameOpenGLRenderer(Renderer):
-    """ A pygame software renderer. """
+    """ A hardware accelerated renderer using pygame to create an OpenGL
+    context and load bitmaps etc."""
 
     def __init__(self):
         """ Constructor. """
@@ -938,7 +940,7 @@ class PygameOpenGLRenderer(Renderer):
 
         # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
         # Ping pong gaussian blur the brightness image.
-        passes = 1
+        passes = 3
         with Bind(self.__gaussian_blur_shader,
                   self.__ndc_quad):
             GL.glUniform1i(self.__gaussian_blur_shader.get_uniform_location("image"), 0)
@@ -969,6 +971,8 @@ class PygameOpenGLRenderer(Renderer):
                   TextureUnitBinding(self.__fbo.get_texture(GL.GL_COLOR_ATTACHMENT0), GL.GL_TEXTURE0),
                   TextureUnitBinding(self.__gaussian_blur_fbo1.get_texture(GL.GL_COLOR_ATTACHMENT0),
                                      GL.GL_TEXTURE1)):
+            GL.glUniform1f(self.__fbo_shader.get_uniform_location("exposure"), 1.0)
+            GL.glUniform1f(self.__fbo_shader.get_uniform_location("gamma"), 2.2)
             GL.glUniform1i(self.__fbo_shader.get_uniform_location("rendered_scene"), 0)
             GL.glUniform1i(self.__fbo_shader.get_uniform_location("bright_regions"), 1)
             self.__ndc_quad.draw(GL.GL_QUADS)
@@ -1009,6 +1013,7 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_background(self, background_image, **kwargs):
         """ Render scrolling background. """
+        (coords, level) = self.__parse_kwargs(kwargs)
         buffer = self.__command_buffers.get_buffer(Renderer.COORDS_SCREEN,
                                                    Renderer.LEVEL_BACK_FAR,
                                                    GL.GL_TRIANGLES)
@@ -1025,7 +1030,7 @@ class PygameOpenGLRenderer(Renderer):
                 buffer.add_quad((i+image_width/2.0, j+image_width/2.0),
                                 (image_width, image_height),
                                 texref=background_image,
-                                colour=(1.0, 1.0, 1.0))
+                                **kwargs)
 
     def render_rect(self, rect, **kwargs):
         """ Render rectangle. """
@@ -1082,7 +1087,7 @@ class PygameOpenGLRenderer(Renderer):
                         texref.get_size(),
                         texref=texref,
                         orientation=orientation,
-                        colour=(1.0, 1.0, 1.0))
+                        **kwargs)
 
     def render_image(self, position, image, **kwargs):
         """ Render an image. """
@@ -1093,7 +1098,7 @@ class PygameOpenGLRenderer(Renderer):
         buffer.add_quad(rect.center,
                         image.get_size(),
                         texref=image,
-                        colour=(1.0, 1.0, 1.0))
+                        **kwargs)
 
     def __load_shader_program(self, name):
         """ Load a shader program. """
@@ -1108,11 +1113,15 @@ class PygameOpenGLRenderer(Renderer):
         level = Renderer.LEVEL_MID
         if "level" in kwargs_dict:
             level = kwargs_dict["level"]
+            del kwargs_dict["level"]
         coords = Renderer.COORDS_WORLD
         if "coords" in kwargs_dict:
             coords = kwargs_dict["coords"]
-        del kwargs_dict["level"]
-        del kwargs_dict["coords"]
+            del kwargs_dict["coords"]
         if "colour" in kwargs_dict:
             kwargs_dict["colour"] = self.__colour_int_to_float(kwargs_dict["colour"])
+        else:
+            kwargs_dict["colour"] = (1.0, 1.0, 1.0)
+        if not "brightness" in kwargs_dict:
+            kwargs_dict["brightness"] = 0.0
         return (coords, level)

@@ -31,9 +31,13 @@ attribute vec3 texcoord;
 // Vertex colour.
 attribute vec3 colour;
 
+// Brightness (glow)
+attribute float brightness;
+
 // Outputs to fragment shader.
 varying vec3 v_colour;
 varying vec3 v_texcoord;
+varying float v_brightness;
 
 // Pi
 const float PI = 3.1415926535897932384626433832795;
@@ -82,4 +86,5 @@ void main() {
   gl_Position = vec4(position_screen, 0, 1);
   v_colour = colour;
   v_texcoord = texcoord;
+  v_brightness = brightness;
 }

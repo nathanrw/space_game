@@ -134,13 +134,13 @@ class Drawable(Component):
                         radius = weapon.config.get_or_default("radius", 2)
                         red = (255,100,100)
                         white = (255,255,255)
-                        renderer.add_job_line(p0, p1, colour=red, width=radius)
+                        renderer.add_job_line(p0, p1, colour=red, width=radius, brightness=2)
                         core_radius = radius//3
                         if core_radius > 0:
-                            renderer.add_job_line(p0, p1, colour=white, width=core_radius)
+                            renderer.add_job_line(p0, p1, colour=white, width=core_radius, brightness=2)
                         size = int(radius+random.random()*radius*2)
-                        renderer.add_job_circle(p1, size, colour=red)
-                        renderer.add_job_circle(p1, size - 2, colour=white)
+                        renderer.add_job_circle(p1, size, colour=red, brightness=2)
+                        renderer.add_job_circle(p1, size - 2, colour=white, brightness=2)
 
     def draw_shields(self, body, renderer, camera):
         """ Draw any shields the entity might have. """
@@ -149,7 +149,7 @@ class Drawable(Component):
         if shields is not None:
             width = int((shields.hp/float(shields.max_hp)) * 5)
             if width > 0:
-                renderer.add_job_circle(body.position, int(body.size * 2), colour=(200, 220, 255), width=width)
+                renderer.add_job_circle(body.position, int(body.size * 2), colour=(200, 220, 255), width=width, brightness=2)
 
     def draw_animation(self, body, renderer, camera):
         """ Draw an animation on the screen. """
@@ -174,7 +174,7 @@ class Drawable(Component):
                 dir = thruster.world_direction(body)
                 length = thruster.thrust() / 500.0
                 poly = Polygon.make_bullet_polygon(pos, pos-(dir*length))
-                renderer.add_job_polygon(poly, colour=(255, 255, 255))
+                renderer.add_job_polygon(poly, colour=(255, 255, 255), brightness=2)
 
     def draw_bar(self, arg_rect, fraction, col_back, col_0, col_1, renderer, camera):
         """ Draw a progress bar """
@@ -290,7 +290,7 @@ class TextDrawer(object):
         # Now draw the image, if we have one.
         if self.__visible:
             pos = Vec2d(renderer.screen_rect().center) - Vec2d(self.__image.get_size()) / 2
-            renderer.add_job_image(pos, self.__image, coords=Renderer.COORDS_SCREEN)
+            renderer.add_job_image(pos, self.__image, coords=Renderer.COORDS_SCREEN, brightness=2)
 
         # Get positions of the 'WARNING' strips
         pos = Vec2d(renderer.screen_rect().center) - Vec2d(self.__image.get_size()) / 2
@@ -307,10 +307,10 @@ class TextDrawer(object):
                     x = -x
                 start_i = -(x%(image_width+self.__padding))
                 for i in range(int(start_i), screen_width, image_width + self.__padding):
-                    renderer.add_job_image((i, y), self.__warning, coords=Renderer.COORDS_SCREEN)
+                    renderer.add_job_image((i, y), self.__warning, coords=Renderer.COORDS_SCREEN, brightness=2)
                 rect = renderer.screen_rect()
                 rect.height = 5
                 rect.bottom = y-5
-                renderer.add_job_rect(rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN)
+                renderer.add_job_rect(rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN, brightness=2)
                 rect.top=y+self.__warning.get_height()+5
-                renderer.add_job_rect(rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN)
+                renderer.add_job_rect(rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN, brightness=2)
