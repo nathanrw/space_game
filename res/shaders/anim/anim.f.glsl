@@ -27,9 +27,13 @@ void main() {
   vec3 brightness_weights = vec3(0.2126, 0.7152, 0.0722);
 
   // Write bright regions to the second render target.
-  float brightness  = dot(gl_FragData[0].xyz, brightness_weights);
-  gl_FragData[1] = vec4(0, 0, 0, 1);
+  float brightness = dot(gl_FragData[0].xyz, brightness_weights);
+  gl_FragData[1] = vec4(0, 0, 0, gl_FragData[0].w);
   if (brightness > 1.0) {
-    gl_FragData[1] = gl_FragData[0];
+    // Note: want a smooth transition from 'not bright' to 'bright' so
+    // scale the bright colour to the part of the brightness that exceeds
+    // the threshold.  Note that this is not perfect, if the brightness
+    // exceeds 2.0 this will actually make the image brighter!
+    gl_FragData[1].rgb = gl_FragData[0].rgb * (brightness - 1);
   }
 }

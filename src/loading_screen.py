@@ -16,6 +16,7 @@ class LoadingScreen(object):
         self.renderer = renderer
         self.view = View(renderer)
         self.title = renderer.load_compatible_image("res/images/title.bmp")
+        self.background = renderer.load_compatible_image("res/images/seamless space.PNG")
         self.__draw()
 
     def increment(self):
@@ -40,7 +41,10 @@ class LoadingScreen(object):
         bar_rect.height = 60
         bar_rect.center = screen_rect.center
         bar_rect.top += self.title.get_height() / 2
-        brightness = 2.0 * (float(self.progress)/self.total)
+        brightness = 1.0 * (float(self.progress)/self.total)
+
+        # Draw the background image
+        self.renderer.add_job_background(self.background)
 
         # Draw the title image above the loading bar.
         self.renderer.add_job_image(Vec2d(bar_rect.center[0], bar_rect.top)

@@ -940,7 +940,7 @@ class PygameOpenGLRenderer(Renderer):
 
         # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
         # Ping pong gaussian blur the brightness image.
-        passes = 3
+        passes = 2
         with Bind(self.__gaussian_blur_shader,
                   self.__ndc_quad):
             GL.glUniform1i(self.__gaussian_blur_shader.get_uniform_location("image"), 0)
@@ -953,9 +953,9 @@ class PygameOpenGLRenderer(Renderer):
                 self.__ndc_quad.draw(GL.GL_QUADS)
 
             # Subsequent passes, do a 'ping pong'.  The result should end up in the second
-            # fbo, so 'passes' should be an odd number.
-            assert passes % 2 == 1
-            for i in range(1, passes+1):
+            # fbo.
+            assert passes > 0
+            for i in range(1, passes*2+2):
                 fbos = (self.__gaussian_blur_fbo0, self.__gaussian_blur_fbo1)
                 from_fbo = fbos[(i+1)%2]
                 to_fbo = fbos[i%2]

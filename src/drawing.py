@@ -290,7 +290,7 @@ class TextDrawer(object):
         # Now draw the image, if we have one.
         if self.__visible:
             pos = Vec2d(renderer.screen_rect().center) - Vec2d(self.__image.get_size()) / 2
-            renderer.add_job_image(pos, self.__image, coords=Renderer.COORDS_SCREEN, brightness=2)
+            renderer.add_job_image(pos, self.__image, coords=Renderer.COORDS_SCREEN, brightness=1)
 
         # Get positions of the 'WARNING' strips
         pos = Vec2d(renderer.screen_rect().center) - Vec2d(self.__image.get_size()) / 2
@@ -307,10 +307,10 @@ class TextDrawer(object):
                     x = -x
                 start_i = -(x%(image_width+self.__padding))
                 for i in range(int(start_i), screen_width, image_width + self.__padding):
-                    renderer.add_job_image((i, y), self.__warning, coords=Renderer.COORDS_SCREEN, brightness=2)
+                    renderer.add_job_image((i, y), self.__warning, coords=Renderer.COORDS_SCREEN, brightness=1)
                 rect = renderer.screen_rect()
                 rect.height = 5
                 rect.bottom = y-5
-                renderer.add_job_rect(rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN, brightness=2)
+                renderer.add_job_rect(rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN, brightness=1)
                 rect.top=y+self.__warning.get_height()+5
-                renderer.add_job_rect(rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN, brightness=2)
+                renderer.add_job_rect(rect, colour=self.__colour, coords=Renderer.COORDS_SCREEN, brightness=1)
