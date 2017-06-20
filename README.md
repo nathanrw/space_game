@@ -5,6 +5,8 @@ A space game written in Python.
 
 ![A screenshot](screenshot.png?raw=true "Screenshot")
 
+![A screenshot](screenshot_2.png?raw=true "Screenshot")
+
 What
 ----
 
