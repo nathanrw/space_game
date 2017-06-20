@@ -228,7 +228,7 @@ class Game(object):
         self.physics.add_collision_handler(DamageCollisionHandler())
 
         # Set the scrolling background.
-        self.drawing.set_background("res/images/seamless space.PNG")
+        self.drawing.set_background("res/images/857-tileable-classic-nebula-space-patterns/6.jpg")
 
         # Run the game loop.
         self.run_update_loop()

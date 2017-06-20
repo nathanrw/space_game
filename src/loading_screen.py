@@ -16,7 +16,7 @@ class LoadingScreen(object):
         self.renderer = renderer
         self.view = View(renderer)
         self.title = renderer.load_compatible_image("res/images/title.bmp")
-        self.background = renderer.load_compatible_image("res/images/seamless space.PNG")
+        self.background = renderer.load_compatible_image("res/images/857-tileable-classic-nebula-space-patterns/6.jpg")
         self.__draw()
 
     def increment(self):
