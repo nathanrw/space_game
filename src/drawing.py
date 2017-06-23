@@ -149,7 +149,7 @@ class Drawable(Component):
         if shields is not None:
             width = int((shields.hp/float(shields.max_hp)) * 5)
             if width > 0:
-                renderer.add_job_circle(body.position, int(body.size * 2), colour=(200, 220, 255), width=width, brightness=2)
+                renderer.add_job_circle(body.position, int(body.size * 2), colour=(100, 100, 255), width=width, brightness=2)
 
     def draw_animation(self, body, renderer, camera):
         """ Draw an animation on the screen. """
@@ -178,6 +178,7 @@ class Drawable(Component):
                 pos = thruster.world_position(body)
                 dir = thruster.world_direction(body)
                 length = thruster.thrust() / 500.0
+                length *= (1.0 + random.random()*0.1 - 0.2)
                 poly = Polygon.make_bullet_polygon(pos, pos-(dir*length))
                 renderer.add_job_polygon(poly, colour=(255, 255, 255), brightness=2)
 
