@@ -333,7 +333,8 @@ class Body(Component):
         results = self.__space.segment_query(start, end, radius, pymunk.ShapeFilter())
         for result in results:
             if not result.shape.game_body.entity.is_ancestor(self.entity):
-                return (result.shape.game_body, result.point)
+                if result.shape.game_body.collideable:
+                    return (result.shape.game_body, result.point)
         return (None, end)
         
     @property
