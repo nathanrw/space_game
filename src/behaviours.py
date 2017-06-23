@@ -472,7 +472,8 @@ class Shields(Component):
         if power is None:
             self.hp = 0
         else:
-            self.hp = min(self.max_hp, self.hp + power.consume(self.recharge_rate * dt))
+            recharge_amount = min(self.max_hp - self.hp, self.recharge_rate * dt)
+            self.hp = min(self.max_hp, self.hp + power.consume(recharge_amount))
 
     def mitigate_damage(self, amount):
         self.hp -= amount

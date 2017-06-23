@@ -190,16 +190,16 @@ class Drawable(Component):
         """ Draw a progress bar """
 
         # The background
-        renderer.add_job_rect(arg_rect, colour=col_back, coords=Renderer.COORDS_SCREEN)
+        renderer.add_job_rect(arg_rect, colour=col_back, coords=Renderer.COORDS_SCREEN, brightness=0.2)
 
         # The empty portion.
         rect = Rect(arg_rect)
         rect.inflate_ip(-4, -4)
-        renderer.add_job_rect(rect, colour=col_0, coords=Renderer.COORDS_SCREEN)
+        renderer.add_job_rect(rect, colour=col_0, coords=Renderer.COORDS_SCREEN, brightness=0.2)
 
         # The full portion.
         rect.width = int(fraction * rect.width)
-        renderer.add_job_rect(rect, colour=col_1, coords=Renderer.COORDS_SCREEN)
+        renderer.add_job_rect(rect, colour=col_1, coords=Renderer.COORDS_SCREEN, brightness=0.2)
 
     def draw_hitpoints(self, body, renderer, camera):
         """ Draw the entity's hitpoints, or a marker showing where it
