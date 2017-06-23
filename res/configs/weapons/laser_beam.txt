@@ -3,5 +3,5 @@ components:
     type: beam
     range: 5000
     radius: 6
-    damage: 100
+    damage: 60
     power_usage: 20
