@@ -138,9 +138,13 @@ class Drawable(Component):
                         core_radius = radius//3
                         if core_radius > 0:
                             renderer.add_job_line(p0, p1, colour=white, width=core_radius, brightness=2)
-                        size = int(radius+random.random()*radius*2)
-                        renderer.add_job_circle(p1, size, colour=red, brightness=8)
-                        renderer.add_job_circle(p1, size - 2, colour=white, brightness=8)
+                        dir = weapon.impact_normal
+                        if dir is not None:
+                            impact_size = radius * 15 * (1.0 + random.random()*0.6-0.8)
+                            poly1 = Polygon.make_bullet_polygon(p1, p1 + (dir * impact_size))
+                            renderer.add_job_polygon(poly1, colour=white, brightness=5)
+                            poly2 = Polygon.make_bullet_polygon(p1, p1 + (dir * impact_size * 0.8))
+                            renderer.add_job_polygon(poly2, colour=red, brightness=5)
 
     def draw_shields(self, body, renderer, camera):
         """ Draw any shields the entity might have. """
