@@ -174,7 +174,7 @@ class Weapons(Component):
                 self.fire_timer.reset()
                 self.can_shoot = True
             if self.can_shoot:
-                (hit_body, hit_point) = body.hit_scan()
+                (hit_body, hit_point, hit_normal) = body.hit_scan()
                 if hit_body == tracked_body:
                     self.can_shoot = False
                     gun.start_shooting_at_body(tracked_body)
@@ -205,6 +205,7 @@ class Weapon(Component):
         self.shot_timer = 0
         self.weapon_type = self.config.get_or_default("type", "projectile_thrower")
         self.impact_point = None
+        self.impact_normal = None
 
     def __get_body(self):
         """ Get the body of the entity with the weapon. """
@@ -274,10 +275,10 @@ class Weapon(Component):
                     body = self.__get_body()
 
                     # Figure out if the laser has hit anything.
-                    (hit_body, self.impact_point) = body.hit_scan(Vec2d(0, 0),
-                                                                  Vec2d(0, -1),
-                                                                  self.config["range"],
-                                                                  self.config["radius"])
+                    (hit_body, self.impact_point, self.impact_normal) = body.hit_scan(Vec2d(0, 0),
+                                                                                      Vec2d(0, -1),
+                                                                                      self.config["range"],
+                                                                                      self.config["radius"])
 
                     # If we hit something, damage it.
                     if hit_body is not None:

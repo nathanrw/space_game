@@ -334,8 +334,8 @@ class Body(Component):
         for result in results:
             if not result.shape.game_body.entity.is_ancestor(self.entity):
                 if result.shape.game_body.collideable:
-                    return (result.shape.game_body, result.point)
-        return (None, end)
+                    return (result.shape.game_body, result.point, result.normal)
+        return (None, end, None)
         
     @property
     def position(self):
