@@ -1,6 +1,7 @@
 components:
   src.behaviours.AnimationComponent:
     kill_on_finish: 1
+    brightness: 10
   src.drawing.Drawable: {}
   src.physics.Body:
     is_collideable: 0

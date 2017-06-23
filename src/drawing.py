@@ -139,8 +139,8 @@ class Drawable(Component):
                         if core_radius > 0:
                             renderer.add_job_line(p0, p1, colour=white, width=core_radius, brightness=2)
                         size = int(radius+random.random()*radius*2)
-                        renderer.add_job_circle(p1, size, colour=red, brightness=2)
-                        renderer.add_job_circle(p1, size - 2, colour=white, brightness=2)
+                        renderer.add_job_circle(p1, size, colour=red, brightness=8)
+                        renderer.add_job_circle(p1, size - 2, colour=white, brightness=8)
 
     def draw_shields(self, body, renderer, camera):
         """ Draw any shields the entity might have. """
@@ -163,7 +163,12 @@ class Drawable(Component):
         anim = component.get_anim()
 
         # Draw the animation
-        renderer.add_job_animation(-body.orientation, body.position, anim)
+        renderer.add_job_animation(
+            -body.orientation,
+            body.position,
+            anim,
+            brightness=component.config.get_or_default("brightness", 0.0)
+        )
 
     def draw_thrusters(self, body, renderer, camera):
         """ Draw the thrusters affecting the body. """
