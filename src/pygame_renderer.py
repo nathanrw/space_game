@@ -5,17 +5,18 @@ from .renderer import *
 class PygameRenderer(Renderer):
     """ A pygame software renderer. """
 
-    def __init__(self):
+    def __init__(self, screen_size, options, **kwargs):
         """ Constructor. """
-        Renderer.__init__(self)
+        Renderer.__init__(self, screen_size, options, **kwargs)
+        self.__screen_size = screen_size
+        self.__options = options
         self.__surface = None
         self.__view = None
         self.__jobs = {}
 
-    def initialise(self, screen_size, data_path):
+    def initialise(self):
         """ Initialise the pygame display. """
-        self.__surface = pygame.display.set_mode(screen_size)
-        self.__data_path = data_path
+        self.__surface = pygame.display.set_mode(self.__screen_size)
 
     def flip_buffers(self):
         """ Update the pygame display. """

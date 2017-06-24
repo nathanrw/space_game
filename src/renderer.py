@@ -107,12 +107,12 @@ class Renderer(object):
     COORDS_WORLD = 0
     COORDS_SCREEN = 1
 
-    def __init__(self):
+    def __init__(self, screen_size, options, **kwargs):
         """ Constructor. """
         pass
 
     @abc.abstractmethod
-    def initialise(self, screen_size, data_path):
+    def initialise(self):
         """ Initialise the renderer. """
         pass
 

@@ -27,7 +27,7 @@ import os
 from .physics import Physics
 from .drawing import Drawing
 from .behaviours import DamageCollisionHandler, Camera, WaveSpawner
-from .utils import GameServices, GameInfo, ResourceLoader, EntityManager
+from .utils import Config, GameServices, GameInfo, ResourceLoader, EntityManager
 from .input_handling import InputHandling
 
 class SpaceGameServices(GameServices):
@@ -95,9 +95,11 @@ class Game(object):
             self.config = self.resource_loader.load_config_file("base_config.txt")
 
         # Create the renderer.
-        self.renderer = self.game_services.lookup_type(
-            self.config.get_or_default("renderer", "src.pygame_renderer.PygameRenderer")
-        )()
+        renderer_name = self.config.get_or_default("renderer", "src.pygame_renderer.PygameRenderer")
+        renderer_class = self.game_services.lookup_type(renderer_name)
+        screen_size = (self.config.get_or_default("screen_width", 1024),
+                       self.config.get_or_default("screen_height", 768))
+        self.renderer = renderer_class(screen_size, self.config, data_path="./res")
 
         # The resource loaded needs a renderer to load images etc.
         self.resource_loader.renderer = self.renderer
@@ -195,9 +197,7 @@ class Game(object):
         # Initialise the pygame display.
         pygame.init()
         pygame.mixer.init()
-        self.renderer.initialise((self.config.get_or_default("screen_width", 1024), 
-                                  self.config.get_or_default("screen_height", 768)),
-                                 "./res")
+        self.renderer.initialise()
 
         # Preload certain images.
         self.resource_loader.preload()

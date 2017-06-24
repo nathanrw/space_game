@@ -840,25 +840,24 @@ class PygameOpenGLRenderer(Renderer):
     """ A hardware accelerated renderer using pygame to create an OpenGL
     context and load bitmaps etc."""
 
-    def __init__(self):
+    def __init__(self, screen_size, options, **kwargs):
         """ Constructor. """
-        Renderer.__init__(self)
+        Renderer.__init__(self, screen_size, options, **kwargs)
+        self.__screen_size = screen_size
+        self.__options = options
         self.__surface = None
-        self.__data_path = None
+        self.__data_path = kwargs["data_path"]
         self.__anim_shader = None
         self.__fbo_shader = None
         self.__texture_array = None
         self.__command_buffers = None
         self.__view = None
 
-    def initialise(self, screen_size, data_path):
+    def initialise(self):
         """ Initialise the pygame display. """
 
         # We want an OpenGL display.
-        self.__surface = pygame.display.set_mode(screen_size, pygame.DOUBLEBUF|pygame.OPENGL)
-
-        # This is needed to load shaders.
-        self.__data_path = data_path
+        self.__surface = pygame.display.set_mode(self.__screen_size, pygame.DOUBLEBUF|pygame.OPENGL)
 
         # Enable alpha blending.
         GL.glEnable(GL.GL_BLEND)
@@ -874,8 +873,8 @@ class PygameOpenGLRenderer(Renderer):
         self.__anim_shader = self.__load_shader_program("anim")
 
         # Framebuffer to render into and shader for rendering from it.
-        self.__fbo = Framebuffer(screen_size[0],
-                                 screen_size[1],
+        self.__fbo = Framebuffer(self.__screen_size[0],
+                                 self.__screen_size[1],
                                  (GL.GL_COLOR_ATTACHMENT0, GL.GL_COLOR_ATTACHMENT1))
         self.__fbo_shader = self.__load_shader_program("simple_quad")
 
@@ -888,11 +887,11 @@ class PygameOpenGLRenderer(Renderer):
 
         # Framebuffers and shader for gaussian blur.
         self.__gaussian_blur_shader = self.__load_shader_program("gaussian_blur")
-        self.__gaussian_blur_fbo0 = Framebuffer(screen_size[0],
-                                                screen_size[1],
+        self.__gaussian_blur_fbo0 = Framebuffer(self.__screen_size[0],
+                                                self.__screen_size[1],
                                                 [GL.GL_COLOR_ATTACHMENT0])
-        self.__gaussian_blur_fbo1 = Framebuffer(screen_size[0],
-                                                screen_size[1],
+        self.__gaussian_blur_fbo1 = Framebuffer(self.__screen_size[0],
+                                                self.__screen_size[1],
                                                 [GL.GL_COLOR_ATTACHMENT0])
 
         # Create the texture array.
