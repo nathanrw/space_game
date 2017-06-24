@@ -5,6 +5,7 @@ varying vec3 v_texcoord;
 varying float v_brightness;
 
 uniform sampler2DArray texture_array;
+uniform float gamma;
 
 void main() {
 
@@ -13,7 +14,8 @@ void main() {
 
   // A negative level means don't use a texture.
   if (v_texcoord.z >= 0) {
-    gl_FragData[0] *= texture(texture_array, v_texcoord);
+    vec4 tex_col = texture(texture_array, v_texcoord);
+    gl_FragData[0] *= vec4(pow(tex_col.rgb, vec3(gamma)), tex_col.a);
   }
 
   // If brightness is non-zero then this fragment is glowing.

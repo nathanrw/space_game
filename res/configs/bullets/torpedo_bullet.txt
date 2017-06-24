@@ -20,7 +20,7 @@ components:
 
   # A torpedo seeks out its target.
   src.behaviours.FollowsTracked:
-    acceleration: 30000
+    acceleration: 3000
     desired_distance_to_player: 0.1
 
   # A torpedo is driven by thrusters.
@@ -37,6 +37,7 @@ components:
   # Make it look like a torpedo
   src.behaviours.AnimationComponent:
     anim_name: rocket
+    brightness: 0
 
   # Set the mass and size.
   src.physics.Body:

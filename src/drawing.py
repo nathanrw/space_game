@@ -138,9 +138,13 @@ class Drawable(Component):
                         core_radius = radius//3
                         if core_radius > 0:
                             renderer.add_job_line(p0, p1, colour=white, width=core_radius, brightness=2)
-                        size = int(radius+random.random()*radius*2)
-                        renderer.add_job_circle(p1, size, colour=red, brightness=2)
-                        renderer.add_job_circle(p1, size - 2, colour=white, brightness=2)
+                        dir = weapon.impact_normal
+                        if dir is not None:
+                            impact_size = radius * 15 * (1.0 + random.random()*0.6-0.8)
+                            poly1 = Polygon.make_bullet_polygon(p1, p1 + (dir * impact_size))
+                            renderer.add_job_polygon(poly1, colour=white, brightness=5)
+                            poly2 = Polygon.make_bullet_polygon(p1, p1 + (dir * impact_size * 0.8))
+                            renderer.add_job_polygon(poly2, colour=red, brightness=5)
 
     def draw_shields(self, body, renderer, camera):
         """ Draw any shields the entity might have. """
@@ -149,7 +153,7 @@ class Drawable(Component):
         if shields is not None:
             width = int((shields.hp/float(shields.max_hp)) * 5)
             if width > 0:
-                renderer.add_job_circle(body.position, int(body.size * 2), colour=(200, 220, 255), width=width, brightness=2)
+                renderer.add_job_circle(body.position, int(body.size * 2), colour=(100, 100, 255), width=width, brightness=2)
 
     def draw_animation(self, body, renderer, camera):
         """ Draw an animation on the screen. """
@@ -163,7 +167,12 @@ class Drawable(Component):
         anim = component.get_anim()
 
         # Draw the animation
-        renderer.add_job_animation(-body.orientation, body.position, anim)
+        renderer.add_job_animation(
+            -body.orientation,
+            body.position,
+            anim,
+            brightness=component.config.get_or_default("brightness", 0.0)
+        )
 
     def draw_thrusters(self, body, renderer, camera):
         """ Draw the thrusters affecting the body. """
@@ -173,6 +182,7 @@ class Drawable(Component):
                 pos = thruster.world_position(body)
                 dir = thruster.world_direction(body)
                 length = thruster.thrust() / 500.0
+                length *= (1.0 + random.random()*0.1 - 0.2)
                 poly = Polygon.make_bullet_polygon(pos, pos-(dir*length))
                 renderer.add_job_polygon(poly, colour=(255, 255, 255), brightness=2)
 
@@ -180,16 +190,16 @@ class Drawable(Component):
         """ Draw a progress bar """
 
         # The background
-        renderer.add_job_rect(arg_rect, colour=col_back, coords=Renderer.COORDS_SCREEN)
+        renderer.add_job_rect(arg_rect, colour=col_back, coords=Renderer.COORDS_SCREEN, brightness=0.2)
 
         # The empty portion.
         rect = Rect(arg_rect)
         rect.inflate_ip(-4, -4)
-        renderer.add_job_rect(rect, colour=col_0, coords=Renderer.COORDS_SCREEN)
+        renderer.add_job_rect(rect, colour=col_0, coords=Renderer.COORDS_SCREEN, brightness=0.2)
 
         # The full portion.
         rect.width = int(fraction * rect.width)
-        renderer.add_job_rect(rect, colour=col_1, coords=Renderer.COORDS_SCREEN)
+        renderer.add_job_rect(rect, colour=col_1, coords=Renderer.COORDS_SCREEN, brightness=0.2)
 
     def draw_hitpoints(self, body, renderer, camera):
         """ Draw the entity's hitpoints, or a marker showing where it

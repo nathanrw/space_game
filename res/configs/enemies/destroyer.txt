@@ -18,3 +18,13 @@ components:
   src.physics.Body:
     mass: 100
     size: 40
+
+  # The ship is powered.
+  src.behaviours.Power:
+    capacity: 100
+    recharge_rate: 10
+
+  # The ship is shielded.
+  src.behaviours.Shields:
+    hp: 50
+    recharge_rate: 50

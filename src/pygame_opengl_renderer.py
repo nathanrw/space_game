@@ -262,6 +262,8 @@ class Texture(object):
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.__texture)
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
         GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_EDGE)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE)
         GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, internal_format, self.get_width(), self.get_height(),
                         0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, data)
 
@@ -916,6 +918,9 @@ class PygameOpenGLRenderer(Renderer):
         # Use texture unit 0 - we bind it to a uniform later.
         GL.glActiveTexture(GL.GL_TEXTURE0)
 
+        exposure = 1.0
+        gamma = 2.2
+
         # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
         # Render the scene to the FBO
         with Bind(self.__fbo,
@@ -933,6 +938,7 @@ class PygameOpenGLRenderer(Renderer):
                            *self.__view.size)
             GL.glUniform1f(self.__anim_shader.get_uniform_location("view_zoom"),
                            self.__view.zoom)
+            GL.glUniform1f(self.__anim_shader.get_uniform_location("gamma"), gamma)
 
             # Dispatch commands to the GPU.
             self.__command_buffers.dispatch()
@@ -970,8 +976,8 @@ class PygameOpenGLRenderer(Renderer):
                   TextureUnitBinding(self.__fbo.get_texture(GL.GL_COLOR_ATTACHMENT0), GL.GL_TEXTURE0),
                   TextureUnitBinding(self.__gaussian_blur_fbo1.get_texture(GL.GL_COLOR_ATTACHMENT0),
                                      GL.GL_TEXTURE1)):
-            GL.glUniform1f(self.__fbo_shader.get_uniform_location("exposure"), 1.0)
-            GL.glUniform1f(self.__fbo_shader.get_uniform_location("gamma"), 2.2)
+            GL.glUniform1f(self.__fbo_shader.get_uniform_location("exposure"), exposure)
+            GL.glUniform1f(self.__fbo_shader.get_uniform_location("gamma"), gamma)
             GL.glUniform1i(self.__fbo_shader.get_uniform_location("rendered_scene"), 0)
             GL.glUniform1i(self.__fbo_shader.get_uniform_location("bright_regions"), 1)
             self.__ndc_quad.draw(GL.GL_QUADS)
