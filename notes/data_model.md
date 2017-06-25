@@ -76,4 +76,6 @@ using our entities and components presents itself?
 Ship <>---- Hull <>------ ModuleSlot <-- SystemSlot <>-- System -----> Module
                                      <-- TurretSlot <>-- Turret ----->
                                      <-- ThrusterSlot <>-- Thruster ->
+                                     
+![some uml](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/nathanwoodward/space_game/master/notes/ship.puml)
 
