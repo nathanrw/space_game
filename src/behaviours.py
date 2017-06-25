@@ -453,27 +453,46 @@ class Power(Component):
         self.capacity = config["capacity"]
         self.power = self.capacity
         self.recharge_rate = config["recharge_rate"]
+        self.overloaded = False
+        self.overload_timer = Timer(config.get_or_default("overload_time", 5))
     def update(self, dt):
-        self.power = min(self.capacity, self.power + self.recharge_rate * dt)
+        if self.overloaded:
+            if self.overload_timer.tick(dt):
+                self.overloaded = False
+                self.overload_timer.reset()
+        else:
+            self.power = min(self.capacity, self.power + self.recharge_rate * dt)
     def consume(self, amount):
         if amount <= self.power:
             self.power -= amount
             return amount
-        return 0
-        
+        else:
+            self.overloaded = True
+            return 0
+
+
 class Shields(Component):
+
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
         self.hp = self.config["hp"]
         self.max_hp = self.config["hp"] # Rendundant, but code uses this.
         self.recharge_rate = config["recharge_rate"]
+        self.overloaded = False
+        self.overload_timer = Timer(config.get_or_default("overload_time", 5))
+
     def update(self, dt):
         power = self.get_component(Power)
         if power is None:
             self.hp = 0
         else:
-            recharge_amount = min(self.max_hp - self.hp, self.recharge_rate * dt)
-            self.hp = min(self.max_hp, self.hp + power.consume(recharge_amount))
+            if self.overloaded:
+                if self.overload_timer.tick(dt):
+                    self.overloaded = False
+                    self.overload_timer.reset()
+            else:
+                recharge_amount = min(self.max_hp - self.hp, self.recharge_rate * dt)
+                self.hp = min(self.max_hp, self.hp + power.consume(recharge_amount))
 
     def mitigate_damage(self, amount):
         self.hp -= amount
@@ -485,7 +504,11 @@ class Shields(Component):
 
 def apply_damage_to_entity(damage, entity):
     """ Apply damage to an object we've hit. """
-    shields = entity.get_component(Shields) 
+    shields = entity.get_component(Shields)
+    if shields is None:
+        ancestor = entity.get_ancestor_with_component(Shields)
+        if ancestor is not None:
+            shields = ancestor.get_component(Shields)
     if shields is not None:
         damage = shields.mitigate_damage(damage)
     hitpoints = entity.get_component(Hitpoints)

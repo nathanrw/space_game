@@ -513,6 +513,17 @@ class Entity(object):
         of this type. """
         return self.game_services.get_entity_manager().get_component_of_type(self, t)
 
+    def get_ancestor_with_component(self, t):
+        """ See if an ancestor of this entity has a particular component. """
+        if self.parent is not None:
+            c = self.parent.get_component(t)
+            if c is not None:
+                return self.parent
+            else:
+                return self.parent.get_ancestor_with_component(t)
+        else:
+            return None
+
     def get_children_with_component(self, t):
         """ Get each (direct) child entity with a given component type. """
         for entity in self.children:
