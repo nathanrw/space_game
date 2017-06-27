@@ -23,6 +23,7 @@ Things I would like to work on now:
 
 import pygame
 import os
+import sys
 
 from .physics import Physics
 from .drawing import Drawing
@@ -79,8 +80,13 @@ class Game(object):
         """ Initialise the game systems. """
 
         # Change directory into the directory above this file - the
-        # one containng the 'res' tree.
-        os.chdir( os.path.dirname( os.path.dirname(__file__)) )
+        # one containng the 'res' tree.  Note that if we've been built via
+        # py2exe, we will actually be in a zip file so account for that.
+        path = os.path.dirname(os.path.dirname(__file__))
+        if (os.path.basename(path) == "library.zip"):
+            path = os.path.dirname(path)
+        os.chdir( path )
+        sys.path += ["."]
 
         # Services exposed to the entities.
         self.game_services = SpaceGameServices(self)

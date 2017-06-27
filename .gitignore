@@ -4,3 +4,7 @@
 /profile_results
 /config.txt
 /debug_log
+/yacctab.py
+/lextab.py
+/dist/*
+/build/*

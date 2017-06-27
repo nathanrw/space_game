@@ -99,29 +99,32 @@ class GameServices(object):
 
         try:
             module_path, class_name = class_path.rsplit(".", 1)
-        except ValueError:
+        except ValueError as e:
             print( "**************************************************************" )
             print( "ERROR CREATING OBJECT: '%s'" % class_path )
             print( "Must specify e.g. module.class in path. Got: '%s'." % class_path )
             print( "**************************************************************" )
-            bail()           
+            print e
+            bail()
             
         try:
             module = __import__(module_path, fromlist=[class_name])
-        except ImportError:
+        except ImportError as e:
             print( "**************************************************************" )
             print( "ERROR CREATING OBJECT: '%s'" % class_path )
             print( "The module '%s' could not be imported." % module_path )
             print( "**************************************************************" )
+            print e
             bail()
 
         try:
             cls = getattr(module, class_name)
-        except AttributeError:
+        except AttributeError as e:
             print( "**************************************************************" )
             print( "ERROR CREATING OBJECT: '%s'" % class_path )
             print( "The attribute '%s' could not be found." % class_name )
             print( "**************************************************************" )
+            print e
             bail()
 
         # Might not actually be a class. But if it's a function that returns
