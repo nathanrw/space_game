@@ -72,8 +72,16 @@ using our entities and components presents itself?
      AttributeSet
      
 
-                 <>------ AttributeSet
-Ship <>---- Hull <>------ ModuleSlot <-- SystemSlot <>-- System -----> Module
-                                     <-- TurretSlot <>-- Turret ----->
-                                     <-- ThrusterSlot <>-- Thruster ->
+                     <>------ AttributeSet
+    Ship <>---- Hull <>------ ModuleSlot <-- SystemSlot <>-- System -----> Module
+                                         <-- TurretSlot <>-- Turret ----->
+                                         <-- ThrusterSlot <>-- Thruster ->
+                                     
+![some uml](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/nathanwoodward/space_game/master/notes/ship.puml)
 
+In the above diagram, the structure defines a ship *design*, which can be applied to
+an actual ship entity to create the components necessary to represent it. That's a bit
+of a handwave though. What if the design has only changed slightly, we presumably want
+it to keep its damage etc. Can you reverse engineer a design from a ship entity? It
+doesn't sound very robust. Probably don't want to go this route? However the relationships
+between the components of the design sound plausible.
