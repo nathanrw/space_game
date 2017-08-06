@@ -9,7 +9,6 @@ components:
   src.behaviours.AnimationComponent:
     anim_name: pewpew_green
     brightness: 0.5
-  src.drawing.Drawable: {}
   src.physics.Body:
     mass: 1
     size: 3

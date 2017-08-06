@@ -309,10 +309,15 @@ class EntityManager(object):
             for component in system.get_all_entity_components(entity):
                 yield component
 
-    def query(self, component_types):
+    def query(self, type1, *types):
         """ Get all entities with a particular set of components. """
-        # Not implemented.
-        assert False
+        system1 = self.get_system_by_component_type(type1)
+        ret = set(system1.get_entities_with_component(type1))
+        for t in types:
+            system = self.get_system_by_component_type(t)
+            entities = system.get_entities_with_component(t)
+            ret = ret.intersection(set(entities))
+        return ret
 
     def update(self, dt):
         """ Update all of the systems in priority order. """
@@ -333,6 +338,7 @@ class ComponentSystem(object):
         self.components_to_add = []
         self.priority = 0
         self.object_map = {}
+        self.type_map = {}
 
     def setup(self, game_services):
         self.game_services = game_services
@@ -360,7 +366,7 @@ class ComponentSystem(object):
         assert not key in self.object_map
         self.components_to_add.append(component)
         self.object_map[key] = component
-        
+
     def remove_component(self, component):
         """ Remove a particular component. """
         self.components.remove(component)
@@ -381,7 +387,15 @@ class ComponentSystem(object):
         for c in self.components:
             if c.entity == entity:
                 yield c
-    
+
+    def get_entities_with_component(self, component_type):
+        """ Get all entities with a particular component type."""
+        ret = []
+        for c in self.components:
+            if isinstance(c, component_type):
+                ret.append(c.entity)
+        return ret
+
     def remove_object_component(self, entity, component_type):
         """ Remove the component of a particular concrete type from an object. """
         component = self.get_component(entity, component_type)
@@ -393,7 +407,7 @@ class ComponentSystem(object):
         to_remove = [x for x in self.components if x.is_garbage()]
         for component in to_remove:
             self.remove_component(component)
-            
+
     def update(self, dt):
         """ Update the components. """
         for component in self.components:

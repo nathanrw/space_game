@@ -3,9 +3,10 @@
 from pygame import Rect
 import random
 
-from .physics import Body, Thruster
+from .physics import Body, Thruster, Vec2d
 from .behaviours import Hitpoints, Text, Shields, AnimationComponent, Weapon, Power
 from .renderer import Renderer
+from .utils import Polygon
 
 class Drawing(object):
     """ An object that can draw the state of the game using a renderer. """
@@ -47,7 +48,7 @@ class Drawing(object):
             # We want weapons that are attached to a parent entity with a Body,
             # for position.
             weapon = entity.get_component(Weapon)
-            parent = entity.get_parent()
+            parent = entity.parent
             if parent is None:
                 continue
             body = parent.get_component(Body)
@@ -110,7 +111,7 @@ class Drawing(object):
                     brightness=2
                 )
 
-    def __draw_animation(self, camera):
+    def __draw_animations(self, camera):
         """ Draw an animation on the screen. """
         entities = self.__entity_manager.query(Body, AnimationComponent)
         for entity in entities:
@@ -184,55 +185,67 @@ class Drawing(object):
             component = entity.get_component(Text)
 
             # Cache an image of the rendered text.
-            if component.cached_image is None:
-                component.cached_image = self.__renderer.compatible_image_from_text(
-                    component.text,
-                    font,
-                    component.colour
+            if component.cached_image() is None:
+                font = self.__resource_loader.load_font(
+                    component.font_name(),
+                    component.large_font_size()
+                )
+                component.set_cached_image(
+                    self.__renderer.compatible_image_from_text(
+                        component.text(),
+                        font,
+                        component.colour()
+                    )
                 )
 
             # Render the text.
-            if component.visible:
+            if component.visible():
                 pos = Vec2d(self.__renderer.screen_rect().center) \
-                        - Vec2d(self.__image.get_size()) / 2
+                        - Vec2d(component.cached_image().get_size()) / 2
                 self.__renderer.add_job_image(
                     pos,
-                    component.cached_image,
+                    component.cached_image(),
                     coords=Renderer.COORDS_SCREEN,
                     brightness=0.25
                 )
 
-            # Get positions of the 'WARNING' strips
-            pos = Vec2d(self.__renderer.screen_rect().center) \
-                    - Vec2d(component.cached_image.get_size()) / 2
-            y0 = int(pos.y-component.cached_warning.get_height()-10)
-            y1 = int(pos.y+component.cached_image.get_height()+10)
-
             # Draw a scrolling warning.
-            if component.blink:
+            if component.blink():
 
                 # Cache an image of the rendered 'warning' string.
-                if component.cached_warning is None:
-                    component.cached_warning = self.__renderer.compatible_image_from_text(
-                        "WARNING",
-                        small_font,
-                        component.colour
+                if component.cached_warning() is None:
+                    small_font = self.__resource_loader.load_font(
+                        component.font_name(),
+                        component.small_font_size()
                     )
+                    component.set_cached_warning(
+                        self.__renderer.compatible_image_from_text(
+                            "WARNING",
+                            small_font,
+                            component.colour()
+                        )
+                    )
+
+                # Get positions of the 'WARNING' strips
+                pos = Vec2d(self.__renderer.screen_rect().center) \
+                      - Vec2d(component.cached_image().get_size()) / 2
+                y0 = int(pos.y-component.cached_warning().get_height()-10)
+                y1 = int(pos.y+component.cached_image().get_height()+10)
 
                 # Draw a row of 'warnings' at the top and bottom.
                 for (forwards, y) in ((True, y0), (False, y1)):
 
                     # Draw a row of 'WARNING's.
-                    (image_width, image_height) = component.cached_warning.get_size()
+                    (image_width, image_height) = component.cached_warning().get_size()
                     (screen_width, screen_height) = self.__renderer.screen_size()
-                    x = component.offset
+                    x = component.offset()
                     if not forwards:
                         x = -x
-                    start_i = -(x%(image_width+component.padding))
-                    for i in range(int(start_i), screen_width, image_width + component.padding):
+                    start_i = -(x%(image_width+component.padding()))
+                    for i in range(int(start_i), screen_width, image_width + component.padding()):
                         self.__renderer.add_job_image(
                             (i, y),
-                            component.cached_warning,
+                            component.cached_warning(),
                             coords=Renderer.COORDS_SCREEN,
                             brightness=0.25
                         )
@@ -243,16 +256,16 @@ class Drawing(object):
                     rect.bottom = y-5
                     self.__renderer.add_job_rect(
                         rect,
-                        colour=component.colour,
+                        colour=component.colour(),
                         coords=Renderer.COORDS_SCREEN,
                         brightness=0.25
                     )
 
                     # Draw the bottom bar.
-                    rect.top=y+component.cached_warning.get_height()+5
+                    rect.top=y+component.cached_warning().get_height()+5
                     self.__renderer.add_job_rect(
                         rect,
-                        colour=component.colour,
+                        colour=component.colour(),
                         coords=Renderer.COORDS_SCREEN,
                         brightness=0.25
                     )

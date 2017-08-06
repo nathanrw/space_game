@@ -10,5 +10,3 @@ components:
       red: 255
     font_name: res/fonts/nasdaqer/NASDAQER.ttf
     font_size: 62
-  src.drawing.Drawable: {}
-

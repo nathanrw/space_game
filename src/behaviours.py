@@ -561,24 +561,8 @@ class Team(Component):
 class Text(Component):
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-        self.text = config.get_or_default("text", "Hello, world!")
-
-
-        # ****************************
-
-        self.entity = entity
-        self.game_services = game_services
-        text = self.entity.get_component(Text)
-        self.__font = game_services.get_resource_loader().load_font(
-            text.font_name(),
-            text.large_font_size()
-        )
-        self.__small_font = game_services.get_resource_loader().load_font(
-            text.font_name(),
-            text.small_font_size()
-        )
-        self.__blink = text.blink()
-        self.__blink_timer = Timer(text.blink_period())
+        self.__text = config.get_or_default("text", "Hello, world!")
+        self.__blink_timer = Timer(self.blink_period())
         self.__visible = True
         self.__offs = 0
         self.__scroll_speed = 300
@@ -586,10 +570,16 @@ class Text(Component):
         self.__image = None
         self.__warning = None
         self.__colour = (255, 255, 255)
+        self.__warning = None
+        self.__image = None
+
+    def setup(self, **kwargs):
+        Component.setup(self, **kwargs)
+        if "text" in kwargs:
+            self.__text = kwargs["text"]
 
     def update(self, dt):
-        """ Update: support blinking. """
-        if self.__blink:
+        if self.blink():
             if self.__blink_timer.tick(dt):
                 self.__blink_timer.reset()
                 self.__visible = not self.__visible
@@ -597,26 +587,49 @@ class Text(Component):
             self.__offs += self.__scroll_speed * dt
             self.__offs = self.__offs % (self.__warning.get_width()+self.__padding)
 
-        # ***************************
+    def cached_image(self):
+        return self.__image
 
+    def set_cached_image(self, image):
+        self.__image = image
 
+    def cached_warning(self):
+        return self.__warning
 
+    def set_cached_warning(self, image):
+        self.__warning = image
 
-    def setup(self, **kwargs):
-        Component.setup(self, **kwargs)
-        if "text" in kwargs:
-            self.text = kwargs["text"]
+    def offset(self):
+        return self.__offs
+
+    def visible(self):
+        return self.__visible
+
+    def colour(self):
+        return self.__colour
+
+    def padding(self):
+        return self.__padding
+
+    def text(self):
+        return self.__text
+
     def font_name(self):
         return self.config["font_name"]
+
     def small_font_size(self):
         return self.config.get_or_default("small_font_size", 14)
+
     def large_font_size(self):
         return self.config.get_or_default("font_size", 32)
+
     def font_colour(self):
         colour = self.config.get_or_default("font_colour", {"red":255, "green":255, "blue":255})
         return (colour["red"], colour["green"], colour["blue"])
+
     def blink(self):
         return self.config.get_or_default("blink", 0)
+
     def blink_period(self):
         return self.config.get_or_default("blink_period", 1)
 

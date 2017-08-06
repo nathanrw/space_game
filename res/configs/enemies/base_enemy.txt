@@ -17,5 +17,3 @@ components:
 
   src.behaviours.AnimationComponent:
     anim_name: enemy_fighter
-
-  src.drawing.Drawable: {}

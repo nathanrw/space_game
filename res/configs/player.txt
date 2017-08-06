@@ -43,6 +43,3 @@ components:
   # The ship has an animation.
   src.behaviours.AnimationComponent:
     anim_name: player_ship
-
-  # The ship can be drawn on the screen.
-  src.drawing.Drawable: {}
