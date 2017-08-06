@@ -309,6 +309,11 @@ class EntityManager(object):
             for component in system.get_all_entity_components(entity):
                 yield component
 
+    def query(self, component_types):
+        """ Get all entities with a particular set of components. """
+        # Not implemented.
+        assert False
+
     def update(self, dt):
         """ Update all of the systems in priority order. """
         for system in self.systems_list:

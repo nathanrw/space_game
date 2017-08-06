@@ -119,18 +119,17 @@ class Game(object):
         # The physics
         self.physics = Physics()
 
-        # The drawing system.
-        self.drawing = Drawing(self.renderer)
-
         # Plug the systems in. Note that systems can be created dynamically,
         # but we want to manipulate them so we specify them up front.
         self.entity_manager = EntityManager(self.game_services)
         self.entity_manager.register_component_system(self.physics)
-        self.entity_manager.register_component_system(self.drawing)
 
         # Configure the resource loader.
         self.resource_loader.minimise_image_loading = \
             self.config.get_or_default("minimise_image_loading", False)
+
+        # The drawing visitor.
+        self.drawing = Drawing(self.game_services)
 
         # Is the game running?
         self.running = False
@@ -169,7 +168,7 @@ class Game(object):
 
             # Draw
             self.renderer.pre_render(self.camera.get_component(Camera))
-            self.drawing.draw(self.renderer, self.camera.get_component(Camera))
+            self.drawing.draw(self.camera.get_component(Camera))
             self.renderer.post_render()
             self.renderer.flip_buffers()
 

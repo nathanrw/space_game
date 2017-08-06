@@ -562,6 +562,46 @@ class Text(Component):
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
         self.text = config.get_or_default("text", "Hello, world!")
+
+
+        # ****************************
+
+        self.entity = entity
+        self.game_services = game_services
+        text = self.entity.get_component(Text)
+        self.__font = game_services.get_resource_loader().load_font(
+            text.font_name(),
+            text.large_font_size()
+        )
+        self.__small_font = game_services.get_resource_loader().load_font(
+            text.font_name(),
+            text.small_font_size()
+        )
+        self.__blink = text.blink()
+        self.__blink_timer = Timer(text.blink_period())
+        self.__visible = True
+        self.__offs = 0
+        self.__scroll_speed = 300
+        self.__padding = 20
+        self.__image = None
+        self.__warning = None
+        self.__colour = (255, 255, 255)
+
+    def update(self, dt):
+        """ Update: support blinking. """
+        if self.__blink:
+            if self.__blink_timer.tick(dt):
+                self.__blink_timer.reset()
+                self.__visible = not self.__visible
+        if self.__warning is not None:
+            self.__offs += self.__scroll_speed * dt
+            self.__offs = self.__offs % (self.__warning.get_width()+self.__padding)
+
+        # ***************************
+
+
+
+
     def setup(self, **kwargs):
         Component.setup(self, **kwargs)
         if "text" in kwargs:
