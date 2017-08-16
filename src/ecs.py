@@ -17,6 +17,27 @@ entity manager. This doesn't affect the current state of the entity manager
 until the end of the current frame - this avoids adding items to the entity
 manager in the middle of an update(),
 
+If a config is passed into create_entity(), then components can be instantiated
+dynamically. The '**kwargs' argument is forwarded to the setup() method on each
+component as it is added.  Components types are read from the 'components' map
+in the config, each component entry is passed into the created component as its
+config.  For instance:
+
+    components:
+      src.behaviours.Team:
+        team: player
+      src.physics.Body:
+        mass: 100
+        size: 35
+
+specifies an entity with two components, a Body and a Team.  The team defaults
+to the 'player' team, and the body has a default mass and size.  If we do
+
+    entity = ecs.create_entity("my_config.txt", team='enemy')
+
+then the Team component's setup() method knows to instead be on the 'enemy'
+team, which is extracted from the **kwargs.
+
 Entity processing 'systems' can be registered with the entity manager. A system
 operates on a subset of the entities in the manager, determined by a query.
 Systems can be update()ed, allowing them to make changes to the entities they
@@ -24,7 +45,6 @@ operate on.
 
 Global services are exposed via a 'game services' object.  This is injected
 into each component.
-
 """
 
 class GameInfo(object):
@@ -143,14 +163,14 @@ class EntityManager(object):
             config = Config()
 
         # Instantiate the object.
-        t = self.__game_services.lookup_type(config.get_or_default("type", "src.utils.Entity"))
+        t = lookup_type(config.get_or_default("type", "src.utils.Entity"))
         obj = t(self.__game_services)
 
         # Add components specified in the config.
         components = config.get_or_default("components", Config())
         for component in components:
             component_config = components[component]
-            component_type = self.__game_services.lookup_type(component)
+            component_type = lookup_type(component)
             component = component_type(obj, self.__game_services, component_config)
             component.setup(**kwargs)
             obj.add_component(component)

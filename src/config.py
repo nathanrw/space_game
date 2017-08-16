@@ -1,8 +1,32 @@
+"""
+A config is a hierarchical data store exactly like a JSON tree.
+
+However each node in the tree is exposed as a Config object, which provides
+capabilities such as a 'safe' getter with a default value supplied.
+
+Additionally, if in the underlying data a node has a 'derive_from' entry, the
+specified config is loaded and merged into the derived node. This works
+recursively, at any point in the tree. This allows one config to be derived
+from another. The 'derive_from' key is not accessible from the resulting Config
+object. The merging is done recursively so e.g. if there are two child maps
+called 'components' in the root maps being merged, the child maps get merged
+rather than one being overridden by the other. For leaf nodes, the derived
+config takes precedence.
+
+If a Config object was read from a file, it remembers the filename and can be
+written out via save().
+
+Configs are read from and written to YAML. Configs are read such that the order
+of iteration of Config maps is in 'document order' - this is a departure from
+the norm where YAML maps are unordered.
+"""
+
 from .utils import ordered_load, bail
 import collections
+import yaml
 
 class Config(object):
-    """ A hierarchical data store. """
+    """ A JSON-like hierarchical data store. """
 
     def __init__(self, a_dict=None):
         """ Initialise an empty data store, or a wrapping one if a dictionary

@@ -1,16 +1,39 @@
+"""
+Resource loading code.  Resources are read once and then cached, keyed on
+their filename.
+
+Resources live in the 'res' tree in the same directory as 'run.py'.
+
+The capabilities to read cetain resources are injected.  For instance,
+image and font loading are specific to the renderer being used, so
+the renderer must be injected into the constructor.
+
+The 'minimise_image_loading' flag is intended to speed load times and reduce
+memory usage by only reading in a fraction of an animation's frames.
+
+To prevent stutter, all resources can be read at once using preload(),
+this will display a loading screen via the injected renderer and read
+all resources in the 'res' tree.
+"""
+
+from .config import Config
+from .loading_screen import LoadingScreen
+from .utils import ordered_load, fromwin, Timer
+
+import pygame
 
 class ResourceLoader(object):
     """ A resource loader - loads and caches resources which can be requested by the game. """
 
-    def __init__(self):
+    def __init__(self, renderer, minimise_image_loading):
         """ Initialise the resource loader. """
-        self.renderer = None
-        self.images = {}
-        self.animations = {}
-        self.fonts = {}
-        self.configs = {}
-        self.sounds = {}
-        self.minimise_image_loading = False
+        self.__renderer = renderer
+        self.__minimise_image_loading = minimise_image_loading
+        self.__images = {}
+        self.__animations = {}
+        self.__fonts = {}
+        self.__configs = {}
+        self.__sounds = {}
 
     def preload(self):
         """ Preload certain resources to reduce game stutter. """
@@ -24,7 +47,7 @@ class ResourceLoader(object):
         # Number of steps.
         count = len(anims) + len(configs)
         assert count > 0
-        loading = LoadingScreen(count, self.renderer)
+        loading = LoadingScreen(count, self.__renderer)
 
         # Read in the frames.
         for anim in anims:
@@ -38,21 +61,21 @@ class ResourceLoader(object):
 
         # The renderer might like to return us proxy objects and initialise
         # them in one go, so let it do that.
-        self.renderer.post_preload()
+        self.__renderer.post_preload()
 
     def load_font(self, filename, size):
         """ Load a font from the file system. """
-        if not (filename, size) in self.fonts:
-            self.fonts[(filename, size)] = self.renderer.load_compatible_font(filename, size)
-        return self.fonts[(filename, size)]
+        if not (filename, size) in self.__fonts:
+            self.__fonts[(filename, size)] = self.__renderer.load_compatible_font(filename, size)
+        return self.__fonts[(filename, size)]
 
     def load_image(self, filename):
         """ Load an image from the file system. """
         filename = fromwin(filename)
-        if not filename in self.images:
-            self.images[filename] = self.renderer.load_compatible_image(filename)
+        if not filename in self.__images:
+            self.__images[filename] = self.__renderer.load_compatible_image(filename)
             print( "Loaded image: %s" % filename )
-        return self.images[filename]
+        return self.__images[filename]
 
     def __list_animations(self):
         """ List all of the available animations. """
@@ -102,7 +125,7 @@ class ResourceLoader(object):
         anim["frames"] = []
         for i in range(anim["num_frames"]):
             # If we want to load faster disable loading too many anims...
-            if self.minimise_image_loading and anim["num_frames"] > 10 and i % 10 != 0:
+            if self.__minimise_image_loading and anim["num_frames"] > 10 and i % 10 != 0:
                 continue
             padded = (4-len(str(i)))*"0" + str(i)
             img_name = anim["name_base"] + padded + anim["extension"]
@@ -112,21 +135,21 @@ class ResourceLoader(object):
 
     def load_animation(self, filename):
         """ Load an animation from the filesystem. """
-        if not filename in self.animations:
+        if not filename in self.__animations:
             anim = self.__load_animation_definition(filename)
-            frames = self.renderer.load_compatible_anim_frames(anim["frames"])
-            self.animations[filename] = (frames, anim["period"])
+            frames = self.__renderer.load_compatible_anim_frames(anim["frames"])
+            self.__animations[filename] = (frames, anim["period"])
             print( "Loaded animation: %s" % filename )
-        (frames, period) = self.animations[filename]
+        (frames, period) = self.__animations[filename]
         return Animation(frames, period)
 
     def load_config_file(self, filename):
         """ Read in a configuration file. """
-        if not filename in self.configs:
+        if not filename in self.__configs:
             c = Config()
             c.load(filename)
-            self.configs[filename] = c
-        return self.configs[filename]
+            self.__configs[filename] = c
+        return self.__configs[filename]
 
     def load_config_file_from(self, filename):
         """ Load a config from a path, not relative to the res dir. """
@@ -136,10 +159,10 @@ class ResourceLoader(object):
 
     def load_sound(self, filename):
         """ Load a sound. """
-        if not filename in self.sounds:
+        if not filename in self.__sounds:
             dirname = "res/sounds"
-            self.sounds[filename] = Sound(os.path.join(dirname, filename))
-        return self.sounds[filename]
+            self.__sounds[filename] = Sound(os.path.join(dirname, filename))
+        return self.__sounds[filename]
 
 class Sound(object):
     """ A sound that can be played. """

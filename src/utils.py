@@ -1,6 +1,4 @@
-""" Basic building blocks of the game infrastructure. This includes a scheme
-for assembly entitys from components, a system for loading entity
-configuration from json data files, and other utilities. """
+""" Low-level gubbins that are needed in many places. """
 
 import random
 import pygame
