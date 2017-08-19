@@ -4,25 +4,29 @@ See utils.py for the overall scheme this fits into.
 
 """
 
-from pymunk.vec2d import Vec2d
-from .utils import Component, Timer
+from .ecs import Component, EntityRef
 from .physics import Body, Physics, CollisionHandler, CollisionResult, Thruster
 from .renderer import View
+from .utils import Timer, Vec2d
 
 import random
 import math
-        
+
 class FollowsTracked(Component):
 
     def update(self, dt):
         """ Follows the tracked body. """
 
-        body = self.get_component(Body)
-        player_body = self.get_component(Tracking).get_tracked()
+        player = self.entity.get_component(Tracking).get_tracked()
+        if player is None:
+            return
+
+        body = self.entity.get_component(Body)
+        player_body = player.get_component(Body)
 
         if body is None or player_body is None:
             return
-        
+
         displacement = player_body.position - body.position
         rvel = player_body.velocity - body.velocity
         target_dist = self.config["desired_distance_to_player"]
@@ -98,7 +102,7 @@ class Weapons(Component):
         self.__weapons = []
         weapons = config.get_or_default("weapons", [])
         for weapon_config in weapons:
-            self.__weapons.append(self.create_entity(weapon_config, parent=self.entity))
+            self.__weapons.append(self.entity.ecs().create_entity(weapon_config, parent=self.entity))
 
         # Set the current weapon.
         self.__current_weapon = -1
@@ -142,11 +146,11 @@ class Weapons(Component):
         if not self.autofire:
             return
 
-        body = self.get_component(Body)
+        body = self.entity.get_component(Body)
         if body is None:
             return
         
-        guns = self.get_component(Weapons)
+        guns = self.entity.get_component(Weapons)
         if guns is None:
             return
 
@@ -154,11 +158,14 @@ class Weapons(Component):
         if gun is None:
             return
 
-        tracking = self.get_component(Tracking)
+        tracking = self.entity.get_component(Tracking)
         if tracking is None:
             return
 
-        tracked_body = tracking.get_tracked()
+        tracked = tracking.get_tracked()
+        if tracked is None:
+            return
+        tracked_body = tracked.get_component(Body)
         if tracked_body is None:
             return
 
@@ -241,7 +248,7 @@ class Weapon(Component):
 
     def start_shooting_screen(self, at):
         """ Start shooting at a point in screen space. """
-        self.shooting_at = ShootingAtScreen(at, self.__get_body(), self.game_services.get_camera())
+        self.shooting_at = ShootingAtScreen(at, self.__get_body(), self.entity.game_services.get_camera())
 
     def stop_shooting(self):
         """ Stop spraying bullets. """
@@ -320,10 +327,10 @@ class Weapon(Component):
             # Play a sound.
             shot_sound = self.config.get_or_none("shot_sound")
             if shot_sound is not None:
-                self.game_services.get_camera().play_sound(body, shot_sound)
+                self.entity.game_services.get_camera().play_sound(body, shot_sound)
 
             # Create the bullet.
-            self.create_entity(self.config["bullet_config"],
+            self.entity.ecs().create_entity(self.config["bullet_config"],
                                     parent=self.entity,
                                     team=self.__get_team(),
                                     position=bullet_position,
@@ -340,52 +347,36 @@ class Tracking(Component):
 
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-        self.__tracked_body = None
+        self.__tracked = EntityRef(None, Body)
 
     def get_tracked(self):
-        """ Get the tracked body. """
-        if self.__tracked_body is not None:
-            if self.__tracked_body.is_garbage():
-                self.__tracked_body = None
-        return self.__tracked_body
-
-    def reset_tracking(self):
-        """ Stop tracking the current body and find something else. """
-        self.__tracked_body = None
+        """ Get the tracked entity. """
+        return self.__tracked.entity
 
     def towards_tracked(self):
         """ Get the direction towards the tracked body. """
-        body = self.get_tracked()
-        if body is None:
+        tracked = self.__tracked.entity
+        if tracked is None:
             return Vec2d(0, 1)
-        return (body.position - self.get_component(Body).position).normalized()
+        this_body = self.entity.get_component(Body)
+        that_body = tracked.entity.get_component(Body)
+        assert this_body is not None
+        assert that_body is not None
+        return (that_body.position - this_body.position).normalized()
 
     def update(self, dt):
         """ Update the tracking. """
-
-        # Ensure the object we're tracking still exists.
-        if self.__tracked_body is not None:
-            if self.__tracked_body.is_garbage():
-                self.__tracked_body = None
-
-        # Update tracking.
-        if self.__tracked_body is None:
-
-            # Find the closest object we don't like.
-            self_team = self.get_component(Team)
+        if self.__tracked.entity is None:
+            self_team = self.entity.get_component(Team)
+            self_body = self.entity.get_component(Body)
             def f(body):
-                team = body.get_component(Team)
-                if self_team is None:
-                    return False
-                if team is None:
+                team = body.entity.get_component(Team)
+                if self_team is None or team is None:
                     return False
                 return not team.on_same_team(self_team)
-            closest = self.get_system_by_type(Physics).closest_body_with(
-                self.get_component(Body).position,
-                f
-            )
+            closest = self.entity.ecs().get_system(Physics).closest_body_with(self_body.position, f)
             if closest:
-                self.__tracked_body = closest
+                self.__tracked.entity = closest.entity
 
 class LaunchesFighters(Component):
     def __init__(self, entity, game_services, config):
@@ -397,12 +388,12 @@ class LaunchesFighters(Component):
             self.spawn()
     def spawn(self):
         for i in range(self.config["num_fighters"]):
-            direction = self.get_component(Tracking).towards_tracked()
+            direction = self.entity.get_component(Tracking).towards_tracked()
             spread = self.config["takeoff_spread"]
             direction.rotate_degrees(spread*random.random()-spread/2.0)
-            body = self.get_component(Body)
-            child = self.create_entity(self.config["fighter_config"],
-                                            team=self.get_component(Team).get_team(),
+            body = self.entity.get_component(Body)
+            child = self.entity.ecs().create_entity(self.config["fighter_config"],
+                                            team=self.entity.get_component(Team).get_team(),
                                             position=body.position,
                                             velocity=body.velocity + direction * self.config["takeoff_speed"])
 
@@ -418,12 +409,12 @@ class KillOnTimer(Component):
 class ExplodesOnDeath(Component):
     """ For objects that spawn an explosion when they die. """
     def on_object_killed(self):
-        body = self.get_component(Body)
-        explosion = self.create_entity(self.config["explosion_config"],
+        body = self.entity.get_component(Body)
+        explosion = self.entity.ecs().create_entity(self.config["explosion_config"],
                                             position=body.position,
                                             velocity=body.velocity)
         shake_factor = self.config.get_or_default("shake_factor", 1)
-        camera = self.game_services.get_camera()
+        camera = self.entity.game_services.get_camera()
         camera.apply_shake(shake_factor, body.position)
 
         # Play a sound.
@@ -434,7 +425,7 @@ class ExplodesOnDeath(Component):
 class EndProgramOnDeath(Component):
     """ If the entity this is attached to is destroyed, the program will exit. """
     def on_object_killed(self):
-        self.game_services.end_game()
+        self.entity.game_services.end_game()
 
 class Hitpoints(Component):
     def __init__(self, entity, game_services, config):
@@ -482,7 +473,7 @@ class Shields(Component):
         self.overload_timer = Timer(config.get_or_default("overload_time", 5))
 
     def update(self, dt):
-        power = self.get_component(Power)
+        power = self.entity.get_component(Power)
         if power is None:
             self.hp = 0
         else:
@@ -518,7 +509,7 @@ def apply_damage_to_entity(damage, entity):
 class DamageOnContact(Component):
     def match_velocities(self, entity):
         """ Match speeds with the given entity. """
-        b1 = self.get_component(Body)
+        b1 = self.entity.get_component(Body)
         b2 = entity.get_component(Body)
         if b1 is not None and b2 is not None:
             b1.velocity = b2.velocity
@@ -664,7 +655,7 @@ class Thrusters(Component):
 
         # Note: this is hard coded for now, but in future we could specify the
         # thruster layout in the config.
-        body = self.get_component(Body)
+        body = self.entity.get_component(Body)
         body.add_thruster(Thruster(Vec2d(-20, -20), Vec2d( 1,  0), self.config["max_thrust"] / 8))
         body.add_thruster(Thruster(Vec2d(-20,  20), Vec2d( 1,  0), self.config["max_thrust"] / 8))
         body.add_thruster(Thruster(Vec2d( 20, -20), Vec2d(-1,  0), self.config["max_thrust"] / 8))
@@ -697,7 +688,7 @@ class Thrusters(Component):
         """ Update the engines, and automatically counteract spin."""
 
         # Cant do much without a body.
-        body = self.get_component(Body)
+        body = self.entity.get_component(Body)
         if body is None:
             return
 
@@ -735,7 +726,7 @@ class WaveSpawner(Component):
             txt = "GAME OVER"
             if self.max_waves():
                 txt = "VICTORY"
-            message = self.create_entity("endgame_message.txt", text=txt)
+            message = self.entity.ecs().create_entity("endgame_message.txt", text=txt)
 
         # If the wave is dead and we're not yet preparing (which displays a timed message) then
         # start preparing a wave.
@@ -748,12 +739,12 @@ class WaveSpawner(Component):
 
     def player_is_dead(self):
         """ Check whether the player is dead. """
-        player = self.game_services.get_player()
+        player = self.entity.game_services.get_player()
         return player.is_garbage
 
     def spawn_wave(self):
         """ Spawn a wave of enemies, each one harder than the last."""
-        player = self.game_services.get_player()
+        player = self.entity.game_services.get_player()
         player_body = player.get_component(Body)
         self.wave += 1
         for i in range(self.wave-1):
@@ -763,7 +754,7 @@ class WaveSpawner(Component):
             x = 1 - rnd*2
             y = 1 - (1-rnd)*2
             enemy_position = player_body.position + Vec2d(x, y)*500
-            self.spawned.append(self.create_entity(enemy_type,
+            self.spawned.append(self.entity.ecs().create_entity(enemy_type,
                                                         position=enemy_position,
                                                         team="enemy"))
 
@@ -774,7 +765,7 @@ class WaveSpawner(Component):
 
     def prepare_for_wave(self):
         """ Prepare for a wave. """
-        self.message = self.create_entity("update_message.txt",
+        self.message = self.entity.ecs().create_entity("update_message.txt",
                                                text="WAVE %s PREPARING" % self.wave)
 
     def prepared_to_spawn(self):
@@ -844,10 +835,10 @@ class Turrets(Component):
         entity, which is set up as a child of the entity this component is
         attached to. It is assumed to have a Body component, which is pinned
         to our own Body."""
-        entity = self.create_entity(weapon_config_name,
+        entity = self.entity.ecs().create_entity(weapon_config_name,
                                          parent=self.entity,
-                                         team=self.get_component(Team).get_team())
-        self.__hardpoints[hardpoint_index].set_turret(entity, self.get_component(Body))
+                                         team=self.entity.get_component(Team).get_team())
+        self.__hardpoints[hardpoint_index].set_turret(entity, self.entity.get_component(Body))
 
 class Camera(Component, View):
     """ A camera, which drawing is done in relation to. """
@@ -904,7 +895,7 @@ class Camera(Component, View):
 
     def play_sound(self, body, sound):
         """ Play a sound at a position. """
-        sound = self.game_services.get_resource_loader().load_sound(sound)
+        sound = self.entity.game_services.get_resource_loader().load_sound(sound)
         sound.play_positional(body.position - self.__position)
 
     @property

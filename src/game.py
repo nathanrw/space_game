@@ -1,41 +1,25 @@
 """
 A space game written in Python.
-
-It currently depends on pygame for windowing, event handling etc, and on
-pymunk for physics.
-
-The program is structured with the intention than various distinct concerns
-can be separated. The implementation of physics and the implementation of
-drawing know nothing about one another, for instance. This is a work in progress
-though. I'd like to make it realise this ideal more.
-
-Entity creation is data-driven. Entities are defined in configuration
-.txt files containing json data; these live under res/configs.
-
-Things I would like to work on now:
-
-1) Make it more of a game i.e. support controllers, add more types of enemy,
-   weapon etc.
-
-2) Make the use of pymunk more idiomatic. It's currently horrendous.
-   
 """
 
 import pygame
 import os
 import sys
 
-from .physics import Physics
-from .drawing import Drawing
 from .behaviours import DamageCollisionHandler, Camera, WaveSpawner
-from .utils import Config, GameServices, GameInfo, ResourceLoader, EntityManager
+from .config import Config
+from .drawing import Drawing
+from .ecs import GameServices, GameInfo, EntityManager
 from .input_handling import InputHandling
+from .physics import Physics
+from .resource import ResourceLoader
+from .utils import lookup_type
 
 class SpaceGameServices(GameServices):
-    """ The services exposed to the entitys. This is separate from
+    """ The services exposed to the entities. This is separate from
     the game class itself to try and keep control of the interface - since
     this is basically global state you can get at from anywhere. """
-    
+
     def __init__(self, game):
         self.game = game
         self.info = GameInfo()
@@ -102,13 +86,13 @@ class Game(object):
 
         # Create the renderer.
         renderer_name = self.config.get_or_default("renderer", "src.pygame_renderer.PygameRenderer")
-        renderer_class = self.game_services.lookup_type(renderer_name)
+        renderer_class = lookup_type(renderer_name)
         screen_size = (self.config.get_or_default("screen_width", 1024),
                        self.config.get_or_default("screen_height", 768))
         self.renderer = renderer_class(screen_size, self.config, data_path="./res")
 
         # The resource loaded needs a renderer to load images etc.
-        self.resource_loader.renderer = self.renderer
+        self.resource_loader.set_renderer(self.renderer)
 
         # The player
         self.player = None
@@ -131,8 +115,9 @@ class Game(object):
         self.entity_manager.register_component_system(self.physics)
 
         # Configure the resource loader.
-        self.resource_loader.minimise_image_loading = \
+        self.resource_loader.set_minimise_image_loading(
             self.config.get_or_default("minimise_image_loading", False)
+        )
 
         # The drawing visitor.
         self.drawing = Drawing(self.game_services)
@@ -198,7 +183,7 @@ class Game(object):
         game is over. If the file "preload.txt" does not exist, then it will
         be filled with a list of resources to preload next time the game is
         run. """
-        
+
         # Initialise the pygame display.
         pygame.init()
         pygame.mixer.init()
@@ -207,10 +192,7 @@ class Game(object):
         # Preload certain images.
         self.resource_loader.preload()
 
-        # Make the camera. Im not 100% sure about this being a entity like any other
-        # since it's clearly special - drawing requires one, the player moves it, etc. But
-        # at the same time it's convenient to attach the background drawable to it, and we
-        # might want to give it physical properties in future. We'll see.
+        # Make the camera.
         self.camera = self.entity_manager.create_entity_with(Camera)
 
         # Draw debug info if requested.

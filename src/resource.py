@@ -6,7 +6,8 @@ Resources live in the 'res' tree in the same directory as 'run.py'.
 
 The capabilities to read cetain resources are injected.  For instance,
 image and font loading are specific to the renderer being used, so
-the renderer must be injected into the constructor.
+the renderer must be injected via a setter method.  This must be done
+before images are loaded.
 
 The 'minimise_image_loading' flag is intended to speed load times and reduce
 memory usage by only reading in a fraction of an animation's frames.
@@ -21,19 +22,28 @@ from .loading_screen import LoadingScreen
 from .utils import ordered_load, fromwin, Timer
 
 import pygame
+import os
 
 class ResourceLoader(object):
     """ A resource loader - loads and caches resources which can be requested by the game. """
 
-    def __init__(self, renderer, minimise_image_loading):
+    def __init__(self):
         """ Initialise the resource loader. """
-        self.__renderer = renderer
-        self.__minimise_image_loading = minimise_image_loading
+        self.__renderer = None
+        self.__minimise_image_loading = True
         self.__images = {}
         self.__animations = {}
         self.__fonts = {}
         self.__configs = {}
         self.__sounds = {}
+
+    def set_renderer(self, renderer):
+        """ Set the renderer to use to load images. """
+        self.__renderer = renderer
+
+    def set_minimise_image_loading(self, yes):
+        """ Minimise image loading. """
+        self.__minimise_image_loading = yes
 
     def preload(self):
         """ Preload certain resources to reduce game stutter. """

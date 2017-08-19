@@ -1,4 +1,5 @@
-from .utils import *
+from .ecs import ComponentSystem, Component
+from .utils import Vec2d
 
 import pymunk
 import math
@@ -13,8 +14,8 @@ class Physics(ComponentSystem):
 
     def __init__(self):
         """ Initialise physics. """
-        ComponentSystem.__init__(self)
-        
+        ComponentSystem.__init__(self, [Body])
+
         # List of collision handlers. These operate in terms of types of
         # entity. We implement them using a pymunk collision handler.
         self.collision_handlers = []
@@ -42,23 +43,15 @@ class Physics(ComponentSystem):
         self.default_handler = self.space.add_default_collision_handler()
         self.default_handler.begin = lambda a, s, d: False
 
-    def create_queued_component(self, body):
-        """ Add a body to the simulation, initialising it. """
-        body.create(self.space)
-        ComponentSystem.create_queued_component(self, body)
+    def on_component_add(self, component):
+        """ Called when a component is added that matches our expression. """
+        assert isinstance(component, Body)
+        component.create(self.space)
 
-    def add_body(self, body):
-        """ As above. """
-        self.add_component(self, body)
-
-    def remove_component(self, body):
-        """ Remove a body from the simulation, deinitialising it. """
-        ComponentSystem.remove_component(self, body)
-        body.destroy()
-
-    def remove_body(self, body):
-        """ As above. """
-        self.remove_component(self, body)
+    def on_component_remove(self, component):
+        """ Called when a component is removed that matches our expression. """
+        assert isinstance(component, Body)
+        component.destroy()
 
     def add_collision_handler(self, handler):
         """ Add a logical collision handler for the game. """
@@ -71,7 +64,7 @@ class Physics(ComponentSystem):
 
     def closest_body_with(self, point, f):
         """ Find the closest body of a given predicate. """
-        bodies = filter(f, self.components)
+        bodies = filter(f, map(lambda e: e.get_component(Body), self.entities()))
         best_yet = None
         best_length_yet = None
         for b in bodies:
@@ -97,7 +90,7 @@ class Body(Component):
     using pymunk in a pretty horrendous way: this was to preserve the original
     interface while integrating pymunk. But we should stop mucking around with
     position / velocity / size (!) and use forces instead. """
-    
+
     def __init__(self, entity, game_services, config):
         """ Initialise the body, attached to the given entity. """
 
@@ -146,9 +139,6 @@ class Body(Component):
                 self.orientation = self.velocity.normalized().get_angle_degrees()+90
         if "orientation" in kwargs:
             self.orientation = kwargs["orientation"]
-
-    def manager_type(self):
-        return Physics
 
     def create(self, space):
         """ Actually add the body to the simulation. """

@@ -23,6 +23,7 @@ the norm where YAML maps are unordered.
 
 from .utils import ordered_load, bail
 import collections
+import os
 import yaml
 
 class Config(object):

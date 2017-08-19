@@ -47,6 +47,9 @@ Global services are exposed via a 'game services' object.  This is injected
 into each component.
 """
 
+from .config import Config
+from .utils import lookup_type
+
 class GameInfo(object):
     """ Information about the running game. """
     def __init__(self):
@@ -102,8 +105,8 @@ class EntityManager(object):
         """ Initialise the entity manager. """
 
         # Currently existing objects and queue of objects to create.
-        self.__objects = []
-        self.__new_objects = []
+        self.__entities = []
+        self.__new_entities = []
         self.__new_parent_child_pairs = []
 
         # Map from component concrete type to component store.
@@ -119,23 +122,20 @@ class EntityManager(object):
         """ Create objects that have been queued. """
 
         # Move new entities to the working set.
-        self.__objects += self.__new_objects
-        del self.__new_objects[:]
+        self.__entities += self.__new_entities
+        del self.__new_entities[:]
 
         # Instate new parent-child relationships.
         for pair in self.__new_parent_child_pairs:
             pair[0].add_child(pair[1])
         del self.__new_parent_child_pairs[:]
 
-        # Create components for new entities.
-        self.__component_store.create_queued_components()
-
     def __garbage_collect(self):
         """ Remove all of the objects that have been marked for deletion."""
-        for o in self.__objects:
+        self.__component_store.garbage_collect(self.__systems)
+        for o in self.__entities:
             if o.is_garbage:
-                self.__objects.remove(o)
-        self.__component_store.garbage_collect()
+                self.__entities.remove(o)
 
     def create_entity_with(self, *types, **kwargs):
         """ Create a new entity with a given list of components. """
@@ -163,7 +163,7 @@ class EntityManager(object):
             config = Config()
 
         # Instantiate the object.
-        t = lookup_type(config.get_or_default("type", "src.utils.Entity"))
+        t = lookup_type(config.get_or_default("type", "src.ecs.Entity"))
         obj = t(self.__game_services)
 
         # Add components specified in the config.
@@ -176,11 +176,11 @@ class EntityManager(object):
             obj.add_component(component)
 
         # Add the object to the creation queue, and return it to the caller.
-        self.__new_objects.append(obj)
+        self.__new_entities.append(obj)
 
         # If the object needs to be added as a child, remember that.
         if "parent" in kwargs:
-            self.new_parents.append((kwargs["parent"], obj))
+            self.__new_parent_child_pairs.append((kwargs["parent"], obj))
 
         return obj
 
@@ -195,11 +195,16 @@ class EntityManager(object):
 
     def add_component(self, component):
         """ Add a component to the appropriate store. """
-        self.__component_store.add(component)
+        self.__component_store.add(component.entity, component)
+
+        # Notify the systems.
+        for system in self.__systems:
+            if system.matches(component.__class__):
+                system.on_component_add(component)
 
     def remove_component_by_concrete_type(self, entity, component_type):
         """ Remove the component of the given ***concrete*** type from the entity. """
-        self.__component_store.remove(entity, component_type)
+        self.__component_store.remove(entity, component_type, self.__systems)
 
     def get_component_of_type(self, entity, t):
         """ Get the component of a particular type on a particular entity. """
@@ -211,13 +216,24 @@ class EntityManager(object):
 
     def query(self, type1, *types):
         """ Get all entities with a particular set of components. """
-        return self.__component_store.query_entities(type1, *types)
+
+        # Get the matching entities.
+        matches = self.__component_store.query_entities(type1, *types)
+
+        # Don't expose entities that don't technically exist yet.
+        return filter(lambda x: x not in self.__new_entities, matches)
+
+    def get_system(self, system_type):
+        """ Get a system by type. """
+        for system in self.__systems:
+            if isinstance(system, system_type):
+                return system
 
     def update(self, dt):
         """ Update all of the systems in priority order. """
         for system in self.__systems:
             system.update(dt)
-        self.__component_store.do_on_object_killed()
+        self.__component_store.update(dt)
         self.__garbage_collect()
 
 class ComponentStore(object):
@@ -226,40 +242,41 @@ class ComponentStore(object):
     def __init__(self):
         """ Constructor. """
         self.__component_stores = {}
-        self.__queued_components = []
 
-    def add(self, component):
-        """ Schedule a component for creation. """
-        self.__queued_components.append(component)
-
-    def __add(self, entity, component):
+    def add(self, entity, component):
         """ Add a component to an entity """
         self.__ensure_store_exists(component.__class__)
         assert self.get(entity, component.__class__) is None
         self.__component_stores[component.__class__][entity] = component
 
-    def create_queued_components(self):
-        """ Associate the components that are queued. """
-        for c in self.__queued_components:
-            self.__add(c.entity, c)
-        del self.__queued_components[:]
-
     def get(self, entity, component_type):
         """ Get a component from an entity. """
-        self.__ensure_list_exists(component.__class__)
-        return self.__component_stores[component.__class__][entity]
+        self.__ensure_store_exists(component_type)
+        try:
+            return self.__component_stores[component_type][entity]
+        except KeyError:
+            return None
 
-    def remove(self, entity, component_type):
+    def remove(self, entity, component_type, systems):
         """ Remove a component from an entity. """
-        self.__ensure_list_exists(component.__class__)
-        del self.__component_stores[component.__class__][entity]
+        self.__ensure_store_exists(component.__class__)
+        store = self.__component_stores[component.__class]
+        if entity in store:
+
+            # Notify observers.
+            for system in systems:
+                if system.matches(component_type):
+                    system.on_component_remove(store[entity])
+
+            # Remove the component.
+            del store[entity]
 
     def query_entities(self, type1, *types):
         """ Get the entities that have a particular set of components. """
-        for t in [type1] + types:
-            self.__ensure_store_exists(t)
-        ret = set(self.__component_stores[type1.__class__].keys())
+        self.__ensure_store_exists(type1)
+        ret = set(self.__component_stores[type1].keys())
         for t in types:
+            self.__ensure_store_exists(t)
             ret = ret.intersection(set(self.__component_stores[t].keys()))
         return ret
 
@@ -270,32 +287,55 @@ class ComponentStore(object):
             self.__component_stores.keys()
         ) if c is not None]
 
-    def do_on_object_killed(self):
-        """ Execute the on_object_killed() method of each component that is
-        about to be deleted. """
-        for store in self.__component_stores:
+    def update(self, dt):
+        """ Update each component for a time step. """
+
+        # Get a snapshot of the components that exist. This avoids updating
+        # newly created components.
+        cs = []
+        for component_type in self.__component_stores:
+            store = self.__component_stores[component_type]
+            for entity in store:
+                cs.append(store[entity])
+
+        # Now do the update - but entities might get killed and we dont want
+        # to update them.
+        for c in cs:
+            if not c.entity.is_garbage:
+                c.update(dt)
+
+    def garbage_collect(self, systems):
+        """ Delete each component of each entity that is marked for deletion. """
+
+        # First notify any observers that might be interested.
+        for component_type in self.__component_stores:
+            store = self.__component_stores[component_type]
             for entity in store:
                 if entity.is_garbage:
-                    store[component].on_object_killed()
+                    for system in systems:
+                        if system.matches(component_type):
+                            system.on_component_remove(store[entity])
+                    store[entity].on_object_killed()
 
-    def garbage_collect(self):
-        """ Delete each component of each entity that is marked for deletion. """
-        for store in self.__component_stores:
-            for entity in store:
+        # Now perform the deletion.
+        for component_type in self.__component_stores:
+            store = self.__component_stores[component_type]
+            entities = store.keys()
+            for entity in entities:
                 if entity.is_garbage:
                     del store[entity]
 
     def __ensure_store_exists(self, component_type):
         """ Ensure an object store exists for the component type. """
-        if not component.__class__ in self.__component_stores:
-            self.__component_stores[component.__class__] = {}
+        if not component_type in self.__component_stores:
+            self.__component_stores[component_type] = {}
 
 
 class ComponentSystem(object):
     """ Entity processing system.  Can do updates on a set of entities with
     a given set of components. """
 
-    def __init__(self, types, priority):
+    def __init__(self, types, priority=0):
         """ Initialise. """
         self.__types = types
         self.__priority = priority
@@ -306,10 +346,22 @@ class ComponentSystem(object):
 
     def entities(self):
         """ Get the entities managed by this system. """
-        return self.__game_services.get_entity_manager.query(*self.types)
+        return self.__game_services.get_entity_manager().query(*self.__types)
 
     def update(self, dt):
         """ Update the system. """
+        pass
+
+    def matches(self, component_type):
+        """ Does the component come under our remit? """
+        return len(self.__types) == 0 or component_type in self.__types
+
+    def on_component_add(self, component):
+        """ Called when a component is added that matches our expression. """
+        pass
+
+    def on_component_remove(self, component):
+        """ Called when a component is removed that matches our expression. """
         pass
 
     @property
@@ -365,6 +417,34 @@ class Component(object):
     def on_object_killed(self):
         """ Do something when the object is killed. """
         pass
+
+
+class EntityRef(object):
+    """ A reference to an entity that resets itself when the entity is killed. """
+
+    def __init__(self, entity, *types):
+        """ Construct a reference. """
+        self.__entity = entity
+        self.__types = types
+
+    @property
+    def entity(self):
+        """ The wrapped entity.  It will only not be None if it has the right
+        components and isnt dead. """
+        if self.__entity:
+            if self.__entity.is_garbage:
+                self.__entity = None
+            else:
+                for t in self.__types:
+                    if not self.__entity.has_component(t):
+                        self.__entity = None
+                        break
+        return self.__entity
+
+    @entity.setter
+    def entity(self, entity):
+        """ Set the wrapped entity. """
+        self.__entity = entity
 
 
 class Entity(object):
@@ -434,21 +514,21 @@ class Entity(object):
 
             # If we are a child, break the link with our parent.
             if self.__parent is not None:
-                self.__parent.children.remove(self)
+                self.__parent.__children.remove(self)
             self.__parent = None
 
     def add_component(self, component):
         """ Shortcut to add a component. """
         self.ecs().add_component(component)
 
-    def create_entity(self, *args, **kwargs):
-        """ Create a new entity with the given config and args. """
-        return self.ecs().create_entity(*args, **kwargs)
-
     def get_component(self, t):
         """ Return the component of the given type - or None, if this entity
         has no such component. """
         return self.ecs().get_component_of_type(self, t)
+
+    def has_component(self, t):
+        """ Does the entity have a component of a particular type? """
+        return self.get_component(t) is not None
 
     def get_ancestor_with_component(self, t):
         """ See if an ancestor of this entity has a particular component.
@@ -479,7 +559,7 @@ class Entity(object):
         """ Add a child entity. """
         assert obj.parent is None
         self.__children.append(obj)
-        obj.parent = self
+        obj.__parent = self
 
     def is_descendant(self, obj):
         """ Is this object descended from that one? """
