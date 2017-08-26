@@ -5,10 +5,6 @@ An 'entity' is an identity. It can be associated 'components'. A component
 imbues an entity with an aspect of state and behaviour. A entity can be
 associated with a single component of a given type.
 
-Entities can be 'owned' by other entities. This ties their lifetimes together -
-when a parent entity is destroyed, its children are destroyed too. The parents
-and children of an entity can be enquired.
-
 Entities live in an 'entity manager'. This is the central database that
 associates entities with components.
 
@@ -107,7 +103,6 @@ class EntityManager(object):
         # Currently existing objects and queue of objects to create.
         self.__entities = []
         self.__new_entities = []
-        self.__new_parent_child_pairs = []
 
         # Map from component concrete type to component store.
         self.__component_store = ComponentStore()
@@ -124,11 +119,6 @@ class EntityManager(object):
         # Move new entities to the working set.
         self.__entities += self.__new_entities
         del self.__new_entities[:]
-
-        # Instate new parent-child relationships.
-        for pair in self.__new_parent_child_pairs:
-            pair[0].add_child(pair[1])
-        del self.__new_parent_child_pairs[:]
 
     def __garbage_collect(self):
         """ Remove all of the objects that have been marked for deletion."""
@@ -177,10 +167,6 @@ class EntityManager(object):
 
         # Add the object to the creation queue, and return it to the caller.
         self.__new_entities.append(obj)
-
-        # If the object needs to be added as a child, remember that.
-        if "parent" in kwargs:
-            self.__new_parent_child_pairs.append((kwargs["parent"], obj))
 
         return obj
 
@@ -460,28 +446,17 @@ class Entity(object):
     will then be True. At the end of the current frame, on_object_killed() will
     be called for that entity, and the entity will be removed from the entity
     manager.
-
-    Entities can 'own' other entities.  When a parent entity is kill()ed, all
-    of its children will be kill()ed too.  Additionally if you have an entity,
-    you can query its parent and children.
     """
 
     def __init__(self, game_services):
         """ Constructor. """
         self.__is_garbage = False
         self.__game_services = game_services
-        self.__children = []
-        self.__parent = None
 
     @property
     def is_garbage(self):
         """ Is this entity scheduled for deletion? """
         return self.__is_garbage
-
-    @property
-    def parent(self):
-        """ Get the parent entity, if any. """
-        return self.__parent
 
     @property
     def game_services(self):
@@ -494,28 +469,7 @@ class Entity(object):
 
     def kill(self):
         """ Mark the object for deletion. """
-        # Note: I'm not sure whether objects being kill()ed twice should
-        # count as a bug. I was getting exceptions in physics engine
-        # callbacks due to this happening. Checking whether the object
-        # is garbage before doing the business solves the problem - but
-        # it could be I've just "fixed the symptom." I'm treating it as
-        # not a bug, since kill() is a "public" API and I don't think it
-        # makes sense to have the caller check is_garbage before calling it.
-        if not self.__is_garbage:
-
-            # Set the garbage flag.
-            self.__is_garbage = True
-
-            # Kill all of our children. Note that we copy the list because
-            # killing a child removes it from the parent.
-            children = self.__children[:]
-            for child in children:
-                child.kill()
-
-            # If we are a child, break the link with our parent.
-            if self.__parent is not None:
-                self.__parent.__children.remove(self)
-            self.__parent = None
+        self.__is_garbage = True
 
     def add_component(self, component):
         """ Shortcut to add a component. """
@@ -529,49 +483,3 @@ class Entity(object):
     def has_component(self, t):
         """ Does the entity have a component of a particular type? """
         return self.get_component(t) is not None
-
-    def get_ancestor_with_component(self, t):
-        """ See if an ancestor of this entity has a particular component.
-
-        This returns the first such ancestor, or None.
-        """
-        if self.__parent is not None:
-            c = self.__parent.get_component(t)
-            if c is not None:
-                return self.__parent
-            else:
-                return self.__parent.get_ancestor_with_component(t)
-        else:
-            return None
-
-    def get_children_with_component(self, t):
-        """ Get each (direct) child entity with a given component type. """
-        for entity in self.__children:
-            if entity.get_component(t) is not None:
-                yield entity
-
-    def get_children(self):
-        """ Get all of the children. """
-        for entity in self.__children:
-            yield entity
-
-    def add_child(self, obj):
-        """ Add a child entity. """
-        assert obj.parent is None
-        self.__children.append(obj)
-        obj.__parent = self
-
-    def is_descendant(self, obj):
-        """ Is this object descended from that one? """
-        return obj.is_ancestor(self)
-
-    def is_ancestor(self, obj):
-        """ Is that object descended from this one? """
-        if obj == self:
-            return True
-        for c in self.__children:
-            if c.is_ancestor(obj):
-                return True
-        return False
-
-

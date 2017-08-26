@@ -6,7 +6,8 @@ import pygame
 import os
 import sys
 
-from .behaviours import DamageCollisionHandler, Camera, WaveSpawner
+from .behaviours import DamageCollisionHandler, Camera
+from .systems import WaveSpawner
 from .config import Config
 from .drawing import Drawing
 from .ecs import GameServices, GameInfo, EntityManager
@@ -209,7 +210,7 @@ class Game(object):
 
         # Create the wave spawner.
         if not self.config.get_or_default("peaceful_mode", False):
-            self.wave_spawner = self.entity_manager.create_entity_with(WaveSpawner)
+            self.entity_manager.register_component_system(WaveSpawner())
 
         # Make it so that bullets can damage things.
         self.physics.add_collision_handler(DamageCollisionHandler())
@@ -222,3 +223,23 @@ class Game(object):
 
         # Finalise
         pygame.quit()
+
+class DamageCollisionHandler(CollisionHandler):
+    """ Collision handler to apply bullet damage. """
+    def __init__(self):
+        CollisionHandler.__init__(self, DamageOnContact, Hitpoints)
+    def handle_matching_collision(self, dmg, hp):
+        if hp.entity.is_ancestor(dmg.entity):
+            return CollisionResult(False, False)
+        if dmg.config.get_or_default("destroy_on_hit", True):
+            # If our entity is about to die we might be about to spawn an
+            # explosion. If that's the case it should be travelling at the
+            # same speed as the thing we hit. So match velocities before
+            # our entity is killed.
+            b1 = dmg.entity.get_component(Body)
+            b2 = hp.entity.get_component(Body)
+            if b1 is not None and b2 is not None:
+                b1.velocity = b2.velocity
+            dmg.entity.kill()
+        apply_damage_to_entity(dmg.config["damage"], entity)
+        return CollisionResult(True, True)
