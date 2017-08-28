@@ -29,7 +29,7 @@ class FollowsTracked(Component):
 
 
 class ShootsAtTracked(Component):
-    """ If the entity has Weapons it shoots them at the Tracked entity. """
+    """ If the entity is a Weapon it shoots at the Tracked entity. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
         self.fire_timer = Timer(config.get_or_default("fire_period", 1))
@@ -66,11 +66,6 @@ class KillOnTimer(Component):
 
 class ExplodesOnDeath(Component):
     """ For objects that spawn an explosion when they die. """
-    pass
-
-
-class EndProgramOnDeath(Component):
-    """ If the entity this is attached to is destroyed, the program will exit. """
     pass
 
 
@@ -147,19 +142,33 @@ class AnimationComponent(Component):
         self.anim = game_services.get_resource_loader().load_animation(config["anim_name"])
 
 
+class Thruster(Component):
+    """ The logical definition of a thruster on a Body. """
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.position = config.get_or_default("position", Vec2d(0, 0))
+        self.direction = config.get_or_default("orientation", Vec2d(0, 1))
+        self.max_thrust = config.get_or_default("max_thrust", 0)
+        self.thrust = 0
+        self.attached_to = EntityRef(None, Thrusters)
+
+
 class Thrusters(Component):
     """ The entity has thrusters & a target direction. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
         self.direction = Vec2d(0, 0)
         self.turn = 0
+        self.thrusters = []
+        self.thruster_configurations = {}
 
 
 class Turret(Component):
     """ The entity is a turret affixed to another entity. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, game_services, config)
-        self.position = position
+        self.position = config.get_or_default("position", Vec2d(0, 0))
+        self.attached_to = EntityRef(None, Turrets)
         self.weapon = EntityRef(None, Weapon)
 
 
@@ -184,3 +193,15 @@ class Camera(Component):
         self.tracking = EntityRef(None, Body)
         self.zoom = 1
         self.screen_diagonal = (Vec2d(renderer.screen_size())/2).length
+
+
+# Note: the below is not used, it's a thought.  Expresses aggregation generically through components.  Possibly
+# a good idea?  Possibly not.
+
+class Aggregate(Component):
+    def __init__(self, entity, game_services, config):
+        self.aggregands = []
+
+class Aggregand(Component):
+    def __init__(self, entity, game_services, config):
+        self.aggregate = EntityRef(None, Aggregate)

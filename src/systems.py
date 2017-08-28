@@ -1,4 +1,5 @@
-
+from ecs import ComponentSystem
+from behaviours import *
 
 def towards(e1, e2):
     """ Get a direction from one entity to another. """
@@ -434,7 +435,7 @@ class ThrusterSystem(ComponentSystem):
                 entity.kill()
             else:
                 body = attached.get_component(Body)
-                body.apply_force(thruster.position, thruster.amount * thruster.direction)
+                body.apply_force_at_local_point(thruster.amount * thruster.direction, thruster.position)
 
 
 class ThrustersSystem(ComponentSystem):
@@ -447,21 +448,12 @@ class ThrustersSystem(ComponentSystem):
     def on_component_add(self, component):
         """ When thrusters are added to an entity we need to create the actual
         thrusters themselves, which are specified in the config. """
-
-        # I lied; they're hard coded for now.
-        body = component.entity.get_component(Body)
-        body.add_thruster(Thruster(Vec2d(-20, -20), Vec2d( 1,  0),
-                                   component.config["max_thrust"] / 8))
-        body.add_thruster(Thruster(Vec2d(-20,  20), Vec2d( 1,  0),
-                                   component.config["max_thrust"] / 8))
-        body.add_thruster(Thruster(Vec2d( 20, -20), Vec2d(-1,  0),
-                                   component.config["max_thrust"] / 8))
-        body.add_thruster(Thruster(Vec2d( 20,  20), Vec2d(-1,  0),
-                                   component.config["max_thrust"] / 8))
-        body.add_thruster(Thruster(Vec2d(  0, -20), Vec2d( 0,  1),
-                                   component.config["max_thrust"] / 4))
-        body.add_thruster(Thruster(Vec2d(  0,  20), Vec2d( 0, -1),
-                                   component.config["max_thrust"]    ))
+        thruster_cfgs = component.config.get_or_default("thrusters", [])
+        for cfg in thruster_cfgs:
+            thruster_ent = component.entity.ecs().create_entity()
+            thruster = Thruster(thruster_ent, self.game_services, cfg)
+            thruster.attached_to.entity = component.entity
+            thruster_ent.add_component(thruster)
 
     def update(self, dt):
         """ Update the entities. """
@@ -480,7 +472,120 @@ class ThrustersSystem(ComponentSystem):
                     turn = 1
 
             # Fire thrusters to achieve desired spin and direction.
-            body.fire_correct_thrusters(thrusters.direction, turn)
+            self.fire_correct_thrusters(thrusters, thrusters.direction, turn)
+
+    def compute_correct_thrusters(self, thrusters, direction, turn):
+        """ Perform logic to determine what engines are firing based on the
+        desired direction. Automatically counteract spin. We cope with an
+        arbitrary configuration of thrusters through use of a mathematical
+        optimisation algorithm (scipy.optimize.minimize.)
+
+        Variables: t0, t1, t2, ...
+        Function: g . f where
+                  f(t0, t1, t2, ...) -> (acceleration, moment)
+                  g(acceleration, moment) -> distance from desired (accel, moment)
+        Constraint: t0min <= t0 <= t0max, ...
+
+        Note: there may be a better way of solving this problem, I
+        don't know. I will try to state the problem clearly here so
+        that a better solution might present itself:
+
+        Note: notation a little odd in the following:
+
+        We have a set of N thrusters, (Tn, Dn, Pn, TMAXn), where "Tn" is
+        the thruster's current (scalar) thrust, Pn is its position,
+        and FMAXn is the maximum thrust it can exert. Dn is the direction
+        of thrust, so the force currently being exerted, Fn, is Tn*Dn.
+
+        The acceleration due to a given thruster:
+
+            An = m * Fn
+
+        where m is the mass of the body.
+
+        The centre of mass is the origin O.
+
+        The torque due to a given thruster is therefore
+
+            Qn = |Pn| * norm(orth(Pn)) * Fn.
+
+        The resultant force on the body, F', is F0+F1+...+Fn
+
+        The resultant torque on the body, Q', is Q0+Q1+...+Qn
+
+        The following constraints are in effect:
+
+            T0 >= 0, T1 >= 0, ..., Tn >= 0
+
+            T0 <= TMAX0, T1 <= TMAX1, Tn <= TMAXn
+
+        In my implementation here, the vector T0..n is the input array for a
+        function to be minimised.
+
+        Note that this function is very slow. Some sort of caching scheme will be
+        a must - and it would be good to share identical configurations between
+        entities.
+
+        I don't know whether there is an analytical solution to this problem.
+
+        """
+
+        def f(thrusts):
+            """ Objective function. Determine the resultant force and torque on
+            the body, and then apply heuristics (absolute guesswork!!) to determine
+            the fitness. We can then use a minimisation algorithm to optimise the
+            thruster configuration. """
+
+            # Calculate the resultant force and moment from applying all thrusters.
+            resultant_force = Vec2d(0, 0);
+            resultant_moment = 0
+            for i in range(0, len(thrusts)):
+                thrust = float(thrusts[i])
+                resultant_force += self.__thrusters[i].force_with_thrust(thrust)
+                resultant_moment += self.__thrusters[i].moment_with_thrust(thrust)
+
+            # We want to maximise the force in the direction in which we want to
+            # be thrusting.
+            force_objective = direction.normalized().dot(resultant_force)
+
+            # We want to maximise the torque in the direction we want.
+            moment_objective = numpy.sign(turn) * resultant_moment
+
+            # We negate the values because we want to *minimise*
+            return -force_objective - moment_objective
+
+        # Initial array of values.
+        thrusts = numpy.zeros(len(thrusters.thrusters))
+
+        # Thrust bounds.
+        thrust_bounds = [(0, thruster.entity.get_component(Thruster).max_thrust) for thruster in thrusters.thrusters]
+
+        # Optimise the thruster values.
+        return scipy.optimize.minimize(f, thrusts, method="TNC", bounds=thrust_bounds)
+
+
+    def fire_correct_thrusters(self, thrusters, direction, torque):
+        """ Perform logic to determine what engines are firing based on the
+        desired direction. Automatically counteract spin. """
+
+        # By default the engines should be off.
+        for ref in thrusters.thrusters:
+            thruster = ref.entity.get_component(Thruster)
+            thruster.thrust = 0
+
+        # Come up with a dictionary key.
+        key = (direction.x, direction.y, torque)
+
+        # Ensure a configuration exists for this input.
+        if not key in thrusters.thruster_configurations:
+            thrusters.thruster_configurations[key] = \
+                self.compute_correct_thrusters(thrusters, direction, torque)
+
+        # Get the cached configuration and set the thrust.
+        result = thrusters.thruster_configurations[key]
+        for i in range(0, len(result.x)):
+            thruster = thrusters.thrusters[i].entity.get_component(Thruster)
+            thruster.thrust = float(result.x[i])
 
 
 class WaveSpawnerSystem(ComponentSystem):
@@ -612,18 +717,27 @@ class TurretsSystem(ComponentSystem):
     def on_component_add(self, component):
         """ When the turrets component is added we need to create the turrets
         themselves which are specified in the config"""
-        hardpoints = config.get_or_default("hardpoints", [])
-        for hp in hardpoints:
-            if not "x" in hp or not "y" in hp:
-                continue
-            self.__hardpoints.append(HardPoint(Vec2d(hp["x"], hp["y"])))
-            weapon_config = "enemies/turret.txt"
-            if "weapon_config" in hp:
-                weapon_config = hp["weapon_config"]
-                entity = self.entity.ecs().create_entity(weapon_config,
-                                                         parent=self.entity,
-                                                         team=self.entity.get_component(Team).get_team())
-                self.__hardpoints[hardpoint_index].set_turret(entity, self.entity.get_component(Body))
+
+        # Note: may need to change this to be more like it was.
+
+        # Or may need to make ownership a component.
+
+        # Might prefer to make the turret a Weapon with a Body - in which case should
+        # probably have name of config used to create entity dynamically, like before.
+
+        turret_cfgs = config.get_or_default("turrets", [])
+        for cfg in turret_cfgs:
+            turret_entity = component.entity.ecs().create_entity()
+            turret = Turret(turret_entity, self.game_services, cfg)
+            turret.attached_to = component.entity
+            weapon_entity = component.entity.ecs().create_entity()
+            weapon_config = self.game_services.resource_loader().load_config(cfg["weapon_config"])
+            weapon = Weapon(weapon_entity, self.game_services, weapon_config)
+            weapon.owner = component.entity
+            turret_entity.add_component(turret)
+            weapon_entity.add_component(weapon)
+            component.turrets.append(EntityRef(turret_entity, Turret))
+
 
     def pin_turret(...):
         # If a new weapon has been added then pin it to our body.
