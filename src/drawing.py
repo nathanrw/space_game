@@ -4,9 +4,39 @@ from pygame import Rect
 import random
 
 from .physics import Body, Thruster, Vec2d
-from .behaviours import Hitpoints, Text, Shields, AnimationComponent, Weapon, Power
-from .renderer import Renderer
+from .behaviours import Hitpoints, Text, Shields, AnimationComponent, Weapon, Power, Camera
+from .renderer import Renderer, View
 from .utils import Polygon
+
+class CameraView(View):
+    """ A view defined by a camera entity. """
+
+    def __init__(self, renderer, camera_entity):
+        """ Set up the view. """
+        View.__init__(self, renderer)
+        self.__camera = EntityRef(camera_entity, Camera)
+
+    @property
+    def position(self):
+        """ Get the position of the camera, adjusted for shake. """
+        return self.__camera.entity.position + Vec2d(self.__camera.entity.horizontal_shake,
+                                                     self.__camera.entity.vertical_shake)
+
+    @position.setter
+    def position(self, value):
+        """ Set the (actual) position of the camera. """
+        self.__camera.entity.position = Vec2d(value)
+
+    @property
+    def zoom(self):
+        """ Get the zoom level. """
+        return self.__camera.entity.zoom
+
+    @zoom.setter
+    def zoom(self, value):
+        """ Set the zoom level. """
+        if value > 0:
+            self.__camera.entity.zoom = value
 
 class Drawing(object):
     """ An object that can draw the state of the game using a renderer. """
