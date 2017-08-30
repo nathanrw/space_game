@@ -191,6 +191,9 @@ class WeaponSystem(ComponentSystem):
         """ Update the guns. """
         for entity in self.entities():
             weapon = entity.get_component(Weapon)
+            if weapon.owner.entity is None:
+                entity.kill()
+                continue
             if weapon.shot_timer > 0:
                 weapon.shot_timer -= dt
             if weapon.shooting:
@@ -204,11 +207,11 @@ class WeaponSystem(ComponentSystem):
 
     def shoot_beam(self, weapon, dt):
         """ Shoot a beam. """
-        power_consumed = consume_power(weapon.entity, weapon.config["power_usage"] * dt)
+        power_consumed = consume_power(weapon.owner.entity, weapon.config["power_usage"] * dt)
         if power_consumed == 0:
             weapon.shooting_at = None
         else:
-            body = weapon.entity.get_component(Body)
+            body = weapon.owner.entity.get_component(Body)
             (hit_body, weapon.impact_point, weapon.impact_normal) = body.hit_scan(
                 Vec2d(0, 0),
                 Vec2d(0, -1),
@@ -227,7 +230,7 @@ class WeaponSystem(ComponentSystem):
         while weapon.shot_timer <= 0:
 
             # These will be the same for each shot, so get them here...
-            body = weapon.entity.get_component(Body)
+            body = weapon.owner.entity.get_component(Body)
             shooting_at_dir = weapon.shooting_at.direction()
 
             # Update the timer.
@@ -261,7 +264,7 @@ class WeaponSystem(ComponentSystem):
                 body.orientation = shooting_at_dir.normalized().get_angle_degrees()+90
             team = bullet_entity.get_component(Team)
             if team is not None:
-                team.team = weapon.entity.get_component(Team).team
+                team.team = weapon.owner.entity.get_component(Team).team
 
 
 class TrackingSystem(ComponentSystem):
@@ -710,39 +713,78 @@ class CameraSystem(ComponentSystem):
             camera.vertical_shake = (1-2*random.random()) * camera.shake
             camera.horizontal_shake = (1-2*random.random()) * camera.shake
 
-class TurretsSystem(ComponentSystem):
+
+class TurretSystem(ComponentSystem):
+    """ Manage entities that are turrets. """
+
     def __init__(self):
+        """ Constructor. """
+        ComponentSystem.__init__(self, [Turret])
+
+    def update(self, dt):
+        """ Update the system. """
+        for entity in self.entities():
+            turret = entity.get_component(Turret)
+            if turret.attached_to is None:
+                entity.kill()
+
+
+class TurretsSystem(ComponentSystem):
+    """ Manages entities that have a set of turrets attached to them. """
+
+    def __init__(self):
+        """ Constructor. """
         ComponentSystem.__init__(self, [Turrets])
+
+    def update(self, dt):
+        """ Update the system. """
+        for entity in self.entities():
+            turrets = entity.get_component(Turrets)
+            for turret in turrets.turrets:
+                if turret.entity is None:
+                    turrets.turrets.remove(turret)
 
     def on_component_add(self, component):
         """ When the turrets component is added we need to create the turrets
         themselves which are specified in the config"""
 
-        # Note: may need to change this to be more like it was.
+        # The component entity needs to have a Body or this won't work.
+        body = component.entity.get_component(Body)
+        assert body is not None
 
-        # Or may need to make ownership a component.
+        # Get the team.
+        team = component.entity.get_component(Team)
 
-        # Might prefer to make the turret a Weapon with a Body - in which case should
-        # probably have name of config used to create entity dynamically, like before.
-
+        # Load the turrets.
         turret_cfgs = config.get_or_default("turrets", [])
         for cfg in turret_cfgs:
-            turret_entity = component.entity.ecs().create_entity()
-            turret = Turret(turret_entity, self.game_services, cfg)
-            turret.attached_to = component.entity
-            weapon_entity = component.entity.ecs().create_entity()
+
+            # Load the weapon fitted to the turret.
             weapon_config = self.game_services.resource_loader().load_config(cfg["weapon_config"])
-            weapon = Weapon(weapon_entity, self.game_services, weapon_config)
-            weapon.owner = component.entity
-            turret_entity.add_component(turret)
-            weapon_entity.add_component(weapon)
+
+            # Create the turret entity.
+            turret_entity = component.entity.ecs().create_entity(cfg)
+
+            # Get the turret component and attach the weapon entity.
+            turret = turret_entity.get_component(Turret)
+            assert turret is not None
+            turret.weapon.entity = component.entity.ecs().create_entity(weapon_config)
+            weapon = turret.weapon.entity.get_component(Weapon)
+            assert weapon is not None
+            weapon.owner = turret_entity
+
+            # Add the backreference and add to our list of turrets.
+            turret.attached_to.entity = component.entity
             component.turrets.append(EntityRef(turret_entity, Turret))
 
+            # Set the turret's team.
+            turret_team = turret_entity.get_component(Team)
+            if turret_team is not None and team is not None:
+                turret_team.team = team.team
 
-    def pin_turret(...):
-        # If a new weapon has been added then pin it to our body.
-        weapon_body = self.__weapon.get_component(Body)
-        point = body_to_add_to.local_to_world(self.__position)
-        weapon_body.position = point
-        weapon_body.velocity = body_to_add_to.velocity
-        weapon_body.pin_to(body_to_add_to)
+            # Pin the bodies together.
+            turret_body = turret_entity.get_component(Body)
+            point = body.local_to_world(turret.position)
+            turret_body.position = point
+            turret_body.velocity = body.velocity
+            turret_body.pin_to(body)
