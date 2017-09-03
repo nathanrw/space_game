@@ -1,6 +1,7 @@
 from ecs import ComponentSystem
 from behaviours import *
 
+
 def towards(e1, e2):
     """ Get a direction from one entity to another. """
     b1 = e1.get_component(Body)
@@ -565,7 +566,6 @@ class ThrustersSystem(ComponentSystem):
 
         # Optimise the thruster values.
         return scipy.optimize.minimize(f, thrusts, method="TNC", bounds=thrust_bounds)
-
 
     def fire_correct_thrusters(self, thrusters, direction, torque):
         """ Perform logic to determine what engines are firing based on the
