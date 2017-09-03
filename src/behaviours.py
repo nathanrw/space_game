@@ -5,12 +5,31 @@ See utils.py for the overall scheme this fits into.
 """
 
 from .ecs import Component, EntityRef
-from .physics import Body, Physics, CollisionHandler, CollisionResult, Thruster
-from .renderer import View
 from .utils import Timer, Vec2d
 
-import random
-import math
+
+class Joint(Component):
+    """ A joint between two bodies. """
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.entity_a = EntityRef(None, Body)
+        self.entity_a_local_point = Vec2d(0, 0)
+        self.entity_b = EntityRef(None, Body)
+        self.entity_b_local_point = Vec2d(0, 0)
+
+
+class Body(Component):
+    """ A physical body. """
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.mass = config.get_or_default("mass", 1)
+        self.size = config.get_or_default("size", 5)
+        self.is_collideable = config.get_or_default("is_collideable", True)
+        self.position = Vec2d(0, 0)
+        self.velocity = Vec2d(0, 0)
+        self.angular_velocity = 0
+        self.orientation = 0
+        self.force = Vec2d(0, 0)
 
 
 class Tracking(Component):

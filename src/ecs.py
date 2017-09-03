@@ -433,6 +433,41 @@ class EntityRef(object):
         self.__entity = entity
 
 
+class EntityRefList(object):
+    """ A list of entity references. """
+
+    def __init__(self, *types):
+        """ Constructor. """
+        self.__list = []
+        self.__types = types
+
+    def add_ref_to(self, entity):
+        """ Add a reference to an entity. """
+        self.__list.append(EntityRef(entity, *self.__types))
+
+    def __len__(self):
+        """ Get the length of the list. """
+        self.__garbage_collect()
+        return len(self.__list)
+
+    def __getitem__(self, index):
+        """ Get the reference. """
+        self.__garbage_collect()
+        return self.__list[index]
+
+    def __garbage_collect(self):
+        """ Remove all dead references. """
+        for ref in self.__list:
+            if ref.entity is None:
+                self.__list.remove(ref)
+
+    def kill_all(self):
+        """ Kill all entities in the list. """
+        self.__garbage_collect()
+        for ent in self.__list:
+            ent.entity.kill()
+
+
 class Entity(object):
     """
     An object in the game. It knows whether it needs to be deleted, and

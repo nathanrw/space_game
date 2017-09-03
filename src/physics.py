@@ -1,11 +1,9 @@
 from .ecs import ComponentSystem, Component
 from .utils import Vec2d
+from .behaviours import Body, Joint
 
 import pymunk
 import math
-
-import numpy
-import scipy.optimize
 
 class Physics(ComponentSystem):
     """ Physics system. It's now implemented using pymunk, but that fact should
@@ -18,10 +16,10 @@ class Physics(ComponentSystem):
 
         # List of collision handlers. These operate in terms of types of
         # entity. We implement them using a pymunk collision handler.
-        self.collision_handlers = []
+        self.__collision_handlers = []
 
         # The pymunk space.
-        self.space = pymunk.Space()
+        self.__space = pymunk.Space()
 
         # Note: the this function assumes we have snuck a reference to our
         # own body into the pymunk shape. Which we have: see Body(). Here
@@ -36,22 +34,18 @@ class Physics(ComponentSystem):
             return True
 
         # Setup our simple pymunk collision handler.
-        self.pymunk_handler = self.space.add_collision_handler(1, 1)
-        self.pymunk_handler.begin = lambda a, s, d: collide_begin(a, s, d)
+        self.__pymunk_handler = self.space.add_collision_handler(1, 1)
+        self.__pymunk_handler.begin = lambda a, s, d: collide_begin(a, s, d)
 
         # Setup a default handler for non-collideable objects.
-        self.default_handler = self.space.add_default_collision_handler()
-        self.default_handler.begin = lambda a, s, d: False
+        self.__default_handler = self.space.add_default_collision_handler()
+        self.__default_handler.begin = lambda a, s, d: False
 
-    def on_component_add(self, component):
-        """ Called when a component is added that matches our expression. """
-        assert isinstance(component, Body)
-        component.create(self.space)
+        # Map from body components to pymunk body objects
+        self.__pymunk_bodies = {}
 
-    def on_component_remove(self, component):
-        """ Called when a component is removed that matches our expression. """
-        assert isinstance(component, Body)
-        component.destroy()
+        # Map from joint components to pymunk joint objects.
+        self.__pymunk_joints = {}
 
     def add_collision_handler(self, handler):
         """ Add a logical collision handler for the game. """
@@ -59,8 +53,82 @@ class Physics(ComponentSystem):
 
     def update(self, dt):
         """ Advance the simulation. """
-        ComponentSystem.update(self, dt)
+
+        # Ensure bodies are added to the simulation, and that dead bodies are
+        # removed from the simulation.
+        seen = set(self.__pymunk_bodies.keys())
+        for e in self.entities():
+            body = e.get_component(Body)
+            if not body in seen:
+                pymunk_body = PymunkBody(body)
+                self.__space.add(pymunk_body.body, pymunk_body.shape)
+            else:
+                seen.remove(body)
+        for body in seen:
+            pymunk_body = self.__pymunk_bodies[body]
+            self.__space.remove(pymunk_body.body, pymunk_body.shape)
+            del self.__pymunk_bodies[body]
+
+        # Apply any updates that have been made to physics components.
+        for body_component in self.__pymunk_bodies:
+            pymunk_body = self.__pymunk_bodies[body_component]
+            pymunk_body.body.position = body_component.position
+            pymunk_body.body.velocity = body_component.velocity
+            pymunk_body.shape.radius = body_component.size
+            pymunk_body.body.mass = body_component.mass
+            pymunk_body.body.force = body_component.force
+            if body_component.collideable:
+                pymunk_body.shape.collision_type = 1
+            else:
+                pymunk_body.shape.collision_type = 0
+            pymunk_body.body.angle = math.radians(body_component.orientation)
+            pymunk_body.body.angular_velocity = math.radians(body_component.angular_velocity)
+
+        # Do the same for joints - add joints to the simulation where components
+        # have been added, remove them where components have been deleted.
+        joints = self.game_services.get_entity_manager().query(Joint)
+        for e in joints:
+            joint = e.get_component(Joint)
+            if joint.entity_a.entity is None or joint.entity_b.entity is None:
+                e.kill()
+                continue
+        seen_joints = set(self.__pymunk_joints.keys())
+        joints = self.game_services.get_entity_manager().query(Joint) # some will be dead.
+        for e in joints:
+            component = e.get_component(Joint)
+            b1 = component.entity_a.get_component(Body)
+            b2 = component.entity_b.get_component(Body)
+            if not e in seen_joints:
+                joint = pymunk.constraint.PinJoint(
+                    self.__pymunk_bodies[b1].body,
+                    self.__pymunk_bodies[b2].body,
+                    (0, 0),
+                    body.world_to_local(b1.position)
+                )
+                joint.collide_bodies = False
+                self.__pymunk_joints[e] = joint
+                self.__space.add(joint)
+            else:
+                seen_joints.remove(e)
+        for e in seen_joints:
+            joint = self.__pymunk_joints[e]
+            self.__space.remove(joint)
+            del self.__pymunk_joints[e]
+
+        # Advance the simulation.
         self.space.step(dt)
+
+        # Copy simulation state back to components.
+        for body_component in self.__pymunk_bodies:
+            pymunk_body = self.__pymunk_bodies[body_component]
+            body_component.position = pymunk_body.body.position
+            body_component.velocity = pymunk_body.body.velocity
+            body_component.size = pymunk_body.shape.radius
+            body_component.mass = pymunk_body.body.mass
+            body_component.force = pymunk_body.body.force
+            body_component.collideable = pymunk_body.shape.collision_type == 1
+            body_component.orientation = math.degrees(pymunk_body.body.angle)
+            body_component.angular_velocity = math.degrees(pymunk_body.body.angular_velocity)
 
     def closest_body_with(self, point, f):
         """ Find the closest body of a given predicate. """
@@ -83,197 +151,101 @@ class Physics(ComponentSystem):
                 return body.entity
         return None
 
+    def hit_scan(
+        self,
+        from_entity,
+        local_origin=Vec2d(0,0),
+        local_direction=Vec2d(0,-1),
+        distance=1000,
+        radius=1,
+        filter_func=lambda x: True
+    ):
+        """ Do a hit scan computation. Return the bodies and hit locations of
+        entities that intersect the line. Return: [(body, pos)]. """
+        body = from_entity.get_component(Body)
+        start = body.local_to_world(local_origin)
+        end = body.local_to_world(local_direction*distance)
+        results = self.__space.segment_query(start, end, radius, pymunk.ShapeFilter())
+        for result in results:
+            if result.shape.game_body.collideable and filter_func(result.shape.game_body.entity):
+                return (result.shape.game_body, result.point, result.normal)
+        return (None, end, None)
 
-class Body(Component):
-    """ Physical body attached to a entity. Note that it's implemented
-    in terms of pymunk now. It will need to change since we're currently
-    using pymunk in a pretty horrendous way: this was to preserve the original
-    interface while integrating pymunk. But we should stop mucking around with
-    position / velocity / size (!) and use forces instead. """
+    def world_to_local(self, entity, point):
+        assert False # Use component.
+        body = entity.get_component[Body]
+        pymunk_body = self.__pymunk_bodies[body]
+        return pymunk_body.body.world_to_local(point)
 
-    def __init__(self, entity, game_services, config):
-        """ Initialise the body, attached to the given entity. """
+    def local_to_world(self, entity, point):
+        assert False # Use component.
+        body = entity.get_component[Body]
+        pymunk_body = self.__pymunk_bodies[body]
+        return pymunk_body.body.local_to_world(point)
 
-        Component.__init__(self, entity, game_services, config)
+    def local_dir_to_world(self, entity, direction):
+        assert False # Use component.
+        body = entity.get_component[Body]
+        pymunk_body = self.__pymunk_bodies[body]
+        return pymunk_body.body.local_to_world(direction) - pymunk_body.body.position
+
+    def apply_force_at_local_point(self, entity, force, point):
+        """ Apply a force to the body."""
+        assert False # Use component.  May need to store moment.
+        body = entity.get_component[Body]
+        pymunk_body = self.__pymunk_bodies[body]
+        pymunk_body.apply_force_at_local_point(force, point)
+
+
+class PymunkBody(object):
+    """ Physical body attached to a entity. """
+
+    def __init__(self, body_component):
+        """ Constructor. """
 
         # Moment of inertia.
-        moment = pymunk.moment_for_circle(float(config.get_or_default("mass", 1)),
-                                          0,
-                                          config.get_or_default("size", 5))
+        moment = pymunk.moment_for_circle(
+            float(body_component.mass),
+            0,
+            float(body_component.size)
+        )
 
         # Initialise body and shape.
-        self.__body = pymunk.Body(float(config.get_or_default("mass", 1)), moment)
-        self.__shape = pymunk.Circle(self.__body, float(config.get_or_default("size", 5)))
-        self.__shape.friction = 0.8
+        self.body = pymunk.Body(float(body_component.mass), moment)
+        self.shape = pymunk.Circle(self.__body, float(body_component.size))
+        self.shape.friction = 0.8
 
         # Collision type for non-collidable bodies.
-        if config.get_or_default("is_collideable", True):
-            self.__shape.collision_type = 1
+        if body_component.is_collideable:
+            self.shape.collision_type = 1
         else:
-            self.__shape.collision_type = 0
+            self.shape.collision_type = 0
 
         # Squirell ourself away inside the shape, so we can map back later. Note
         # that we're modifying the shape with a new field on the fly here, which
         # could be seen as a bit hacky, but I think it's fairly legit - it's just
         # as if we were to derive from pymunk.Shape and extend it, just without all
         # the code...
-        self.__shape.game_body = self
+        self.shape.game_body = self
 
-        # We will need the space eventually.
-        self.__space = None
-
-        # Remember joints
-        self.__joints = []
-
-    def setup(self, **kwargs):
-        """ Allow an initial position to be specified. """
-        if "position" in kwargs:
-            self.position = kwargs["position"]
-        if "velocity" in kwargs:
-            self.velocity = kwargs["velocity"]
-            if self.velocity.length > 0:
-                self.orientation = self.velocity.normalized().get_angle_degrees()+90
-        if "orientation" in kwargs:
-            self.orientation = kwargs["orientation"]
-
-    def create(self, space):
-        """ Actually add the body to the simulation. """
-        if self.__space is None:
-            self.__space = space
-            self.__space.add(self.__body, self.__shape, *self.__joints)
-
-    def destroy(self):
-        """ Remove the body from the simulation. """
-        if self.__space is not None:
-            self.__space.remove(self.__body, self.__shape, *self.__joints)
-            self.__space = None
-
-    def world_to_local(self, point):
-        return self.__body.world_to_local(point)
-
-    def local_to_world(self, point):
-        return self.__body.local_to_world(point)
-
-    def local_dir_to_world(self, direction):
-        return self.local_to_world(direction) - self.position
-
-    def apply_force_at_local_point(self, force, point):
-        """ Apply a force to the body."""
-        self.__body.apply_force_at_local_point(force, point)
-
-    def pin_to(self, body):
-        """ Pin this body to that one. They will become inseparable, and will
-        not collide with one another. They will be able to rotate relative to
-        one another however. """
-
-        # Setup the joint.
-        joint = pymunk.constraint.PinJoint(
-            self.__body,
-            body.__body,
-            (0, 0),
-            body.world_to_local(self.position)
-        )
-        joint.collide_bodies = False
-
-        # Remember the joint so it can be added and removed.
-        self.__joints.append(joint)
-
-        # If the body has already been created then add the joint to the simulation.
-        if self.__space:
-            self.__space.add(joint)
-
-    def hit_scan(self, local_origin=Vec2d(0,0), local_direction=Vec2d(0,-1), distance=1000, radius=1):
-        """ Do a hit scan computation. Return the bodies and hit locations of
-        entities that intersect the line. Return: [(body, pos)]. """
-        start = self.local_to_world(local_origin)
-        end = self.local_to_world(local_direction*distance)
-        results = self.__space.segment_query(start, end, radius, pymunk.ShapeFilter())
-        for result in results:
-            if not result.shape.game_body.entity.is_ancestor(self.entity):
-                if result.shape.game_body.collideable:
-                    return (result.shape.game_body, result.point, result.normal)
-        return (None, end, None)
-        
-    @property
-    def position(self):
-        return self.__body.position
-
-    @position.setter
-    def position(self, value):
-        self.__body.position = value
-
-    @property
-    def velocity(self):
-        return self.__body.velocity
-
-    @velocity.setter
-    def velocity(self, value):
-        self.__body.velocity = value
-
-    @property
-    def size(self):
-        return self.__shape.radius
-
-    @property
-    def mass(self):
-        return self.__body.mass
-
-    @property
-    def force(self):
-        """ Note: force gets reset with each tick so no point caching it. """
-        return self.__body.force
-
-    @force.setter
-    def force(self, value):
-        """ Note: force gets reset with each tick so no point caching it. """
-        self.__body.force = value
-
-    @property
-    def collideable(self):
-        return self.__shape.collision_type == 1
-
-    @collideable.setter
-    def collideable(self, value):
-        if value:
-            self.__shape.collision_type = 1
-        else:
-            self.__shape.collision_type = 0
-
-    @property
-    def orientation(self):
-        """ Note: Expose degrees because pygame likes degrees. """
-        return math.degrees(self.__body.angle)
-
-    @orientation.setter
-    def orientation(self, value):
-        """ Note: Expose degrees because pygame likes degrees. """
-        self.__body.angle = math.radians(value)
-
-    @property
-    def angular_velocity(self):
-        """ Note: Expose degrees because pygame likes degrees. """
-        return math.degrees(self.__body.angular_velocity)
-
-    @angular_velocity.setter
-    def angular_velocity(self, value):
-        """ Note: Expose degrees because pygame likes degrees. """
-        self.__body.angular_velocity = math.radians(value)
 
 class CollisionResult(object):
+    """ The result of a logical collision handler being applied. """
     def __init__(self, handled, wants_physical_simulation):
         self.handled = handled
         self.wants_physical_simulation = wants_physical_simulation
+
 
 class CollisionHandler(object):
     """ A logical collision handler. While physical collision handling is
     dealt with by the physics implementation, game behaviours must be added
     by adding instances of this matching entity types. """
-    
+
     def __init__(self, t1, t2):
         """ Initialise with a pair of types. """
         self.t1 = t1
         self.t2 = t2
-        
+
     def handle_collision(self, o1, o2):
         """ Handle type colliding bodies if they have components of
         matching types. """
@@ -288,7 +260,7 @@ class CollisionHandler(object):
         elif c3 is not None and c4 is not None:
             return self.handle_matching_collision(c4, c3)
         return CollisionResult(False, True)
-    
+
     def handle_matching_collision(self, c1, c2):
         """ These components are colliding, so the game should do something. """
         return CollisionResult(False, True)
