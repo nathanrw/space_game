@@ -2,28 +2,30 @@
 A space game written in Python.
 """
 
+# Standard imports.
 import pygame
 import os
 import sys
 
-from .behaviours import DamageCollisionHandler, Camera
-from .systems import WaveSpawner
-from .config import Config
-from .drawing import Drawing
-from .ecs import GameServices, GameInfo, EntityManager
-from .input_handling import InputHandling
-from .physics import Physics
-from .resource import ResourceLoader
-from .utils import lookup_type
+# Local imports.
+import behaviours
+import drawing
+import ecs
+import input_handling
+import physics
+import resource
+import systems
+import utils
 
-class SpaceGameServices(GameServices):
+
+class SpaceGameServices(ecs.GameServices):
     """ The services exposed to the entities. This is separate from
     the game class itself to try and keep control of the interface - since
     this is basically global state you can get at from anywhere. """
 
     def __init__(self, game):
         self.game = game
-        self.info = GameInfo()
+        self.info = ecs.GameInfo()
         self.debug_level = 0
 
     def get_renderer(self):
@@ -35,7 +37,7 @@ class SpaceGameServices(GameServices):
 
     def get_camera(self):
         """ Get the camera. """
-        return self.game.camera.get_component(Camera)
+        return self.game.camera.get_component(behaviours.Camera)
 
     def get_entity_manager(self):
         """ Return the entity manager. """
@@ -56,11 +58,12 @@ class SpaceGameServices(GameServices):
     def get_debug_level(self):
         """ Return the debug level. """
         return self.debug_level
-                
+
+
 class Game(object):
     """ Class glueing all of the building blocks together into an actual
     game. """
-    
+
     def __init__(self):
         """ Initialise the game systems. """
 
@@ -77,7 +80,7 @@ class Game(object):
         self.game_services = SpaceGameServices(self)
 
         # The resource loader.
-        self.resource_loader = ResourceLoader()
+        self.resource_loader = resource.ResourceLoader()
 
         # The configuration.
         if os.path.isfile("./config.txt"):
@@ -87,7 +90,7 @@ class Game(object):
 
         # Create the renderer.
         renderer_name = self.config.get_or_default("renderer", "src.pygame_renderer.PygameRenderer")
-        renderer_class = lookup_type(renderer_name)
+        renderer_class = utils.lookup_type(renderer_name)
         screen_size = (self.config.get_or_default("screen_width", 1024),
                        self.config.get_or_default("screen_height", 768))
         self.renderer = renderer_class(screen_size, self.config, data_path="./res")
@@ -108,11 +111,11 @@ class Game(object):
         self.wave_spawner = None
 
         # The physics
-        self.physics = Physics()
+        self.physics = physics.Physics()
 
         # Plug the systems in. Note that systems can be created dynamically,
         # but we want to manipulate them so we specify them up front.
-        self.entity_manager = EntityManager(self.game_services)
+        self.entity_manager = ecs.EntityManager(self.game_services)
         self.entity_manager.register_component_system(self.physics)
 
         # Configure the resource loader.
@@ -121,7 +124,7 @@ class Game(object):
         )
 
         # The drawing visitor.
-        self.drawing = Drawing(self.game_services)
+        self.drawing = drawing.Drawing(self.game_services)
 
         # Is the game running?
         self.running = False
@@ -159,8 +162,8 @@ class Game(object):
             self.entity_manager.update(tick_time)
 
             # Draw
-            self.renderer.pre_render(self.camera.get_component(Camera))
-            self.drawing.draw(self.camera.get_component(Camera))
+            self.renderer.pre_render(self.camera.get_component(behaviours.Camera))
+            self.drawing.draw(self.camera.get_component(behaviours.Camera))
             self.renderer.post_render()
             self.renderer.flip_buffers()
 
@@ -170,7 +173,7 @@ class Game(object):
             # Calculate some metrics
             limited_fps = 1.0/(clock.get_time() / 1000.0)
             raw_fps = 1.0/(clock.get_rawtime() / 1000.0)
-            time_ratio =  (1.0/fps) / (clock.get_time()/1000.0) 
+            time_ratio =  (1.0/fps) / (clock.get_time()/1000.0)
 
             # Remember how long the frame took.
             self.game_services.info.update_framerate(limited_fps,
@@ -194,7 +197,7 @@ class Game(object):
         self.resource_loader.preload()
 
         # Make the camera.
-        self.camera = self.entity_manager.create_entity_with(Camera)
+        self.camera = self.entity_manager.create_entity_with(behaviours.Camera)
 
         # Draw debug info if requested.
         self.game_services.debug_level = self.config.get_or_default("debug", 0)
@@ -203,14 +206,32 @@ class Game(object):
         self.player = self.entity_manager.create_entity("player.txt")
 
         # Make the input handling system.
-        self.input_handling = InputHandling(self.game_services, self.player)
+        self.input_handling = input_handling.InputHandling(self.game_services, self.player)
 
         # Make the camera follow the player.
-        self.camera.get_component(Camera).track(self.player)
+        self.camera.get_component(behaviours.Camera).track(self.player)
 
         # Create the wave spawner.
         if not self.config.get_or_default("peaceful_mode", False):
-            self.entity_manager.register_component_system(WaveSpawner())
+            self.entity_manager.register_component_system(systems.WaveSpawner())
+
+        # Create the game systems.
+        self.entity_manager.register_component_system(systems.FollowsTrackedSystem())
+        self.entity_manager.register_component_system(systems.ShootsAtTrackedSystem())
+        self.entity_manager.register_component_system(systems.WeaponSystem())
+        self.entity_manager.register_component_system(systems.TrackingSystem())
+        self.entity_manager.register_component_system(systems.LaunchesFightersSystem())
+        self.entity_manager.register_component_system(systems.KillOnTimerSystem())
+        self.entity_manager.register_component_system(systems.PowerSystem())
+        self.entity_manager.register_component_system(systems.ShieldSystem())
+        self.entity_manager.register_component_system(systems.TextSystem())
+        self.entity_manager.register_component_system(systems.AnimSystem())
+        self.entity_manager.register_component_system(systems.ThrusterSystem())
+        self.entity_manager.register_component_system(systems.ThrustersSystem())
+        self.entity_manager.register_component_system(systems.WaveSpawnerSystem())
+        self.entity_manager.register_component_system(systems.CameraSystem())
+        self.entity_manager.register_component_system(systems.TurretSystem())
+        self.entity_manager.register_component_system(systems.TurretsSystem())
 
         # Make it so that bullets can damage things.
         self.physics.add_collision_handler(DamageCollisionHandler())
@@ -224,22 +245,37 @@ class Game(object):
         # Finalise
         pygame.quit()
 
-class DamageCollisionHandler(CollisionHandler):
+
+class DamageCollisionHandler(physics.CollisionHandler):
     """ Collision handler to apply bullet damage. """
+
     def __init__(self):
-        CollisionHandler.__init__(self, DamageOnContact, Hitpoints)
+        """ Constructor. """
+
+        # Match entities that cause damage on contact to entities that can be
+        # damaged.
+        physics.CollisionHandler.__init__(
+            self,
+            behaviours.DamageOnContact,
+            behaviours.Hitpoints
+        )
+
     def handle_matching_collision(self, dmg, hp):
-        if hp.entity.is_ancestor(dmg.entity):
-            return CollisionResult(False, False)
+        """ Apply the logical effect of the collision and return the result. """
+
+        # If our entity is about to die we might be about to spawn an
+        # explosion. If that's the case it should be travelling at the same
+        # speed as the thing we hit. So match velocities before our entity is
+        # killed.
         if dmg.config.get_or_default("destroy_on_hit", True):
-            # If our entity is about to die we might be about to spawn an
-            # explosion. If that's the case it should be travelling at the
-            # same speed as the thing we hit. So match velocities before
-            # our entity is killed.
-            b1 = dmg.entity.get_component(Body)
-            b2 = hp.entity.get_component(Body)
+            b1 = dmg.entity.get_component(behaviours.Body)
+            b2 = hp.entity.get_component(behaviours.Body)
             if b1 is not None and b2 is not None:
                 b1.velocity = b2.velocity
             dmg.entity.kill()
-        apply_damage_to_entity(dmg.config["damage"], entity)
-        return CollisionResult(True, True)
+
+        # Apply the damage.
+        systems.apply_damage_to_entity(dmg.config["damage"], entity)
+
+        # Return the result ( we handled the collision. )
+        return physics.CollisionResult(True, True)

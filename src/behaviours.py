@@ -1,7 +1,15 @@
-""" Object behaviours for the game and entitys composed out of them.
+"""
+Types of component that can be attached to entities.
 
-See utils.py for the overall scheme this fits into.
+A component is just a blob of data.  It tags an entity with a particular
+aspect, and the state necessary to implement it.  The actual behaviour
+bestowed by a component is produced by a processing system, which operates
+on a query on the full set of entities selecting for a particular set of
+component types.
 
+There is generally a 1-1 mapping between components and processing systems,
+but this isn't a hard and fast rule - a single system can require multiple
+component types, for instance.
 """
 
 from .ecs import Component, EntityRef
@@ -212,15 +220,3 @@ class Camera(Component):
         self.tracking = EntityRef(None, Body)
         self.zoom = 1
         self.screen_diagonal = (Vec2d(renderer.screen_size())/2).length
-
-
-# Note: the below is not used, it's a thought.  Expresses aggregation generically through components.  Possibly
-# a good idea?  Possibly not.
-
-class Aggregate(Component):
-    def __init__(self, entity, game_services, config):
-        self.aggregands = []
-
-class Aggregand(Component):
-    def __init__(self, entity, game_services, config):
-        self.aggregate = EntityRef(None, Aggregate)
