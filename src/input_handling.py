@@ -114,7 +114,7 @@ class InputHandling(object):
         elif e.type == pygame.JOYHATMOTION:
             # D-pad movement.
             print( "hat: ", e.hat, e.value )
-            thrusters.set_direction(Vec2d(e.value[0], -e.value[1]))
+            self.move(Vec2d(e.value[0], -e.value[1]))
             response.event_handled = True
 
         # Return the response.
