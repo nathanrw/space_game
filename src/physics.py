@@ -9,7 +9,165 @@ import math
 class Physics(ComponentSystem):
     """ Physics system. It's now implemented using pymunk, but that fact should
         not leak out of this file! Entitys that need to be simulated should
-        be given Body components which will be managed by a Physics system. """
+        be given Body components which will be managed by a Physics system. 
+        
+        The Physics system manages Body and Joint components.  The system 
+        maintains a mapping between objects in a pymunk physics simulation 
+        and the logical components attached to entities (which are what get 
+        serialised.)  The relevant data is copied back and forth between the 
+        simulation and the game state periodically to keep them in sync. 
+        """
+
+    class PymunkBody(object):
+        """ The pymunk simulation body / shape that represents a logical (ecs) 
+        body component.  These aren't exposed outside of the 'Physics' system; 
+        we maintain a mapping and copy data back and forth as required. Edits to
+        the Body component will be forwarded to the pymunk body at the start of 
+        an update, while the updated simulation will be copied back to the 
+        components at the end of each update(). """
+
+        def __init__(self, body_component):
+            """ Constructor. """
+
+            # Moment of inertia.
+            moment = pymunk.moment_for_circle(
+                float(body_component.mass),
+                0,
+                float(body_component.size)
+            )
+
+            # Initialise body and shape.
+            self.body = pymunk.Body(float(body_component.mass), moment)
+            self.shape = pymunk.Circle(self.__body, float(body_component.size))
+            self.shape.friction = 0.8
+
+            # Collision type for non-collidable bodies.
+            if body_component.is_collideable:
+                self.shape.collision_type = 1
+            else:
+                self.shape.collision_type = 0
+
+            # Squirell ourself away inside the shape, so we can map back
+            # later. Note that we're modifying the shape with a new field on
+            # the fly here, which could be seen as a bit hacky, but I think
+            # it's fairly legit - it's just as if we were to derive from
+            # pymunk.Shape and extend it, just without all the code...
+            self.shape.game_body = self
+
+    class PymunkBodyMapping(object):
+        """ Manages the mapping between Body components and simulation 
+        objects. """
+
+        def __init__(self, space):
+            """ Constructor. """
+            self.__mapping = {}
+            self.__space = space
+
+        def update(self, entities):
+            """ Update the mapping, creating new simulation bodies where needed
+            and deleting ones that we are done with. """
+
+            # The set of entities that need a corresponding simulation
+            # object. We remove entities where we see them, and create
+            # simulation objects where necessary.
+            to_remove = set(self.__mapping.keys())
+            for e in entities:
+                if e in to_remove:
+                    to_remove.remove(e)
+                else:
+                    body = e.get_component(Body)
+                    assert body
+                    pymunk_body = PymunkBody(body)
+                    self.__mapping[e] = pymunk_body
+                    self.__space.add(pymunk_body.body, pymunk_body.shape)
+
+            # Now, the set contains all of the entities that had simulation
+            # bodies but shouldn't any more.
+            for e in to_remove:
+                pymunk_body = self.__mapping[e]
+                self.__space.remove(pymunk_body.body, pymunk_body.shape)
+                del self.__mapping[e]
+
+        def copy_from_components(self):
+            """ Copy body data from components to simulation. """
+            for body_component in self.__mapping:
+                pymunk_body = self.__mapping[body_component]
+                pymunk_body.body.position = body_component.position
+                pymunk_body.body.velocity = body_component.velocity
+                pymunk_body.shape.radius = body_component.size
+                pymunk_body.body.mass = body_component.mass
+                pymunk_body.body.force = body_component.force
+                if body_component.collideable:
+                    pymunk_body.shape.collision_type = 1
+                else:
+                    pymunk_body.shape.collision_type = 0
+                pymunk_body.body.angle = math.radians(
+                    body_component.orientation)
+                pymunk_body.body.angular_velocity = math.radians(
+                    body_component.angular_velocity)
+
+        def copy_to_components(self):
+            """ Copy simulation state back to components """
+            for body_component in self.__mapping:
+                pymunk_body = self.__mapping[body_component]
+                body_component.position = pymunk_body.body.position
+                body_component.velocity = pymunk_body.body.velocity
+                body_component.size = pymunk_body.shape.radius
+                body_component.mass = pymunk_body.body.mass
+                body_component.force = pymunk_body.body.force
+                body_component.collideable = pymunk_body.shape.collision_type == 1
+                body_component.orientation = math.degrees(
+                    pymunk_body.body.angle)
+                body_component.angular_velocity = math.degrees(
+                    pymunk_body.body.angular_velocity)
+
+    class PymunkJointMapping(object):
+        """ Manages the mapping between Joint components and physical joints
+        between physical bodies. """
+
+        def __init__(self, space, pymunk_body_mapping):
+            """ Constructor. """
+            self.__space = space
+            self.__pymunk_bodies = pymunk_body_mapping
+            self.__mapping = {}
+
+        def update(self, entities):
+            """ Update the mapping. """
+
+            # If a joint no longer has correspond entities, then delete the
+            # joint.
+            for e in entities:
+                joint = e.get_component(Joint)
+                if joint.entity_a.entity is None or \
+                                joint.entity_b.entity is None:
+                    e.kill()
+                    entities.remove(e)
+                    continue
+
+            # Create simulation joints.
+            to_remove = set(self.__mapping.keys())
+            for e in entities:
+                component = e.get_component(Joint)
+                b1 = component.entity_a.get_component(Body)
+                b2 = component.entity_b.get_component(Body)
+                if not e in to_remove:
+                    joint = pymunk.constraint.PinJoint(
+                        self.__pymunk_bodies[b1].body,
+                        self.__pymunk_bodies[b2].body,
+                        (0, 0),
+                        b2.world_to_local(b1.position)
+                    )
+                    joint.collide_bodies = False
+                    self.__mapping[e] = joint
+                    self.__space.add(joint)
+                else:
+                    to_remove.remove(e)
+
+            # Delete simulation joints.
+            for e in to_remove:
+                joint = self.__mapping[e]
+                self.__space.remove(joint)
+                del self.__mapping[e]
 
     def __init__(self):
         """ Initialise physics. """
@@ -42,11 +200,10 @@ class Physics(ComponentSystem):
         self.__default_handler = self.__space.add_default_collision_handler()
         self.__default_handler.begin = lambda a, s, d: False
 
-        # Map from body components to pymunk body objects
-        self.__pymunk_bodies = {}
-
-        # Map from joint components to pymunk joint objects.
-        self.__pymunk_joints = {}
+        # Map Body and Joint components to simulation objects.
+        self.__pymunk_bodies = Physics.PymunkBodyMapping(self.__space)
+        self.__pymunk_joints = Physics.PymunkJointMapping(self.__space,
+                                                          self.__pymunk_bodies)
 
     def add_collision_handler(self, handler):
         """ Add a logical collision handler for the game. """
@@ -55,66 +212,12 @@ class Physics(ComponentSystem):
     def update(self, dt):
         """ Advance the simulation. """
 
-        # Ensure bodies are added to the simulation, and that dead bodies are
-        # removed from the simulation.
-        seen = set(self.__pymunk_bodies.keys())
-        for e in self.entities():
-            body = e.get_component(Body)
-            if not body in seen:
-                pymunk_body = PymunkBody(body)
-                self.__space.add(pymunk_body.body, pymunk_body.shape)
-            else:
-                seen.remove(body)
-        for body in seen:
-            pymunk_body = self.__pymunk_bodies[body]
-            self.__space.remove(pymunk_body.body, pymunk_body.shape)
-            del self.__pymunk_bodies[body]
-
-        # Apply any updates that have been made to physics components.
-        for body_component in self.__pymunk_bodies:
-            pymunk_body = self.__pymunk_bodies[body_component]
-            pymunk_body.body.position = body_component.position
-            pymunk_body.body.velocity = body_component.velocity
-            pymunk_body.shape.radius = body_component.size
-            pymunk_body.body.mass = body_component.mass
-            pymunk_body.body.force = body_component.force
-            if body_component.collideable:
-                pymunk_body.shape.collision_type = 1
-            else:
-                pymunk_body.shape.collision_type = 0
-            pymunk_body.body.angle = math.radians(body_component.orientation)
-            pymunk_body.body.angular_velocity = math.radians(body_component.angular_velocity)
-
-        # Do the same for joints - add joints to the simulation where components
-        # have been added, remove them where components have been deleted.
-        joints = self.game_services.get_entity_manager().query(Joint)
-        for e in joints:
-            joint = e.get_component(Joint)
-            if joint.entity_a.entity is None or joint.entity_b.entity is None:
-                e.kill()
-                continue
-        seen_joints = set(self.__pymunk_joints.keys())
-        joints = self.game_services.get_entity_manager().query(Joint) # some will be dead.
-        for e in joints:
-            component = e.get_component(Joint)
-            b1 = component.entity_a.get_component(Body)
-            b2 = component.entity_b.get_component(Body)
-            if not e in seen_joints:
-                joint = pymunk.constraint.PinJoint(
-                    self.__pymunk_bodies[b1].body,
-                    self.__pymunk_bodies[b2].body,
-                    (0, 0),
-                    body.world_to_local(b1.position)
-                )
-                joint.collide_bodies = False
-                self.__pymunk_joints[e] = joint
-                self.__space.add(joint)
-            else:
-                seen_joints.remove(e)
-        for e in seen_joints:
-            joint = self.__pymunk_joints[e]
-            self.__space.remove(joint)
-            del self.__pymunk_joints[e]
+        # Update the body mapping & copy simulation state from the components.
+        self.__pymunk_bodies.update(self.entities())
+        self.__pymunk_bodies.copy_from_components()
+        self.__pymunk_joints.update(
+            self.game_services.get_entity_manager().query(Joint)
+        )
 
         # Advance the simulation.
         self.__space.step(dt)
