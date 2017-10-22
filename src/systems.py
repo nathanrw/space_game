@@ -22,7 +22,7 @@ def on_same_team(e1, e2):
     t2 = e2.get_component(Team)
 
     # If either or both not got team component, then on same team.
-    if t1 is None != t2 is None:
+    if t1 is None or t2 is None:
         return True
 
     # If both have team component but either not on a team, then on same team.
@@ -552,9 +552,11 @@ class ThrustersSystem(ComponentSystem):
             resultant_force = Vec2d(0, 0);
             resultant_moment = 0
             for i in range(0, len(thrusts)):
+                thruster = thrusters.thrusters[i].entity.get_component(Thruster)
                 thrust = float(thrusts[i])
-                resultant_force += self.__thrusters[i].force_with_thrust(thrust)
-                resultant_moment += self.__thrusters[i].moment_with_thrust(thrust)
+                force = thruster.direction * thrust
+                resultant_force += force
+                resultant_moment += thruster.position.length * thruster.position.perpendicular_normal().dot(force)
 
             # We want to maximise the force in the direction in which we want to
             # be thrusting.
@@ -581,7 +583,6 @@ class ThrustersSystem(ComponentSystem):
 
         # By default the engines should be off.
         for ref in thrusters.thrusters:
-            print "ffff"
             thruster = ref.entity.get_component(Thruster)
             thruster.thrust = 0
 

@@ -38,7 +38,7 @@ class Physics(ComponentSystem):
 
             # Initialise body and shape.
             self.body = pymunk.Body(float(body_component.mass), moment)
-            self.shape = pymunk.Circle(self.__body, float(body_component.size))
+            self.shape = pymunk.Circle(self.body, float(body_component.size))
             self.shape.friction = 0.8
 
             # Collision type for non-collidable bodies.
@@ -62,6 +62,10 @@ class Physics(ComponentSystem):
             """ Constructor. """
             self.__mapping = {}
             self.__space = space
+
+        def __getitem__(self, item):
+            """ Look up a pymunk body from an entity. """
+            return self.__mapping[item]
 
         def update(self, entities):
             """ Update the mapping, creating new simulation bodies where needed
@@ -90,14 +94,15 @@ class Physics(ComponentSystem):
 
         def copy_from_components(self):
             """ Copy body data from components to simulation. """
-            for body_component in self.__mapping:
-                pymunk_body = self.__mapping[body_component]
+            for entity in self.__mapping:
+                body_component = entity.get_component(Body)
+                pymunk_body = self.__mapping[entity]
                 pymunk_body.body.position = body_component.position
                 pymunk_body.body.velocity = body_component.velocity
-                pymunk_body.shape.radius = body_component.size
+                #pymunk_body.shape.radius = body_component.size
                 pymunk_body.body.mass = body_component.mass
                 pymunk_body.body.force = body_component.force
-                if body_component.collideable:
+                if body_component.is_collideable:
                     pymunk_body.shape.collision_type = 1
                 else:
                     pymunk_body.shape.collision_type = 0
@@ -108,14 +113,15 @@ class Physics(ComponentSystem):
 
         def copy_to_components(self):
             """ Copy simulation state back to components """
-            for body_component in self.__mapping:
-                pymunk_body = self.__mapping[body_component]
+            for entity in self.__mapping:
+                body_component = entity.get_component(Body)
+                pymunk_body = self.__mapping[entity]
                 body_component.position = pymunk_body.body.position
                 body_component.velocity = pymunk_body.body.velocity
                 body_component.size = pymunk_body.shape.radius
                 body_component.mass = pymunk_body.body.mass
                 body_component.force = pymunk_body.body.force
-                body_component.collideable = pymunk_body.shape.collision_type == 1
+                body_component.is_collideable = pymunk_body.shape.collision_type == 1
                 body_component.orientation = math.degrees(
                     pymunk_body.body.angle)
                 body_component.angular_velocity = math.degrees(
@@ -267,29 +273,21 @@ class Physics(ComponentSystem):
         return (None, end, None)
 
     def world_to_local(self, entity, point):
-        assert False # Use component.
-        body = entity.get_component[Body]
-        pymunk_body = self.__pymunk_bodies[body]
+        pymunk_body = self.__pymunk_bodies[entity]
         return pymunk_body.body.world_to_local(point)
 
     def local_to_world(self, entity, point):
-        assert False # Use component.
-        body = entity.get_component[Body]
-        pymunk_body = self.__pymunk_bodies[body]
+        pymunk_body = self.__pymunk_bodies[entity]
         return pymunk_body.body.local_to_world(point)
 
     def local_dir_to_world(self, entity, direction):
-        assert False # Use component.
-        body = entity.get_component[Body]
-        pymunk_body = self.__pymunk_bodies[body]
+        pymunk_body = self.__pymunk_bodies[entity]
         return pymunk_body.body.local_to_world(direction) - pymunk_body.body.position
 
     def apply_force_at_local_point(self, entity, force, point):
         """ Apply a force to the body."""
-        assert False # Use component.  May need to store moment.
-        body = entity.get_component[Body]
-        pymunk_body = self.__pymunk_bodies[body]
-        pymunk_body.apply_force_at_local_point(force, point)
+        pymunk_body = self.__pymunk_bodies[entity]
+        pymunk_body.body.apply_force_at_local_point(force, point)
 
 
 class PymunkBody(object):

@@ -171,8 +171,8 @@ class Thruster(Component):
     """ The logical definition of a thruster on a Body. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-        self.position = config.get_or_default("position", Vec2d(0, 0))
-        self.direction = config.get_or_default("orientation", Vec2d(0, 1))
+        self.position = Vec2d(config.get_or_default("position", (0, 0)))
+        self.direction = Vec2d(config.get_or_default("orientation", (0, 1)))
         self.max_thrust = config.get_or_default("max_thrust", 0)
         self.thrust = 0
         self.attached_to = EntityRef(None, Thrusters)
@@ -209,7 +209,6 @@ class Camera(Component):
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
         renderer = game_services.get_renderer()
-        self.position = Vec2d(0, 0)
         self.max_shake = 20
         self.damping_factor = 10
         self.shake = 0

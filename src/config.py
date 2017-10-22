@@ -25,6 +25,7 @@ from .utils import ordered_load, bail
 import collections
 import os
 import yaml
+import numbers
 
 class Config(object):
     """ A JSON-like hierarchical data store. """
@@ -159,37 +160,8 @@ class Config(object):
         # Use a temporary config.
         ret = Config()
 
-        # Determine what sort of data we have
-        is_dict = False
-        try:
-            for key in data:
-                value = data[key]
-                pass
-            is_dict = True
-        except:
-            pass
-
-        # If it's not a map or a string it might be a list of some sort. Note
-        # though that for primitive lists it's more convenient not to wrap (for
-        # now.)
-        is_list = False
-        if not is_dict and not isinstance(data, basestring):
-            try:
-                primitive = False
-                count = len(data)
-                for i in range(0, len(data)):
-                    value = data[i]
-                    try:
-                        nval = int(value)
-                        primitive = True
-                    except:
-                        pass
-                is_list = not primitive
-            except:
-                pass
-
         # Build config based on input type.
-        if is_dict:
+        if isinstance(data, collections.Mapping):
 
             # Build the tree.
             for key in data:
@@ -212,9 +184,13 @@ class Config(object):
 
                 # Remove the 'derive_from' entry as it has been dealt with.
                 del ret.__data["derive_from"]
-        elif is_list:
-            # Ensure list values are wrapped.
-            ret.__value = [self.__build_config_dict(value) for value in data]
+        elif isinstance(data, list):
+            # For primitive lists, it's easier not to wrap the contents. Otherwise,
+            # the contents should be wrapped.
+            if len(data) > 0 and isinstance(data[0], numbers.Number):
+                ret.__value = data
+            else:
+                ret.__value = [self.__build_config_dict(value) for value in data]
         else:
             ret.__value = data
 

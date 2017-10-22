@@ -216,19 +216,21 @@ class Game(object):
         self.resource_loader.preload()
 
         # Make the camera.
-        self.camera = self.entity_manager.create_entity_with(behaviours.Camera)
+        self.camera = self.entity_manager.create_entity_with(behaviours.Camera,
+                                                             behaviours.Body,
+                                                             behaviours.Tracking,
+                                                             behaviours.FollowsTracked)
+        self.camera.get_component(behaviours.FollowsTracked).follow_type = "instant"
 
         # Draw debug info if requested.
         self.game_services.debug_level = self.config.get_or_default("debug", 0)
 
         # Make the player
         self.player = self.entity_manager.create_entity("player.txt")
+        self.camera.get_component(behaviours.Tracking).tracked.entity = self.player
 
         # Make the input handling system.
         self.input_handling = input_handling.InputHandling(self.game_services, self.player)
-
-        # Make the camera follow the player.
-        self.camera.get_component(behaviours.Camera).tracking.entity = self.player
 
         # Create the wave spawner.
         if not self.config.get_or_default("peaceful_mode", False):

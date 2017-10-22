@@ -16,18 +16,18 @@ class CameraView(View):
     def __init__(self, renderer, camera_entity):
         """ Set up the view. """
         View.__init__(self, renderer)
-        self.__camera = EntityRef(camera_entity, Camera)
+        self.__camera = EntityRef(camera_entity, Camera, Body)
 
     @property
     def position(self):
         """ Get the position of the camera, adjusted for shake. """
-        return self.__camera_component.position + Vec2d(self.__camera_component.horizontal_shake,
-                                                        self.__camera_component.vertical_shake)
+        return self.__body_component.position + Vec2d(self.__camera_component.horizontal_shake,
+                                                      self.__camera_component.vertical_shake)
 
     @position.setter
     def position(self, value):
         """ Set the (actual) position of the camera. """
-        self.__camera_component.position = Vec2d(value)
+        self.__body_component.position = Vec2d(value)
 
     @property
     def zoom(self):
@@ -43,6 +43,10 @@ class CameraView(View):
     @property
     def __camera_component(self):
         return self.__camera.entity.get_component(Camera)
+
+    @property
+    def __body_component(self):
+        return self.__camera.entity.get_component(Body)
 
 class Drawing(object):
     """ An object that can draw the state of the game using a renderer. """
@@ -167,7 +171,7 @@ class Drawing(object):
         for entity in entities:
             thrusters = entity.get_component(Thrusters)
             for thruster_ref in thrusters.thrusters:
-                thruster = thuster_ref.entity.get_component(Thruster)
+                thruster = thruster_ref.entity.get_component(Thruster)
                 if thruster.thrust > 0:
                     pos = physics.local_to_world(entity, thruster.position)
                     dir = physics.local_dir_to_world(entity, thruster.direction)
