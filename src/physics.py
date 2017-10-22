@@ -223,16 +223,7 @@ class Physics(ComponentSystem):
         self.__space.step(dt)
 
         # Copy simulation state back to components.
-        for body_component in self.__pymunk_bodies:
-            pymunk_body = self.__pymunk_bodies[body_component]
-            body_component.position = pymunk_body.body.position
-            body_component.velocity = pymunk_body.body.velocity
-            body_component.size = pymunk_body.shape.radius
-            body_component.mass = pymunk_body.body.mass
-            body_component.force = pymunk_body.body.force
-            body_component.collideable = pymunk_body.shape.collision_type == 1
-            body_component.orientation = math.degrees(pymunk_body.body.angle)
-            body_component.angular_velocity = math.degrees(pymunk_body.body.angular_velocity)
+        self.__pymunk_bodies.copy_to_components()
 
     def closest_body_with(self, point, f):
         """ Find the closest body of a given predicate. """
