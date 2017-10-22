@@ -28,18 +28,18 @@ class Physics(ComponentSystem):
         def collide_begin(arbiter, space, data):
             go1 = arbiter.shapes[0].game_body.entity
             go2 = arbiter.shapes[1].game_body.entity
-            for handler in self.collision_handlers:
+            for handler in self.__collision_handlers:
                 result = handler.handle_collision(go1, go2)
                 if result.handled:
                     return result.wants_physical_simulation
             return True
 
         # Setup our simple pymunk collision handler.
-        self.__pymunk_handler = self.space.add_collision_handler(1, 1)
+        self.__pymunk_handler = self.__space.add_collision_handler(1, 1)
         self.__pymunk_handler.begin = lambda a, s, d: collide_begin(a, s, d)
 
         # Setup a default handler for non-collideable objects.
-        self.__default_handler = self.space.add_default_collision_handler()
+        self.__default_handler = self.__space.add_default_collision_handler()
         self.__default_handler.begin = lambda a, s, d: False
 
         # Map from body components to pymunk body objects
@@ -50,7 +50,7 @@ class Physics(ComponentSystem):
 
     def add_collision_handler(self, handler):
         """ Add a logical collision handler for the game. """
-        self.collision_handlers.append(handler)
+        self.__collision_handlers.append(handler)
 
     def update(self, dt):
         """ Advance the simulation. """
@@ -117,7 +117,7 @@ class Physics(ComponentSystem):
             del self.__pymunk_joints[e]
 
         # Advance the simulation.
-        self.space.step(dt)
+        self.__space.step(dt)
 
         # Copy simulation state back to components.
         for body_component in self.__pymunk_bodies:
@@ -145,7 +145,7 @@ class Physics(ComponentSystem):
 
     def get_entity_at(self, point):
         """ Get the entity at a point. """
-        pqs = self.space.point_query(point, 5, pymunk.ShapeFilter())
+        pqs = self.__space.point_query(point, 5, pymunk.ShapeFilter())
         for pq in pqs:
             if pq.shape is not None:
                 body = pq.shape.game_body
@@ -204,6 +204,9 @@ class PymunkBody(object):
     def __init__(self, body_component):
         """ Constructor. """
 
+        # Store the entity.
+        self.entity = body_component.entity
+
         # Moment of inertia.
         moment = pymunk.moment_for_circle(
             float(body_component.mass),
@@ -213,7 +216,7 @@ class PymunkBody(object):
 
         # Initialise body and shape.
         self.body = pymunk.Body(float(body_component.mass), moment)
-        self.shape = pymunk.Circle(self.__body, float(body_component.size))
+        self.shape = pymunk.Circle(self.body, float(body_component.size))
         self.shape.friction = 0.8
 
         # Collision type for non-collidable bodies.

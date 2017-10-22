@@ -169,6 +169,25 @@ class Config(object):
         except:
             pass
 
+        # If it's not a map or a string it might be a list of some sort. Note
+        # though that for primitive lists it's more convenient not to wrap (for
+        # now.)
+        is_list = False
+        if not is_dict and not isinstance(data, basestring):
+            try:
+                primitive = False
+                count = len(data)
+                for i in range(0, len(data)):
+                    value = data[i]
+                    try:
+                        nval = int(value)
+                        primitive = True
+                    except:
+                        pass
+                is_list = not primitive
+            except:
+                pass
+
         # Build config based on input type.
         if is_dict:
 
@@ -193,6 +212,9 @@ class Config(object):
 
                 # Remove the 'derive_from' entry as it has been dealt with.
                 del ret.__data["derive_from"]
+        elif is_list:
+            # Ensure list values are wrapped.
+            ret.__value = [self.__build_config_dict(value) for value in data]
         else:
             ret.__value = data
 

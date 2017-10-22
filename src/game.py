@@ -162,8 +162,9 @@ class Game(object):
             self.entity_manager.update(tick_time)
 
             # Draw
-            self.renderer.pre_render(self.camera.get_component(behaviours.Camera))
-            self.drawing.draw(self.camera.get_component(behaviours.Camera))
+            view = drawing.CameraView(self.renderer, self.camera)
+            self.renderer.pre_render(view)
+            self.drawing.draw(view)
             self.renderer.post_render()
             self.renderer.flip_buffers()
 
@@ -193,28 +194,6 @@ class Game(object):
         pygame.mixer.init()
         self.renderer.initialise()
 
-        # Preload certain images.
-        self.resource_loader.preload()
-
-        # Make the camera.
-        self.camera = self.entity_manager.create_entity_with(behaviours.Camera)
-
-        # Draw debug info if requested.
-        self.game_services.debug_level = self.config.get_or_default("debug", 0)
-
-        # Make the player
-        self.player = self.entity_manager.create_entity("player.txt")
-
-        # Make the input handling system.
-        self.input_handling = input_handling.InputHandling(self.game_services, self.player)
-
-        # Make the camera follow the player.
-        self.camera.get_component(behaviours.Camera).track(self.player)
-
-        # Create the wave spawner.
-        if not self.config.get_or_default("peaceful_mode", False):
-            self.entity_manager.register_component_system(systems.WaveSpawner())
-
         # Create the game systems.
         self.entity_manager.register_component_system(systems.FollowsTrackedSystem())
         self.entity_manager.register_component_system(systems.ShootsAtTrackedSystem())
@@ -232,6 +211,28 @@ class Game(object):
         self.entity_manager.register_component_system(systems.CameraSystem())
         self.entity_manager.register_component_system(systems.TurretSystem())
         self.entity_manager.register_component_system(systems.TurretsSystem())
+
+        # Preload certain images.
+        self.resource_loader.preload()
+
+        # Make the camera.
+        self.camera = self.entity_manager.create_entity_with(behaviours.Camera)
+
+        # Draw debug info if requested.
+        self.game_services.debug_level = self.config.get_or_default("debug", 0)
+
+        # Make the player
+        self.player = self.entity_manager.create_entity("player.txt")
+
+        # Make the input handling system.
+        self.input_handling = input_handling.InputHandling(self.game_services, self.player)
+
+        # Make the camera follow the player.
+        self.camera.get_component(behaviours.Camera).tracking.entity = self.player
+
+        # Create the wave spawner.
+        if not self.config.get_or_default("peaceful_mode", False):
+            self.entity_manager.register_component_system(systems.WaveSpawnerSystem())
 
         # Make it so that bullets can damage things.
         self.physics.add_collision_handler(DamageCollisionHandler())

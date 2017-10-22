@@ -325,10 +325,15 @@ class ComponentSystem(object):
         """ Initialise. """
         self.__types = types
         self.__priority = priority
+        self.__game_services = None
 
     def setup(self, game_services):
         """ Do any initial setup. """
         self.__game_services = game_services
+
+    @property
+    def game_services(self):
+        return self.__game_services
 
     def entities(self):
         """ Get the entities managed by this system. """

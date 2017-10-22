@@ -1,10 +1,1 @@
 derive_from: enemies/base_flying_enemy.txt
-
-components:
-
-  src.behaviours.Weapons:
-    burst_period: 3
-    fire_period: 1
-    weapons:
-      - weapons/green_blaster.txt
-    auto_fire: 1

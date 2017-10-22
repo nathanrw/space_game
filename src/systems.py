@@ -1,5 +1,10 @@
 from ecs import ComponentSystem
 from behaviours import *
+from physics import Physics
+
+import random
+import numpy
+import scipy.optimize
 
 def towards(e1, e2):
     """ Get a direction from one entity to another. """
@@ -10,7 +15,7 @@ def towards(e1, e2):
     return b2.position - b1.position
 
 
-def on_same_team(self, e1, e2):
+def on_same_team(e1, e2):
     """ Are two entities friendly towards one another? """
     t1 = e1.get_component(Team)
     t2 = e2.get_component(Team)
@@ -20,14 +25,14 @@ def on_same_team(self, e1, e2):
         return True
 
     # If both have team component but either not on a team, then on same team.
-    if t1.__team == None or t2.__team == None:
+    if t1.team == None or t2.team == None:
         return True
 
     # Otherwise on same team if teams match.
-    return t1.__team == t2.__team
+    return t1.team == t2.team
 
 
-def consume_power(self, e, amount):
+def consume_power(e, amount):
     """ Consume an entity's power. """
     p = e.get_component(Power)
     if p is None:
@@ -99,7 +104,7 @@ class FollowsTrackedSystem(ComponentSystem):
         for entity in self.entities():
 
             # If it's not tracking anything then don't do anything.
-            tracked_entity = entity.get_component(Tracking).get_tracked()
+            tracked_entity = entity.get_component(Tracking).tracked.entity
             if tracked_entity is None:
                 continue
 
@@ -117,7 +122,7 @@ class FollowsTrackedSystem(ComponentSystem):
 
             displacement = that_body.position - this_body.position
             rvel = that_body.velocity - this_body.velocity
-            target_dist = self.config["desired_distance_to_player"]
+            target_dist = follows.config["desired_distance_to_player"]
 
             # distality is a mapping of distance onto the interval [0,1) to
             # interpolate between two behaviours
@@ -129,7 +134,7 @@ class FollowsTrackedSystem(ComponentSystem):
             frac = min(max(displacement.length / target_dist, rvel.length/200), 1)
 
             # Apply force in the interpolated direction.
-            thrust = this_body.mass * self.config["acceleration"]
+            thrust = this_body.mass * follows.config["acceleration"]
             force = frac * thrust * direction
             this_body.force = force
 
@@ -139,7 +144,7 @@ class ShootsAtTrackedSystem(ComponentSystem):
 
     def __init__(self):
         """ Constructor. """
-        ComponentSystem.__init(self, [ShootsAtTracked, Body, Weapon, Tracking])
+        ComponentSystem.__init__(self, [ShootsAtTracked, Body, Weapon, Tracking])
 
     def update(self, dt):
         """ Update the shooters. """
@@ -282,11 +287,8 @@ class TrackingSystem(ComponentSystem):
             if tracking.tracked.entity is None and tracking.track_type == "team":
                 self_team = entity.get_component(Team) # optional
                 def f(body):
-                    team = body.entity.get_component(Team)
-                    if self_team is None or team is None:
-                        return False
-                    return not team.on_same_team(self_team)
-                closest = self.entity.ecs().get_system(Physics).closest_body_with(
+                    return on_same_team(entity, body.entity)
+                closest = entity.ecs().get_system(Physics).closest_body_with(
                     self_body.position,
                     f
                 )
@@ -299,7 +301,7 @@ class LaunchesFightersSystem(ComponentSystem):
 
     def __init__(self):
         """ Constructor. """
-        ComponentSystem.__init__(self, [LaunchesFighers, Body, Tracking, Team])
+        ComponentSystem.__init__(self, [LaunchesFighters, Body, Tracking, Team])
 
     def update(self, dt):
         """ Updates the carriers. """
@@ -319,7 +321,7 @@ class LaunchesFightersSystem(ComponentSystem):
                     child = entity.ecs().create_entity(launcher.config["fighter_config"])
                     child_team = child.get_component(Team)
                     if child_team is not None:
-                        child_team.team = team.get_team(),
+                        child_team.team = team.team
                     child_body = child.get_component(Body)
                     if child_body is not None:
                         child_body.position=body.position
@@ -400,8 +402,8 @@ class TextSystem(ComponentSystem):
                     text.blink_timer.reset()
                     text.visible = not text.visible
             if text.warning is not None:
-                text.offs += text.scroll_speed * dt
-                text.offs = text.offs % (text.warning.get_width()+text.padding)
+                text.offset += text.scroll_speed * dt
+                text.offset = text.offset % (text.warning.get_width()+text.padding)
 
 
 class AnimSystem(ComponentSystem):
@@ -437,8 +439,12 @@ class ThrusterSystem(ComponentSystem):
             if attached is None:
                 entity.kill()
             else:
-                body = attached.get_component(Body)
-                body.apply_force_at_local_point(thruster.amount * thruster.direction, thruster.position)
+                physics = self.game_services.get_entity_manager().get_system(Physics)
+                physics.apply_force_at_local_point(
+                    attached,
+                    thruster.thrust * thruster.direction,
+                    thruster.position
+                )
 
 
 class ThrustersSystem(ComponentSystem):
@@ -451,12 +457,14 @@ class ThrustersSystem(ComponentSystem):
     def on_component_add(self, component):
         """ When thrusters are added to an entity we need to create the actual
         thrusters themselves, which are specified in the config. """
-        thruster_cfgs = component.config.get_or_default("thrusters", [])
-        for cfg in thruster_cfgs:
-            thruster_ent = component.entity.ecs().create_entity()
-            thruster = Thruster(thruster_ent, self.game_services, cfg)
-            thruster.attached_to.entity = component.entity
-            thruster_ent.add_component(thruster)
+        if component.__class__ == Thrusters:
+            thruster_cfgs = component.config.get_or_default("thrusters", [])
+            for cfg in thruster_cfgs:
+                thruster_ent = component.entity.ecs().create_entity()
+                thruster = Thruster(thruster_ent, self.game_services, cfg)
+                thruster.attached_to.entity = component.entity
+                thruster_ent.add_component(thruster)
+                component.thrusters.append(EntityRef(thruster_ent, Thruster))
 
     def update(self, dt):
         """ Update the entities. """
@@ -467,7 +475,7 @@ class ThrustersSystem(ComponentSystem):
             # Counteract excessive spin when an input turn direction has not
             # been given.
             turn = thrusters.turn
-            if turn == 0 and self.__direction.x == 0:
+            if turn == 0 and thrusters.direction.x == 0:
                 excessive_spin = 10
                 if body.angular_velocity > excessive_spin:
                     turn = -1
@@ -573,6 +581,7 @@ class ThrustersSystem(ComponentSystem):
 
         # By default the engines should be off.
         for ref in thrusters.thrusters:
+            print "ffff"
             thruster = ref.entity.get_component(Thruster)
             thruster.thrust = 0
 
@@ -657,7 +666,7 @@ class WaveSpawnerSystem(ComponentSystem):
 
     def prepare_for_wave(self):
         """ Prepare for a wave. """
-        self.message = self.game_services.entity_manager().create_entity(
+        self.message = self.game_services.get_entity_manager().create_entity(
             "update_message.txt",
             text="WAVE %s PREPARING" % self.wave
         )
@@ -756,7 +765,7 @@ class TurretsSystem(ComponentSystem):
         team = component.entity.get_component(Team)
 
         # Load the turrets.
-        turret_cfgs = config.get_or_default("turrets", [])
+        turret_cfgs = component.config.get_or_default("turrets", [])
         for cfg in turret_cfgs:
 
             # Load the weapon fitted to the turret.

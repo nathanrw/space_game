@@ -143,16 +143,13 @@ class Text(Component):
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
         self.text = config.get_or_default("text", "Hello, world!")
-        self.blink_timer = Timer(self.blink_period())
         self.visible = True
-        self.offs = 0
+        self.offset = 0
         self.scroll_speed = 300
         self.padding = 20
         self.image = None
         self.warning = None
         self.colour = (255, 255, 255)
-        self.warning = None
-        self.image = None
         self.font_name = self.config["font_name"]
         self.small_font_size = config.get_or_default("small_font_size", 14)
         self.large_font_size = config.get_or_default("font_size", 32)
@@ -160,6 +157,7 @@ class Text(Component):
         self.font_colour = (colour["red"], colour["green"], colour["blue"])
         self.blink = self.config.get_or_default("blink", 0)
         self.blink_period = self.config.get_or_default("blink_period", 1)
+        self.blink_timer = Timer(self.blink_period)
 
 
 class AnimationComponent(Component):

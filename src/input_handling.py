@@ -2,7 +2,7 @@ from pymunk.vec2d import Vec2d
 
 import pygame
 
-from .behaviours import Weapons, Thrusters
+from .behaviours import Thrusters
 
 class InputResponse(object):
     def __init__(self):
@@ -26,10 +26,6 @@ class InputHandling(object):
             self.js = pygame.joystick.Joystick(0)
             self.js.init()
 
-        # Get components out of the player that we want to drive.
-        self.weapons = player.get_component(Weapons)
-        self.thrusters = player.get_component(Thrusters)
-
     def handle_input(self, e):
         """ Handle a pygame input event, and return our reponse i.e. whether we
         handled it, and whether 'quit' has been requested. """
@@ -44,34 +40,34 @@ class InputHandling(object):
         def request_quit():
             response.quit_requested = True
 
+        # Directions.
+        forwards = Vec2d(0, -1)
+        backwards = Vec2d(0, 1)
+        left = Vec2d(-1, 0)
+        right = Vec2d(1, 0)
+        turn_left = -1
+        turn_right = 1
+
         # Keyboard controls.
         kmap = {
 
             # Movement controls
-            pygame.K_w: (lambda: self.thrusters.go_forwards(),
-                         lambda: self.thrusters.go_backwards()),
-            pygame.K_a: (lambda: self.thrusters.go_left(),
-                         lambda: self.thrusters.go_right()),
-            pygame.K_s: (lambda: self.thrusters.go_backwards(),
-                         lambda: self.thrusters.go_forwards()),
-            pygame.K_d: (lambda: self.thrusters.go_right(),
-                         lambda: self.thrusters.go_left()),
-            pygame.K_q: (lambda: self.thrusters.turn_right(),
-                         lambda: self.thrusters.turn_left()),
-            pygame.K_e: (lambda: self.thrusters.turn_left(),
-                         lambda: self.thrusters.turn_right()),
+            pygame.K_w: (lambda: self.move(forwards),
+                         lambda: self.move(backwards)),
+            pygame.K_a: (lambda: self.move(left),
+                         lambda: self.move(right)),
+            pygame.K_s: (lambda: self.move(backwards),
+                         lambda: self.move(forwards)),
+            pygame.K_d: (lambda: self.move(right),
+                         lambda: self.move(left)),
+            pygame.K_q: (lambda: self.turn(turn_right),
+                         lambda: self.turn(turn_left)),
+            pygame.K_e: (lambda: self.turn(turn_left),
+                         lambda: self.turn(turn_right)),
 
             # Zoom
             pygame.K_t: (nothing, lambda: self.zoom_in()),
             pygame.K_g: (nothing, lambda: self.zoom_out()),
-
-            # Weapon switching
-            pygame.K_r: (nothing, lambda: self.weapons.next_weapon()),
-            pygame.K_f: (nothing, lambda: self.weapons.prev_weapon()),
-
-            # Shooting
-            pygame.K_SPACE: (lambda: self.start_shooting(),
-                             lambda: self.stop_shooting()),
 
             # Quit.
             pygame.K_ESCAPE: (nothing, request_quit)
@@ -80,15 +76,11 @@ class InputHandling(object):
         # Joystick (button) controls.
         jsmap = {
 
-            # Shooting
-            0: (lambda: self.start_shooting(),
-                lambda: self.stop_shooting()),
-
             # Turning
-            4: (lambda: self.thrusters.turn_left(),
-                lambda: self.thrusters.turn_right()),
-            5: (lambda: self.thrusters.turn_right(),
-                lambda: self.thrusters.turn_left())
+            4: (lambda: self.turn(turn_left),
+                lambda: self.turn(turn_right)),
+            5: (lambda: self.turn(turn_right),
+                lambda: self.turn(turn_left))
         }
 
         if e.type == pygame.QUIT:
@@ -101,16 +93,6 @@ class InputHandling(object):
             if e.key in kmap:
                 kmap[e.key][e.type == pygame.KEYUP]()
                 response.event_handled = True
-
-        elif e.type == pygame.MOUSEBUTTONDOWN:
-            # Mouse down.
-            self.start_shooting()
-            response.event_handled = True
-
-        elif e.type == pygame.MOUSEBUTTONUP:
-            # Mouse up.
-            self.stop_shooting()
-            response.event_handled = True
 
         elif e.type == pygame.JOYAXISMOTION:
             # We don't use this yet, but print out info.
@@ -138,20 +120,6 @@ class InputHandling(object):
         # Return the response.
         return response
 
-    def start_shooting(self):
-        """ Start shooting ahead. """
-        weapon = self.weapons.get_weapon()
-        if weapon is None:
-            return
-        weapon.start_shooting_coaxial()
-
-    def stop_shooting(self):
-        """ Stop the guns. """
-        weapon = self.weapons.get_weapon()
-        if weapon is None:
-            return
-        weapon.stop_shooting()
-
     def zoom_in(self):
         """ Zoom the camera in."""
         self.game_services.get_camera().zoom += 0.1
@@ -159,3 +127,15 @@ class InputHandling(object):
     def zoom_out(self):
         """ Zoom the camera out. """
         self.game_services.get_camera().zoom -= 0.1
+
+    def move(self, direction):
+        """ Move the player in a direction. """
+        thrusters = self.player.get_component(Thrusters)
+        if thrusters is not None:
+            thrusters.direction += direction
+
+    def turn(self, direction):
+        """ Turn the player in a direction. """
+        thrusters = self.player.get_component(Thrusters)
+        if thrusters is not None:
+            thrusters.turn += direction
