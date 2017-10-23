@@ -14,10 +14,9 @@ until the end of the current frame - this avoids adding items to the entity
 manager in the middle of an update(),
 
 If a config is passed into create_entity(), then components can be instantiated
-dynamically. The '**kwargs' argument is forwarded to the setup() method on each
-component as it is added.  Components types are read from the 'components' map
-in the config, each component entry is passed into the created component as its
-config.  For instance:
+dynamically. Components types are read from the 'components' map in the config,
+each component entry is passed into the created component as its config. For
+instance:
 
     components:
       src.behaviours.Team:
@@ -29,10 +28,9 @@ config.  For instance:
 specifies an entity with two components, a Body and a Team.  The team defaults
 to the 'player' team, and the body has a default mass and size.  If we do
 
-    entity = ecs.create_entity("my_config.txt", team='enemy')
+    entity = ecs.create_entity("my_config.txt")
 
-then the Team component's setup() method knows to instead be on the 'enemy'
-team, which is extracted from the **kwargs.
+then the Team defaults to 'player'.
 
 Entity processing 'systems' can be registered with the entity manager. A system
 operates on a subset of the entities in the manager, determined by a query.
@@ -48,14 +46,18 @@ from .utils import lookup_type
 
 class GameInfo(object):
     """ Information about the running game. """
+
     def __init__(self):
+        """ Initialise the info object. """
         self.framerate = 0
         self.raw_framerate = 0
         self.max_framerate = 0
         self.min_framerate = 0
         self.time_ratio = 0
         self.framerates = []
+
     def update_framerate(self, framerate, raw_framerate, time_ratio):
+        """ Update the framerate tracking data. """
         self.framerate = framerate
         self.min_framerate = min(self.min_framerate, framerate)
         self.max_framerate = max(self.max_framerate, framerate)
@@ -67,32 +69,42 @@ class GameInfo(object):
 
 class GameServices(object):
     """ Functionality required of the game. """
+
     def __init__(self):
         pass
+
     def get_renderer(self):
         """ Get the renderer. """
         pass
+
     def get_player(self):
         """ Get the player's entity. """
         pass
+
     def get_camera(self):
         """ Get the camera. """
         pass
+
     def get_entity_manager(self):
         """ Get the entity manager. """
         pass
+
     def get_resource_loader(self):
         """ Get the object that can load images and so on. """
         pass
+
     def end_game(self):
         """ Tidy up and exit the program cleanly. """
         pass
+
     def get_info(self):
         """ Return information about the game. """
         return GameInfo()
+
     def get_debug_level():
         """ Get the debug level. """
         return 0
+
 
 class EntityManager(object):
     """ Manages a set of components systems which themselves manage components. """
@@ -127,16 +139,15 @@ class EntityManager(object):
             if o.is_garbage:
                 self.__entities.remove(o)
 
-    def create_entity_with(self, *types, **kwargs):
+    def create_entity_with(self, *types):
         """ Create a new entity with a given list of components. """
         entity = self.create_entity()
         for t in types:
             component = t(entity, self.__game_services, Config())
-            component.setup(**kwargs)
             entity.add_component(component)
         return entity
 
-    def create_entity(self, config_name=None, **kwargs):
+    def create_entity(self, config_name=None):
         """ Add a new object. It is initialised, but not added to the game
         right away: that gets done at a certain point in the game loop."""
 
@@ -162,7 +173,6 @@ class EntityManager(object):
             component_config = components[component]
             component_type = lookup_type(component)
             component = component_type(obj, self.__game_services, component_config)
-            component.setup(**kwargs)
             obj.add_component(component)
 
         # Add the object to the creation queue, and return it to the caller.
@@ -219,8 +229,8 @@ class EntityManager(object):
         """ Update all of the systems in priority order. """
         for system in self.__systems:
             system.update(dt)
-        self.__component_store.update(dt)
         self.__garbage_collect()
+
 
 class ComponentStore(object):
     """ Data storage for components. """
@@ -273,23 +283,6 @@ class ComponentStore(object):
             self.__component_stores.keys()
         ) if c is not None]
 
-    def update(self, dt):
-        """ Update each component for a time step. """
-
-        # Get a snapshot of the components that exist. This avoids updating
-        # newly created components.
-        cs = []
-        for component_type in self.__component_stores:
-            store = self.__component_stores[component_type]
-            for entity in store:
-                cs.append(store[entity])
-
-        # Now do the update - but entities might get killed and we dont want
-        # to update them.
-        for c in cs:
-            if not c.entity.is_garbage:
-                c.update(dt)
-
     def garbage_collect(self, systems):
         """ Delete each component of each entity that is marked for deletion. """
 
@@ -301,7 +294,6 @@ class ComponentStore(object):
                     for system in systems:
                         if system.matches(component_type):
                             system.on_component_remove(store[entity])
-                    store[entity].on_object_killed()
 
         # Now perform the deletion.
         for component_type in self.__component_stores:
@@ -369,11 +361,6 @@ class Component(object):
 
     An entity can have a single component of a given concrete type.
 
-    Components have state, and can also update() themselves. (This is an impure
-    shortcut to avoid defining a system per component, and makes the code more
-    object oriented - it could be a mistake though.  A 'pure' ecs would have
-    this update() and on_object_killed() stuff in a system.)
-
     The initial state of a component is read in from a config object.
     """
 
@@ -382,10 +369,6 @@ class Component(object):
         self.__entity = entity
         self.__game_services = game_services
         self.__config = config
-
-    def setup(self, **kwargs):
-        """ Do any extra initialisation based on optional arguments. """
-        pass
 
     @property
     def entity(self):
@@ -400,14 +383,6 @@ class Component(object):
     def is_garbage(self):
         """ Is our entity dead? """
         return self.entity.is_garbage
-
-    def update(self, dt):
-        """ Update the component. """
-        pass
-
-    def on_object_killed(self):
-        """ Do something when the object is killed. """
-        pass
 
 
 class EntityRef(object):
@@ -458,7 +433,12 @@ class EntityRefList(object):
     def __getitem__(self, index):
         """ Get the reference. """
         self.__garbage_collect()
-        return self.__list[index]
+        return self.__list[index].entity
+
+    def __iter__(self):
+        """ Get the iterator. """
+        self.__garbage_collect()
+        return iter(self.__list)
 
     def __garbage_collect(self):
         """ Remove all dead references. """

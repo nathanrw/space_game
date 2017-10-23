@@ -624,7 +624,8 @@ class WaveSpawnerSystem(ComponentSystem):
             txt = "GAME OVER"
             if self.max_waves():
                 txt = "VICTORY"
-            message = self.game_services.get_entity_manager().create_entity("endgame_message.txt", text=txt)
+            message = self.game_services.get_entity_manager().create_entity("endgame_message.txt")
+            message.get_component(Text).text = txt
 
         # If the wave is dead and we're not yet preparing (which displays a timed message) then
         # start preparing a wave.
@@ -652,13 +653,10 @@ class WaveSpawnerSystem(ComponentSystem):
             x = 1 - rnd*2
             y = 1 - (1-rnd)*2
             enemy_position = player_body.position + Vec2d(x, y)*500
-            self.spawned.append(
-                self.game_services.get_entity_manager().create_entity(
-                    enemy_type,
-                    position=enemy_position,
-                    team="enemy"
-                )
-            )
+            entity = self.game_services.get_entity_manager().create_entity(enemy_type)
+            entity.get_component(Body).position = enemy_position
+            entity.get_component(Team).team = "enemy"
+            self.spawned.append(entity)
 
     def wave_is_dead(self):
         """ Has the last wave been wiped out? """
@@ -667,10 +665,8 @@ class WaveSpawnerSystem(ComponentSystem):
 
     def prepare_for_wave(self):
         """ Prepare for a wave. """
-        self.message = self.game_services.get_entity_manager().create_entity(
-            "update_message.txt",
-            text="WAVE %s PREPARING" % self.wave
-        )
+        self.message = self.game_services.get_entity_manager().create_entity("update_message.txt")
+        self.message.get_component(Text).text = "WAVE %s PREPARING" % self.wave
 
     def prepared_to_spawn(self):
         """ Check whether the wave is ready. """

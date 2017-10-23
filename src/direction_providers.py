@@ -1,6 +1,10 @@
+""" An interface that provides a direction, implemented in various ways.
+Implementations conform to the ecs data model so they can be stored in
+components. """
+
 
 class DirectionProvider(object):
-    """ An object that defines a direction in which to shoot. """
+    """ An object that defines a direction. """
 
     def __init__(self):
         """ Constructor. """

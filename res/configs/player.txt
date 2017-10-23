@@ -49,7 +49,7 @@ components:
         max_thrust: 8000
       - position: [0, 20]
         orientation: [0, -1]
-        max_thrust: 20000
+        max_thrust: 50000
 
   # The ship has an animation.
   src.behaviours.AnimationComponent:
