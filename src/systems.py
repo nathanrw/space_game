@@ -1,3 +1,35 @@
+"""
+System implementations.  Each system governs a particular aspect of the
+simulation; for instance, a system exists to advance animations and another
+exists to kill certain entities after a timer expires.
+
+A System is registered with the entity manager at the start of the program. It
+has an update() method which is called once per frame; update() methods are
+invoked in order of system registration.
+
+There is a general 1-1 correspondence between systems and component types, but
+this isn't a hard and fast rule - a system might process entities with a
+combination of compoent types, and more than one system might process
+components of a given type. *Generally*, there will be a single 'main' system
+for a given component type, which will be responsible for updating its fields
+and doing the bulk of the processing relating to it, but other systems will
+query the fields - and may even update them.
+
+Entity relationships are defined in a rather ad hoc manner at present. A 1-1
+relationship is modelled as a reference to an entity stored in a particular
+component. For example, the 'Tracking' component, which is used to have one
+entity 'follow' another, contains an entity reference - the tracked entity.
+1-many relationships are similarly ad hoc. The pattern here is for the
+'containing' component to store a list of entity references, while the
+'contained' components store a back reference to the 'containing' entity. Any
+'ownership' semantics are implemented on an ad hoc basis in the corresponding
+system. For instance an entity with the 'Thruster' component will kill itself
+when the entity it is attached to is killed.
+
+Some rules are implemented as free functions, since they are needed in multiple
+places.
+"""
+
 from ecs import ComponentSystem
 from behaviours import *
 from physics import Physics

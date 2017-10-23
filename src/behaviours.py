@@ -1,16 +1,28 @@
 """
 Types of component that can be attached to entities.
 
-A component is just a blob of data.  It tags an entity with a particular
-aspect, and the state necessary to implement it.  The actual behaviour
-bestowed by a component is produced by a processing system, which operates
-on a query on the full set of entities selecting for a particular set of
-component types.
+A component is just a blob of data. It is like a table in a database. It tags
+an entity with a particular aspect, and the state necessary to implement it.
+The actual behaviour bestowed by a component is produced by a processing
+system, which operates on a query on the full set of entities selecting for a
+particular set of component types.
 
 There is generally a 1-1 mapping between components and processing systems,
 but this isn't a hard and fast rule - a single system can require multiple
 component types, for instance.
+
+Entity relationships are ad hoc. The general pattern is that a 1-1 relationship
+is an 'EntityRef' field in a component. A 1-many relationship is a list of
+'EntityRef's in the container and a corresponding back-reference 'EntityRef' in
+each of the 'contained' components. The semantics of these relationships are
+governed by the corresponding systems.
+
+A component has two things: a 'config' and a set of fields.  The config contains
+static data that will not change for the lifetime of the component.  It is
+generally used to initialise the fields of the component.  The fields define the
+current state of the component, and these are updated by processing systems.
 """
+
 
 from .ecs import Component, EntityRef
 from .utils import Timer, Vec2d
