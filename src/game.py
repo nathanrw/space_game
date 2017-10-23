@@ -8,7 +8,7 @@ import os
 import sys
 
 # Local imports.
-import behaviours
+import components
 import drawing
 import ecs
 import input_handling
@@ -37,7 +37,7 @@ class SpaceGameServices(ecs.GameServices):
 
     def get_camera(self):
         """ Get the camera. """
-        return self.game.camera.get_component(behaviours.Camera)
+        return self.game.camera.get_component(components.Camera)
 
     def get_entity_manager(self):
         """ Return the entity manager. """
@@ -216,18 +216,18 @@ class Game(object):
         self.resource_loader.preload()
 
         # Make the camera.
-        self.camera = self.entity_manager.create_entity_with(behaviours.Camera,
-                                                             behaviours.Body,
-                                                             behaviours.Tracking,
-                                                             behaviours.FollowsTracked)
-        self.camera.get_component(behaviours.FollowsTracked).follow_type = "instant"
+        self.camera = self.entity_manager.create_entity_with(components.Camera,
+                                                             components.Body,
+                                                             components.Tracking,
+                                                             components.FollowsTracked)
+        self.camera.get_component(components.FollowsTracked).follow_type = "instant"
 
         # Draw debug info if requested.
         self.game_services.debug_level = self.config.get_or_default("debug", 0)
 
         # Make the player
         self.player = self.entity_manager.create_entity("player.txt")
-        self.camera.get_component(behaviours.Tracking).tracked.entity = self.player
+        self.camera.get_component(components.Tracking).tracked.entity = self.player
 
         # Make the input handling system.
         self.input_handling = input_handling.InputHandling(self.game_services, self.player)
@@ -259,8 +259,8 @@ class DamageCollisionHandler(physics.CollisionHandler):
         # damaged.
         physics.CollisionHandler.__init__(
             self,
-            behaviours.DamageOnContact,
-            behaviours.Hitpoints
+            components.DamageOnContact,
+            components.Hitpoints
         )
 
     def handle_matching_collision(self, dmg, hp):
@@ -271,8 +271,8 @@ class DamageCollisionHandler(physics.CollisionHandler):
         # speed as the thing we hit. So match velocities before our entity is
         # killed.
         if dmg.config.get_or_default("destroy_on_hit", True):
-            b1 = dmg.entity.get_component(behaviours.Body)
-            b2 = hp.entity.get_component(behaviours.Body)
+            b1 = dmg.entity.get_component(components.Body)
+            b2 = hp.entity.get_component(components.Body)
             if b1 is not None and b2 is not None:
                 b1.velocity = b2.velocity
             dmg.entity.kill()

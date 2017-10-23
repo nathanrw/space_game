@@ -2,17 +2,17 @@ derive_from: enemies/base_flying_enemy.txt
 
 components:
 
-  src.behaviours.Hitpoints:
+  src.components.Hitpoints:
     hp: 100
 
-  src.behaviours.LaunchesFighters:
+  src.components.LaunchesFighters:
     fighter_config: enemies/fighter.txt
     num_fighters: 10
     spawn_period: 10
     takeoff_speed: 700
     takeoff_spread: 30
 
-  src.behaviours.AnimationComponent:
+  src.components.AnimationComponent:
     anim_name: carrier-closed
 
   src.physics.Body:
@@ -20,11 +20,11 @@ components:
     size: 100
 
   # The ship is powered.
-  src.behaviours.Power:
+  src.components.Power:
     capacity: 100
     recharge_rate: 10
 
   # The ship is shielded.
-  src.behaviours.Shields:
+  src.components.Shields:
     hp: 50
     recharge_rate: 10

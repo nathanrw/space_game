@@ -1,6 +1,6 @@
 from .ecs import ComponentSystem, Component
 from .utils import Vec2d
-from .behaviours import Body, Joint
+from .components import Body, Joint
 
 import pymunk
 import math
@@ -334,7 +334,7 @@ class CollisionResult(object):
 
 class CollisionHandler(object):
     """ A logical collision handler. While physical collision handling is
-    dealt with by the physics implementation, game behaviours must be added
+    dealt with by the physics implementation, game components must be added
     by adding instances of this matching entity types. """
 
     def __init__(self, t1, t2):

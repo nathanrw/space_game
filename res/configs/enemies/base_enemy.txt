@@ -4,16 +4,16 @@ components:
     mass: 100
     size: 20
 
-  src.behaviours.Team: {}
+  src.components.Team: {}
 
-  src.behaviours.ExplodesOnDeath:
+  src.components.ExplodesOnDeath:
     explosion_config: explosions/big_explosion.txt
     sound: boom1.wav
 
-  src.behaviours.Tracking: {}
+  src.components.Tracking: {}
 
-  src.behaviours.Hitpoints:
+  src.components.Hitpoints:
     hp: 1
 
-  src.behaviours.AnimationComponent:
+  src.components.AnimationComponent:
     anim_name: enemy_fighter

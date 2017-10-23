@@ -1,12 +1,12 @@
 components:
-  src.behaviours.DamageOnContact:
+  src.components.DamageOnContact:
     damage: 1
-  src.behaviours.ExplodesOnDeath:
+  src.components.ExplodesOnDeath:
     explosion_config: explosions/green_explosion.txt
     sound: 234082__211redman112__lasgun-impact.ogg
-  src.behaviours.KillOnTimer:
+  src.components.KillOnTimer:
     lifetime: 2
-  src.behaviours.AnimationComponent:
+  src.components.AnimationComponent:
     anim_name: pewpew_green
     brightness: 0.5
   src.physics.Body:

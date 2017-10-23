@@ -19,7 +19,7 @@ each component entry is passed into the created component as its config. For
 instance:
 
     components:
-      src.behaviours.Team:
+      src.components.Team:
         team: player
       src.physics.Body:
         mass: 100

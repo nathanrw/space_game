@@ -31,7 +31,7 @@ places.
 """
 
 from ecs import ComponentSystem
-from behaviours import *
+from components import *
 from physics import Physics
 
 import random
@@ -158,7 +158,7 @@ class FollowsTrackedSystem(ComponentSystem):
             target_dist = follows.config["desired_distance_to_player"]
 
             # distality is a mapping of distance onto the interval [0,1) to
-            # interpolate between two behaviours
+            # interpolate between two components
             distality = 1 - 2 ** ( - displacement.length / target_dist )
             direction = ( 1 - distality ) * rvel.normalized() + distality * displacement.normalized()
 

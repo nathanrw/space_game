@@ -1,7 +1,7 @@
 components:
-  src.behaviours.KillOnTimer:
+  src.components.KillOnTimer:
     lifetime: 4
-  src.behaviours.Text:
+  src.components.Text:
     text: Hello, World!
     blink: 1
     font_colour:

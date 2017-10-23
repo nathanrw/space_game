@@ -1,5 +1,5 @@
 components:
-  src.behaviours.Weapon:
+  src.components.Weapon:
     type: beam
     range: 5000
     radius: 6

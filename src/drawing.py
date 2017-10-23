@@ -4,7 +4,7 @@ from pygame import Rect
 import random
 
 from .physics import Physics
-from .behaviours import Body, Thrusters, Thruster, Hitpoints, Text, Shields, \
+from .components import Body, Thrusters, Thruster, Hitpoints, Text, Shields, \
                         AnimationComponent, Weapon, Power, Camera
 from .renderer import Renderer, View
 from .ecs import EntityRef

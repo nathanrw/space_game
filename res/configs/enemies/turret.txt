@@ -2,10 +2,10 @@ derive_from: enemies/base_enemy.txt
 
 components:
 
-  src.behaviours.Hitpoints:
+  src.components.Hitpoints:
     hp: 2
 
-  src.behaviours.AnimationComponent:
+  src.components.AnimationComponent:
     anim_name: enemy_turret
 
   src.physics.Body:

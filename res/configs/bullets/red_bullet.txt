@@ -3,9 +3,9 @@ derive_from: bullets/base_bullet.txt
 components:
 
   # A red laser.
-  src.behaviours.AnimationComponent:
+  src.components.AnimationComponent:
     anim_name: pewpew_red
 
   # A red explosion.
-  src.behaviours.ExplodesOnDeath:
+  src.components.ExplodesOnDeath:
     explosion_config: explosions/red_explosion.txt

@@ -1,5 +1,5 @@
 components:
-  src.behaviours.Weapon:
+  src.components.Weapon:
     bullet_config: bullets/torpedo_bullet.txt
     bullet_speed: 1000
     shots_per_second: 1

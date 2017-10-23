@@ -1,5 +1,5 @@
 components:
-  src.behaviours.AnimationComponent:
+  src.components.AnimationComponent:
     kill_on_finish: 1
     brightness: 10
   src.physics.Body:

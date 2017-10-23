@@ -1,8 +1,8 @@
 components:
-  src.behaviours.EndProgramOnDeath: {}
-  src.behaviours.KillOnTimer:
+  src.components.EndProgramOnDeath: {}
+  src.components.KillOnTimer:
     lifetime: 10
-  src.behaviours.Text:
+  src.components.Text:
     text: Hello, World!
     font_colour:
       blue: 255

@@ -2,7 +2,7 @@ from pymunk.vec2d import Vec2d
 
 import pygame
 
-from .behaviours import Thrusters
+from .components import Thrusters
 
 class InputResponse(object):
     def __init__(self):
