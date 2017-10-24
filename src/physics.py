@@ -280,19 +280,16 @@ class Physics(ComponentSystem):
 
     def world_to_local(self, entity, point):
         """ Convert a world point to local coordinates. """
-        assert entity in self.__pymunk_bodies
         pymunk_body = self.__pymunk_bodies[entity]
         return pymunk_body.body.world_to_local(point)
 
     def local_to_world(self, entity, point):
         """ Convert a local point to world coordinates. """
-        assert entity in self.__pymunk_bodies
         pymunk_body = self.__pymunk_bodies[entity]
         return pymunk_body.body.local_to_world(point)
 
     def local_dir_to_world(self, entity, direction):
         """ Convert a local direction to world coordinates. """
-        assert entity in self.__pymunk_bodies
         pymunk_body = self.__pymunk_bodies[entity]
         return pymunk_body.body.local_to_world(direction) - pymunk_body.body.position
 
