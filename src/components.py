@@ -49,7 +49,10 @@ class Body(Component):
         self.velocity = Vec2d(0, 0)
         self.angular_velocity = 0
         self.orientation = 0
-        self.force = Vec2d(0, 0)
+
+        # List of (force, position) vectors. These impulses will be applied on
+        # the next update to the physics simulation.
+        self.impulses = []
 
 
 class Tracking(Component):

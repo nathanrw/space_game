@@ -1,3 +1,14 @@
+"""
+Physics system & related code.
+
+The Physics system manages Body and Joint components. The system maintains a
+mapping between objects in a pymunk physics simulation and the logical
+components attached to entities (which are what get serialised.) The relevant
+data is copied back and forth between the simulation and the game state
+periodically to keep them in sync.
+"""
+
+
 from .ecs import ComponentSystem, Component
 from .utils import Vec2d
 from .components import Body, Joint
@@ -10,12 +21,6 @@ class Physics(ComponentSystem):
     """ Physics system. It's now implemented using pymunk, but that fact should
         not leak out of this file! Entitys that need to be simulated should
         be given Body components which will be managed by a Physics system.
-
-        The Physics system manages Body and Joint components.  The system
-        maintains a mapping between objects in a pymunk physics simulation
-        and the logical components attached to entities (which are what get
-        serialised.)  The relevant data is copied back and forth between the
-        simulation and the game state periodically to keep them in sync.
         """
 
     class PymunkBody(object):
@@ -101,7 +106,6 @@ class Physics(ComponentSystem):
                 pymunk_body.body.velocity = body_component.velocity
                 #pymunk_body.shape.radius = body_component.size
                 pymunk_body.body.mass = body_component.mass
-                pymunk_body.body.force = body_component.force
                 if body_component.is_collideable:
                     pymunk_body.shape.collision_type = 1
                 else:
@@ -110,6 +114,8 @@ class Physics(ComponentSystem):
                     body_component.orientation)
                 pymunk_body.body.angular_velocity = math.radians(
                     body_component.angular_velocity)
+                for (force, local_point) in body_component.impulses:
+                    pymunk_body.body.apply_force_at_local_point(force, local_point)
 
         def copy_to_components(self):
             """ Copy simulation state back to components """
@@ -120,12 +126,12 @@ class Physics(ComponentSystem):
                 body_component.velocity = pymunk_body.body.velocity
                 body_component.size = pymunk_body.shape.radius
                 body_component.mass = pymunk_body.body.mass
-                body_component.force = pymunk_body.body.force
                 body_component.is_collideable = pymunk_body.shape.collision_type == 1
                 body_component.orientation = math.degrees(
                     pymunk_body.body.angle)
                 body_component.angular_velocity = math.degrees(
                     pymunk_body.body.angular_velocity)
+                body_component.impulses = []
 
     class PymunkJointMapping(object):
         """ Manages the mapping between Joint components and physical joints
@@ -273,21 +279,28 @@ class Physics(ComponentSystem):
         return (None, end, None)
 
     def world_to_local(self, entity, point):
+        """ Convert a world point to local coordinates. """
+        assert entity in self.__pymunk_bodies
         pymunk_body = self.__pymunk_bodies[entity]
         return pymunk_body.body.world_to_local(point)
 
     def local_to_world(self, entity, point):
+        """ Convert a local point to world coordinates. """
+        assert entity in self.__pymunk_bodies
         pymunk_body = self.__pymunk_bodies[entity]
         return pymunk_body.body.local_to_world(point)
 
     def local_dir_to_world(self, entity, direction):
+        """ Convert a local direction to world coordinates. """
+        assert entity in self.__pymunk_bodies
         pymunk_body = self.__pymunk_bodies[entity]
         return pymunk_body.body.local_to_world(direction) - pymunk_body.body.position
 
     def apply_force_at_local_point(self, entity, force, point):
         """ Apply a force to the body."""
-        pymunk_body = self.__pymunk_bodies[entity]
-        pymunk_body.body.apply_force_at_local_point(force, point)
+        component = entity.get_component(Body)
+        if component is not None:
+            component.impulses.append((force, point))
 
 
 class PymunkBody(object):
