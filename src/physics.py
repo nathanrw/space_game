@@ -9,21 +9,21 @@ import math
 class Physics(ComponentSystem):
     """ Physics system. It's now implemented using pymunk, but that fact should
         not leak out of this file! Entitys that need to be simulated should
-        be given Body components which will be managed by a Physics system. 
-        
-        The Physics system manages Body and Joint components.  The system 
-        maintains a mapping between objects in a pymunk physics simulation 
-        and the logical components attached to entities (which are what get 
-        serialised.)  The relevant data is copied back and forth between the 
-        simulation and the game state periodically to keep them in sync. 
+        be given Body components which will be managed by a Physics system.
+
+        The Physics system manages Body and Joint components.  The system
+        maintains a mapping between objects in a pymunk physics simulation
+        and the logical components attached to entities (which are what get
+        serialised.)  The relevant data is copied back and forth between the
+        simulation and the game state periodically to keep them in sync.
         """
 
     class PymunkBody(object):
-        """ The pymunk simulation body / shape that represents a logical (ecs) 
-        body component.  These aren't exposed outside of the 'Physics' system; 
+        """ The pymunk simulation body / shape that represents a logical (ecs)
+        body component.  These aren't exposed outside of the 'Physics' system;
         we maintain a mapping and copy data back and forth as required. Edits to
-        the Body component will be forwarded to the pymunk body at the start of 
-        an update, while the updated simulation will be copied back to the 
+        the Body component will be forwarded to the pymunk body at the start of
+        an update, while the updated simulation will be copied back to the
         components at the end of each update(). """
 
         def __init__(self, body_component):
