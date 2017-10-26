@@ -88,7 +88,7 @@ class Drawing(object):
             # We want weapons that are attached to a parent entity with a Body,
             # for position.
             weapon = entity.get_component(Weapon)
-            parent = entity.parent
+            parent = weapon.owner.entity
             if parent is None:
                 continue
             body = parent.get_component(Body)

@@ -30,6 +30,7 @@ Some rules are implemented as free functions, since they are needed in multiple
 places.
 """
 
+from config import Config
 from ecs import ComponentSystem
 from components import *
 from physics import Physics
@@ -825,12 +826,12 @@ class TurretsSystem(ComponentSystem):
             # Match position and velocity.
             physics = self.game_services.get_entity_manager().get_system(Physics)
             turret_body = turret_entity.get_component(Body)
-            turret_body.position = physics.local_to_world(body, turret.position)
+            turret_body.position = physics.local_to_world(body.entity, turret.position)
             turret_body.velocity = body.velocity
 
             # Pin the bodies together.
             joint_entity = component.entity.ecs().create_entity()
-            joint = Joint()
+            joint = Joint(joint_entity, self.game_services, Config())
             joint.entity_a.entity = component.entity
             joint.entity_a_local_point = turret.position
             joint.entity_b.entity = turret_entity
