@@ -78,6 +78,7 @@ class ShootsAtTracked(Component):
         self.fire_timer.advance_to_fraction(0.8)
         self.burst_timer = Timer(config.get_or_default("burst_period", 1))
         self.can_shoot = False
+        self.weapon = EntityRef(None, Weapon)
 
 
 class Weapon(Component):

@@ -60,6 +60,7 @@ class Physics(ComponentSystem):
             # it's fairly legit - it's just as if we were to derive from
             # pymunk.Shape and extend it, just without all the code...
             self.shape.game_body = self
+
         def copy_from_component(self):
             """ Copy body data from components to simulation. """
             body_component = self.entity.get_component(Body)
@@ -278,12 +279,11 @@ class Physics(ComponentSystem):
     ):
         """ Do a hit scan computation. Return the bodies and hit locations of
         entities that intersect the line. Return: [(body, pos)]. """
-        body = from_entity.get_component(Body)
-        start = body.local_to_world(local_origin)
-        end = body.local_to_world(local_direction*distance)
+        start = self.local_to_world(from_entity, local_origin)
+        end = self.local_to_world(from_entity, local_direction*distance)
         results = self.__space.segment_query(start, end, radius, pymunk.ShapeFilter())
         for result in results:
-            if result.shape.game_body.collideable and filter_func(result.shape.game_body.entity):
+            if result.shape.game_body.entity.get_component(Body).is_collideable and filter_func(result.shape.game_body.entity):
                 return (result.shape.game_body, result.point, result.normal)
         return (None, end, None)
 

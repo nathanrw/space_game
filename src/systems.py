@@ -34,6 +34,7 @@ from config import Config
 from ecs import ComponentSystem
 from components import *
 from physics import Physics
+from direction_providers import *
 
 import random
 import numpy
@@ -94,8 +95,7 @@ def apply_damage_to_entity(damage, entity):
     # Ok, apply the damage.
     hitpoints = entity.get_component(Hitpoints)
     if hitpoints is not None:
-        hitpoints.receive_damage(damage)
-        hitpoints.hp -= amount
+        hitpoints.hp -= damage
 
         # If the entities HP is below zero then it must die!
         if hitpoints.hp <= 0:
@@ -178,7 +178,7 @@ class ShootsAtTrackedSystem(ComponentSystem):
 
     def __init__(self):
         """ Constructor. """
-        ComponentSystem.__init__(self, [ShootsAtTracked, Body, Weapon, Tracking])
+        ComponentSystem.__init__(self, [ShootsAtTracked, Body, Tracking])
 
     def update(self, dt):
         """ Update the shooters. """
@@ -188,7 +188,10 @@ class ShootsAtTrackedSystem(ComponentSystem):
             # Get components.
             shooter = entity.get_component(ShootsAtTracked)
             body = entity.get_component(Body)
-            gun = entity.get_component(Weapon)
+            gun_ent = shooter.weapon.entity
+            if gun_ent is None:
+                return
+            gun = gun_ent.get_component(Weapon)
             tracking = entity.get_component(Tracking)
 
             # Get the tracked body.
@@ -204,12 +207,12 @@ class ShootsAtTrackedSystem(ComponentSystem):
             body.orientation = 90 + direction.angle_degrees
 
             # Shoot at the object we're tracking.
-            if not gun.shooting:
+            if not gun.shooting_at is not None:
                 if not shooter.can_shoot and shooter.fire_timer.tick(dt):
                     shooter.fire_timer.reset()
                     shooter.can_shoot = True
                 if shooter.can_shoot:
-                    (hit_body, hit_point, hit_normal) = body.hit_scan()
+                    (hit_body, hit_point, hit_normal) = entity.ecs().get_system(Physics).hit_scan(entity)
                     if hit_body == tracked_body:
                         shooter.can_shoot = False
                         gun.shooting_at = DirectionProviderBody(entity, tracked)
@@ -813,6 +816,9 @@ class TurretsSystem(ComponentSystem):
             weapon = turret.weapon.entity.get_component(Weapon)
             assert weapon is not None
             weapon.owner.entity = turret_entity
+
+            # Note: merge this into Turret?
+            turret_entity.get_component(ShootsAtTracked).weapon = turret.weapon
 
             # Add the backreference and add to our list of turrets.
             turret.attached_to.entity = component.entity

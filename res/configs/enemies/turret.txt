@@ -12,5 +12,6 @@ components:
     mass: 1
     size: 20
 
-  src.components.Turret:
-    dummy: dummy
+  src.components.Turret: {}
+
+  src.components.ShootsAtTracked: {}
