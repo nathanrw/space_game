@@ -798,18 +798,20 @@ class TurretsSystem(ComponentSystem):
         for cfg in turret_cfgs:
 
             # Load the weapon fitted to the turret.
-            weapon_config = self.game_services.resource_loader().load_config(cfg["weapon_config"])
+            weapon_config = self.game_services.get_resource_loader().load_config_file(cfg["weapon_config"])
+            turret_config = self.game_services.get_resource_loader().load_config_file(cfg["turret_config"])
 
             # Create the turret entity.
-            turret_entity = component.entity.ecs().create_entity(cfg)
+            turret_entity = component.entity.ecs().create_entity(turret_config)
 
             # Get the turret component and attach the weapon entity.
             turret = turret_entity.get_component(Turret)
             assert turret is not None
             turret.weapon.entity = component.entity.ecs().create_entity(weapon_config)
+            turret.position = Vec2d(cfg.get_or_default("position", (0, 0)))
             weapon = turret.weapon.entity.get_component(Weapon)
             assert weapon is not None
-            weapon.owner = turret_entity
+            weapon.owner.entity = turret_entity
 
             # Add the backreference and add to our list of turrets.
             turret.attached_to.entity = component.entity
@@ -820,9 +822,17 @@ class TurretsSystem(ComponentSystem):
             if turret_team is not None and team is not None:
                 turret_team.team = team.team
 
-            # Pin the bodies together.
+            # Match position and velocity.
+            physics = self.game_services.get_entity_manager().get_system(Physics)
             turret_body = turret_entity.get_component(Body)
-            point = body.local_to_world(turret.position)
-            turret_body.position = point
+            turret_body.position = physics.local_to_world(body, turret.position)
             turret_body.velocity = body.velocity
-            turret_body.pin_to(body)
+
+            # Pin the bodies together.
+            joint_entity = component.entity.ecs().create_entity()
+            joint = Joint()
+            joint.entity_a.entity = component.entity
+            joint.entity_a_local_point = turret.position
+            joint.entity_b.entity = turret_entity
+            joint.entity_b_local_point = Vec2d(0, 0)
+            joint_entity.add_component(joint)

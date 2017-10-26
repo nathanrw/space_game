@@ -29,6 +29,13 @@ components:
     hp: 5
     recharge_rate: 2
 
+  # The ship has turrets.
+  src.components.Turrets:
+    turrets:
+      - weapon_config: weapons/red_blaster.txt
+        turret_config: enemies/turret.txt
+        position: [0, 0]
+
   # The ship can move.
   src.components.Thrusters:
     thrusters:

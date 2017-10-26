@@ -8,6 +8,9 @@ components:
   src.components.AnimationComponent:
     anim_name: enemy_turret
 
-  src.physics.Body:
+  src.components.Body:
     mass: 1
     size: 20
+
+  src.components.Turret:
+    dummy: dummy

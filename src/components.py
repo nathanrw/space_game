@@ -207,7 +207,7 @@ class Turret(Component):
     """ The entity is a turret affixed to another entity. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, game_services, config)
-        self.position = config.get_or_default("position", Vec2d(0, 0))
+        self.position = Vec2d(0, 0)
         self.attached_to = EntityRef(None, Turrets)
         self.weapon = EntityRef(None, Weapon)
 
