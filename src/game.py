@@ -278,7 +278,7 @@ class DamageCollisionHandler(physics.CollisionHandler):
             dmg.entity.kill()
 
         # Apply the damage.
-        systems.apply_damage_to_entity(dmg.config["damage"], entity)
+        systems.apply_damage_to_entity(dmg.config["damage"], hp.entity)
 
         # Return the result ( we handled the collision. )
         return physics.CollisionResult(True, True)

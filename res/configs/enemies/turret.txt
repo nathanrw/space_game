@@ -15,3 +15,7 @@ components:
   src.components.Turret: {}
 
   src.components.ShootsAtTracked: {}
+
+  src.components.Power:
+    capacity: 100
+    recharge_rate: 10

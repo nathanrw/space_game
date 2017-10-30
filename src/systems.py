@@ -112,14 +112,14 @@ def apply_damage_to_entity(damage, entity):
                 explosion_body.velocity=body.velocity
 
                 # Shake the camera.
-                camera = entity.game_services.get_camera()
+                cs = entity.ecs().get_system(CameraSystem)
                 shake_factor = explodes.config.get_or_default("shake_factor", 1)
-                camera.apply_shake(shake_factor, body.position)
+                cs.apply_shake(shake_factor, body.position)
 
                 # Play a sound.
                 sound = explodes.config.get_or_none("sound")
                 if sound is not None:
-                    camera.play_sound(body, sound)
+                    cs.play_sound(sound, body.position)
 
             # Ok, kill the entity.
             entity.kill()
@@ -207,13 +207,15 @@ class ShootsAtTrackedSystem(ComponentSystem):
             body.orientation = 90 + direction.angle_degrees
 
             # Shoot at the object we're tracking.
-            if not gun.shooting_at is not None:
+            if gun.shooting_at is None:
                 if not shooter.can_shoot and shooter.fire_timer.tick(dt):
                     shooter.fire_timer.reset()
                     shooter.can_shoot = True
                 if shooter.can_shoot:
                     (hit_body, hit_point, hit_normal) = entity.ecs().get_system(Physics).hit_scan(entity)
-                    if hit_body == tracked_body:
+                    # Note: temporarily disabled hit scan till we stop collision
+                    # with parent ent again.
+                    if True:#hit_body == tracked_body:
                         shooter.can_shoot = False
                         gun.shooting_at = DirectionProviderBody(entity, tracked)
             else:
@@ -227,7 +229,7 @@ class WeaponSystem(ComponentSystem):
 
     def __init__(self):
         """ Constructor. """
-        ComponentSystem.__init__(self, [Weapon, Body])
+        ComponentSystem.__init__(self, [Weapon])
 
     def update(self, dt):
         """ Update the guns. """
@@ -238,10 +240,10 @@ class WeaponSystem(ComponentSystem):
                 continue
             if weapon.shot_timer > 0:
                 weapon.shot_timer -= dt
-            if weapon.shooting:
+            if weapon.shooting_at is not None:
                 if weapon.weapon_type == "projectile_thrower":
                     self.shoot_bullet(weapon, dt)
-                elif self.weapon_type == "beam":
+                elif weapon.weapon_type == "beam":
                     self.shoot_beam(weapon, dt)
                 else:
                     # Unknown weapon style.
@@ -253,8 +255,8 @@ class WeaponSystem(ComponentSystem):
         if power_consumed == 0:
             weapon.shooting_at = None
         else:
-            body = weapon.owner.entity.get_component(Body)
-            (hit_body, weapon.impact_point, weapon.impact_normal) = body.hit_scan(
+            (hit_body, hit_point, hit_normal) = weapon.entity.ecs().get_system(Physics).hit_scan(
+                weapon.owner.entity,
                 Vec2d(0, 0),
                 Vec2d(0, -1),
                 weapon.config["range"],
@@ -276,7 +278,7 @@ class WeaponSystem(ComponentSystem):
             shooting_at_dir = weapon.shooting_at.direction()
 
             # Update the timer.
-            weapon.shot_timer += 1.0/self.config["shots_per_second"]
+            weapon.shot_timer += 1.0/weapon.config["shots_per_second"]
 
             # Can't spawn bullets if there's nowhere to put them!
             if body is None:
@@ -295,7 +297,8 @@ class WeaponSystem(ComponentSystem):
             # Play a sound.
             shot_sound = weapon.config.get_or_none("shot_sound")
             if shot_sound is not None:
-                weapon.entity.game_services.get_camera().play_sound(body, shot_sound)
+                cs = self.game_services.get_entity_manager().get_system(CameraSystem)
+                cs.play_sound(shot_sound, body.position)
 
             # Create the bullet.
             bullet_entity = weapon.entity.ecs().create_entity(weapon.config["bullet_config"])
@@ -324,7 +327,7 @@ class TrackingSystem(ComponentSystem):
             if tracking.tracked.entity is None and tracking.track_type == "team":
                 self_team = entity.get_component(Team) # optional
                 def f(body):
-                    return on_same_team(entity, body.entity)
+                    return not on_same_team(entity, body.entity)
                 closest = entity.ecs().get_system(Physics).closest_body_with(
                     self_body.position,
                     f
@@ -740,7 +743,7 @@ class CameraSystem(ComponentSystem):
         """ Play a sound at a position. """
         entities = self.entities()
         if len(entities) > 0:
-            sound = self.entity.game_services.get_resource_loader().load_sound(sound)
+            sound = self.game_services.get_resource_loader().load_sound(sound)
             camera_position = entities[0].get_component(Body).position
             sound.play_positional(position - camera_position)
 

@@ -98,7 +98,7 @@ class Drawing(object):
             # We only care about beam weapons that are currently firing.
             if weapon.weapon_type != "beam":
                 continue
-            if not weapon.shooting:
+            if weapon.shooting_at is None:
                 continue
             if weapon.impact_point is None:
                 continue

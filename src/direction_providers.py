@@ -2,6 +2,10 @@
 Implementations conform to the ecs data model so they can be stored in
 components. """
 
+from .physics import Vec2d
+from .ecs import EntityRef
+from .components import Body
+
 
 class DirectionProvider(object):
     """ An object that defines a direction. """
@@ -23,7 +27,7 @@ class DirectionProviderScreen(object):
         self.__body_entity = EntityRef(body_entity, Body)
     def direction(self):
         body = self.__body_entity.entity.get_component(Body)
-        return (self.__camera.screen_to_world(self.__pos) - body.position).normalized()
+        return (self.__view.screen_to_world(self.__pos) - body.position).normalized()
 
 
 class DirectionProviderWorld(object):
@@ -47,12 +51,12 @@ class DirectionProviderDirection(object):
 class DirectionProviderBody(object):
     """ Shooting at a body. """
     def __init__(self, from_body_entity, to_body_entity):
-        self.__from_body_entity = EntityRef(from_body, Body)
-        self.__to_body_entity = EntityRef(to_body, Body)
+        self.__from_body_entity = EntityRef(from_body_entity, Body)
+        self.__to_body_entity = EntityRef(to_body_entity, Body)
     def direction(self):
         from_body = self.__from_body_entity.entity.get_component(Body)
         to_body = self.__to_body_entity.entity.get_component(Body)
-        return (-to_body.position + from_body.position).normalized()
+        return -(-to_body.position + from_body.position).normalized()
 
 
 class DirectionProviderCoaxial(object):
