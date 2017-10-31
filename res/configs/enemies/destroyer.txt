@@ -7,10 +7,13 @@ components:
     hp: 40
 
   src.components.Turrets:
-    hardpoints:
-    - weapon_config: enemies/turret.txt
-      x: 0
-      y: 0
+    turrets:
+      - weapon_config: weapons/green_blaster.txt
+        turret_config: enemies/turret.txt
+        position: [-20, 0]
+      - weapon_config: weapons/green_blaster.txt
+        turret_config: enemies/turret.txt
+        position: [20, 0]
 
   src.components.AnimationComponent:
     anim_name: enemy_destroyer
