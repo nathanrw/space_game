@@ -34,7 +34,7 @@ components:
     turrets:
       - weapon_config: weapons/laser_beam.txt
         turret_config: enemies/turret.txt
-        position: [0, 0]
+        position: [0, 50]
 
   # The ship can move.
   src.components.Thrusters:

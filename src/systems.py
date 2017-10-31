@@ -212,10 +212,8 @@ class ShootsAtTrackedSystem(ComponentSystem):
                     shooter.fire_timer.reset()
                     shooter.can_shoot = True
                 if shooter.can_shoot:
-                    (hit_body, hit_point, hit_normal) = entity.ecs().get_system(Physics).hit_scan(entity)
-                    # Note: temporarily disabled hit scan till we stop collision
-                    # with parent ent again.
-                    if True:#hit_body == tracked_body:
+                    (hit_entity, hit_point, hit_normal) = entity.ecs().get_system(Physics).hit_scan(entity)
+                    if hit_entity == tracked:
                         shooter.can_shoot = False
                         gun.shooting_at = DirectionProviderBody(entity, tracked)
             else:
@@ -255,15 +253,16 @@ class WeaponSystem(ComponentSystem):
         if power_consumed == 0:
             weapon.shooting_at = None
         else:
-            (hit_body, hit_point, hit_normal) = weapon.entity.ecs().get_system(Physics).hit_scan(
+            physics = weapon.entity.ecs().get_system(Physics)
+            (hit_entity, weapon.impact_point, weapon.impact_normal) = physics.hit_scan(
                 weapon.owner.entity,
                 Vec2d(0, 0),
                 Vec2d(0, -1),
                 weapon.config["range"],
                 weapon.config["radius"]
             )
-            if hit_body is not None:
-                apply_damage_to_entity(weapon.config["damage"]*dt, hit_body.entity)
+            if hit_entity is not None:
+                apply_damage_to_entity(weapon.config["damage"]*dt, hit_entity)
 
     def shoot_bullet(self, weapon, dt):
         """ Shoot a bullet, for projectile thrower type weapons. """
@@ -511,6 +510,8 @@ class ThrustersSystem(ComponentSystem):
         for entity in self.entities():
             body = entity.get_component(Body)
             thrusters = entity.get_component(Thrusters)
+
+            thrusters.thrusters = [ x for x in thrusters.thrusters if x.entity is not None ]
 
             # Counteract excessive spin when an input turn direction has not
             # been given.

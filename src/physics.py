@@ -283,8 +283,13 @@ class Physics(ComponentSystem):
         end = self.local_to_world(from_entity, local_direction*distance)
         results = self.__space.segment_query(start, end, radius, pymunk.ShapeFilter())
         for result in results:
-            if result.shape.game_body.entity.get_component(Body).is_collideable and filter_func(result.shape.game_body.entity):
-                return (result.shape.game_body, result.point, result.normal)
+            hit_entity = result.shape.game_body.entity
+            hit_body = hit_entity.get_component(Body)
+            assert hit_body is not None
+            if hit_entity != from_entity and \
+               hit_body.is_collideable and \
+               filter_func(hit_entity):
+                return (hit_entity, result.point, result.normal)
         return (None, end, None)
 
     def world_to_local(self, entity, point):
