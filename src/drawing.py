@@ -170,8 +170,8 @@ class Drawing(object):
         entities = self.__entity_manager.query(Body, Thrusters)
         for entity in entities:
             thrusters = entity.get_component(Thrusters)
-            for thruster_ref in thrusters.thrusters:
-                thruster = thruster_ref.entity.get_component(Thruster)
+            for thruster_ent in thrusters.thrusters:
+                thruster = thruster_ent.get_component(Thruster)
                 if thruster.thrust > 0:
                     pos = physics.local_to_world(entity, thruster.position)
                     dir = physics.local_dir_to_world(entity, thruster.direction)

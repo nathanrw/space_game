@@ -438,7 +438,8 @@ class EntityRefList(object):
     def __iter__(self):
         """ Get the iterator. """
         self.__garbage_collect()
-        return iter(self.__list)
+        for item in self.__list:
+            yield item.entity
 
     def __garbage_collect(self):
         """ Remove all dead references. """

@@ -24,7 +24,7 @@ current state of the component, and these are updated by processing systems.
 """
 
 
-from .ecs import Component, EntityRef
+from .ecs import Component, EntityRef, EntityRefList
 from .utils import Timer, Vec2d
 
 
@@ -200,7 +200,7 @@ class Thrusters(Component):
         Component.__init__(self, entity, game_services, config)
         self.direction = Vec2d(0, 0)
         self.turn = 0
-        self.thrusters = []
+        self.thrusters = EntityRefList(Thruster)
         self.thruster_configurations = {}
 
 
@@ -217,7 +217,7 @@ class Turrets(Component):
     """ The entity has a set of turrets. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-        self.turrets = []
+        self.turrets = EntityRefList(Turret)
 
 
 class Camera(Component):

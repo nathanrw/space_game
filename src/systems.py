@@ -503,15 +503,13 @@ class ThrustersSystem(ComponentSystem):
                 thruster = Thruster(thruster_ent, self.game_services, cfg)
                 thruster.attached_to.entity = component.entity
                 thruster_ent.add_component(thruster)
-                component.thrusters.append(EntityRef(thruster_ent, Thruster))
+                component.thrusters.add_ref_to(thruster_ent)
 
     def update(self, dt):
         """ Update the entities. """
         for entity in self.entities():
             body = entity.get_component(Body)
             thrusters = entity.get_component(Thrusters)
-
-            thrusters.thrusters = [ x for x in thrusters.thrusters if x.entity is not None ]
 
             # Counteract excessive spin when an input turn direction has not
             # been given.
@@ -592,7 +590,7 @@ class ThrustersSystem(ComponentSystem):
             resultant_force = Vec2d(0, 0);
             resultant_moment = 0
             for i in range(0, len(thrusts)):
-                thruster = thrusters.thrusters[i].entity.get_component(Thruster)
+                thruster = thrusters.thrusters[i].get_component(Thruster)
                 thrust = float(thrusts[i])
                 force = thruster.direction * thrust
                 resultant_force += force
@@ -612,7 +610,7 @@ class ThrustersSystem(ComponentSystem):
         thrusts = numpy.zeros(len(thrusters.thrusters))
 
         # Thrust bounds.
-        thrust_bounds = [(0, thruster.entity.get_component(Thruster).max_thrust) for thruster in thrusters.thrusters]
+        thrust_bounds = [(0, thruster.get_component(Thruster).max_thrust) for thruster in thrusters.thrusters]
 
         # Optimise the thruster values.
         return scipy.optimize.minimize(f, thrusts, method="TNC", bounds=thrust_bounds)
@@ -622,8 +620,8 @@ class ThrustersSystem(ComponentSystem):
         desired direction. Automatically counteract spin. """
 
         # By default the engines should be off.
-        for ref in thrusters.thrusters:
-            thruster = ref.entity.get_component(Thruster)
+        for entity in thrusters.thrusters:
+            thruster = entity.get_component(Thruster)
             thruster.thrust = 0
 
         # Come up with a dictionary key.
@@ -637,7 +635,7 @@ class ThrustersSystem(ComponentSystem):
         # Get the cached configuration and set the thrust.
         result = thrusters.thruster_configurations[key]
         for i in range(0, len(result.x)):
-            thruster = thrusters.thrusters[i].entity.get_component(Thruster)
+            thruster = thrusters.thrusters[i].get_component(Thruster)
             thruster.thrust = float(result.x[i])
 
 
@@ -784,11 +782,7 @@ class TurretsSystem(ComponentSystem):
 
     def update(self, dt):
         """ Update the system. """
-        for entity in self.entities():
-            turrets = entity.get_component(Turrets)
-            for turret in turrets.turrets:
-                if turret.entity is None:
-                    turrets.turrets.remove(turret)
+        pass
 
     def on_component_add(self, component):
         """ When the turrets component is added we need to create the turrets
@@ -826,7 +820,7 @@ class TurretsSystem(ComponentSystem):
 
             # Add the backreference and add to our list of turrets.
             turret.attached_to.entity = component.entity
-            component.turrets.append(EntityRef(turret_entity, Turret))
+            component.turrets.add_ref_to(turret_entity)
 
             # Set the turret's team.
             turret_team = turret_entity.get_component(Team)
