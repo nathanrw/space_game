@@ -123,6 +123,31 @@ def apply_damage_to_entity(damage, entity):
             entity.kill()
 
 
+def get_attached_entities(start_entity):
+    """ Get the entities attached to the one given. """
+    joints_entities = start_entity.ecs().query(Joint)
+    got = set()
+    got.add(start_entity)
+    while True:
+        new = set()
+        for joint_entity in joints_entities:
+            joint = joint_entity.get_component(Joint)
+            if joint.entity_a.entity is None or \
+                            joint.entity_b.entity is None:
+                continue
+            e1 = joint.entity_a.entity
+            e2 = joint.entity_b.entity
+            if e1 in got and not e2 in got:
+                new.add(e2)
+            if e2 in got and not e1 in got:
+                new.add(e1)
+        if len(new) == 0:
+            break
+        else:
+            got = got | new
+    return got
+
+
 def teleport(entity, to, to_velocity=None, to_orientation=None):
     """ Move an entity to a new position. """
 
@@ -146,17 +171,7 @@ def teleport(entity, to, to_velocity=None, to_orientation=None):
         body.velocity = to_velocity
 
     # Find attached entities to move.
-    to_move = set()
-    joints_entities = entity.ecs().query(Joint)
-    for joint_entity in joints_entities:
-        joint = joint_entity.get_component(Joint)
-        if joint.entity_a.entity is None or \
-           joint.entity_b.entity is None:
-            continue
-        if joint.entity_a.entity == entity:
-            to_move.add(joint.entity_b.entity)
-        elif joint.entity_b.entity == entity:
-            to_move.add(joint.entity_a.entity)
+    to_move = get_attached_entities(entity)
 
     # Move each attached entity relative to the one we teleported.
     for attached_entity in to_move:
@@ -164,8 +179,8 @@ def teleport(entity, to, to_velocity=None, to_orientation=None):
         attached_body.position += relative_movement
         if to_velocity is not None:
             attached_body.velocity = to_velocity
-        if relative_orientation is not None:
-            attached_body.orientation += relative_orientation
+        if relative_rotation is not None:
+            attached_body.orientation += relative_rotation
 
 
 def local_to_world(entity, local_point):
@@ -189,9 +204,10 @@ def hit_scan(
         filter_func=lambda x: True
 ):
     """ Do a hit scan from an entity. """
+    aug_filter = lambda x: x != from_entity and not x in get_attached_entities(from_entity)
     physics = from_entity.ecs().get_system(Physics)
     return physics.hit_scan(from_entity, local_origin, local_direction,
-                            distance, radius, filter_func)
+                            distance, radius, aug_filter)
 
 
 class FollowsTrackedSystem(ComponentSystem):
