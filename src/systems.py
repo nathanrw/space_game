@@ -107,9 +107,7 @@ def apply_damage_to_entity(damage, entity):
 
                 # Create the explosion.
                 explosion = entity.ecs().create_entity(explodes.config["explosion_config"])
-                explosion_body = explosion.get_component(Body)
-                explosion_body.position = body.position
-                explosion_body.velocity=body.velocity
+                teleport(explosion, body.position, body.velocity)
 
                 # Shake the camera.
                 cs = entity.ecs().get_system(CameraSystem)
@@ -123,6 +121,77 @@ def apply_damage_to_entity(damage, entity):
 
             # Ok, kill the entity.
             entity.kill()
+
+
+def teleport(entity, to, to_velocity=None, to_orientation=None):
+    """ Move an entity to a new position. """
+
+    # Can only teleport a body!
+    body = entity.get_component(Body)
+    if body is None:
+        return
+
+    # Change in position for attached bodies.
+    relative_movement = to - body.position
+    body.position = to
+
+    # Relative rotation for attached bodies.
+    relative_rotation = None
+    if to_orientation is not None:
+        body.orientation = to_orientation
+        relative_rotation = to_orientation - body.orientation
+
+    # Set the velocity.
+    if to_velocity is not None:
+        body.velocity = to_velocity
+
+    # Find attached entities to move.
+    to_move = set()
+    joints_entities = entity.ecs().query(Joint)
+    for joint_entity in joints_entities:
+        joint = joint_entity.get_component(Joint)
+        if joint.entity_a.entity is None or \
+           joint.entity_b.entity is None:
+            continue
+        if joint.entity_a.entity == entity:
+            to_move.add(joint.entity_b.entity)
+        elif joint.entity_b.entity == entity:
+            to_move.add(joint.entity_a.entity)
+
+    # Move each attached entity relative to the one we teleported.
+    for attached_entity in to_move:
+        attached_body = attached_entity.get_component(Body)
+        attached_body.position += relative_movement
+        if to_velocity is not None:
+            attached_body.velocity = to_velocity
+        if relative_orientation is not None:
+            attached_body.orientation += relative_orientation
+
+
+def local_to_world(entity, local_point):
+    """ Convert a point in entity local coordinates to world space. """
+    physics = entity.ecs().get_system(Physics)
+    return physics.local_to_world(entity, local_point)
+
+
+def world_to_local(entity, world_point):
+    """ Convert a point in world space to entity local coordinates. """
+    physics = entity.ecs().get_system(Physics)
+    return physics.world_to_local(entity, world_point)
+
+
+def hit_scan(
+        from_entity,
+        local_origin=Vec2d(0,0),
+        local_direction=Vec2d(0,-1),
+        distance=1000,
+        radius=1,
+        filter_func=lambda x: True
+):
+    """ Do a hit scan from an entity. """
+    physics = from_entity.ecs().get_system(Physics)
+    return physics.hit_scan(from_entity, local_origin, local_direction,
+                            distance, radius, filter_func)
 
 
 class FollowsTrackedSystem(ComponentSystem):
@@ -194,11 +263,15 @@ class ShootsAtTrackedSystem(ComponentSystem):
             gun = gun_ent.get_component(Weapon)
             tracking = entity.get_component(Tracking)
 
+            print "oo"
+
             # Get the tracked body.
             tracked = tracking.tracked.entity
             if tracked is None:
                 return
             tracked_body = tracked.get_component(Body)
+
+            print "bar"
 
             # Point at the object we're tracking. Note that in future it would be
             # good for this to be physically simulated, but for now we just hack
@@ -212,7 +285,7 @@ class ShootsAtTrackedSystem(ComponentSystem):
                     shooter.fire_timer.reset()
                     shooter.can_shoot = True
                 if shooter.can_shoot:
-                    (hit_entity, hit_point, hit_normal) = entity.ecs().get_system(Physics).hit_scan(entity)
+                    (hit_entity, hit_point, hit_normal) = hit_scan(entity)
                     if hit_entity == tracked:
                         shooter.can_shoot = False
                         gun.shooting_at = DirectionProviderBody(entity, tracked)
@@ -253,8 +326,7 @@ class WeaponSystem(ComponentSystem):
         if power_consumed == 0:
             weapon.shooting_at = None
         else:
-            physics = weapon.entity.ecs().get_system(Physics)
-            (hit_entity, weapon.impact_point, weapon.impact_normal) = physics.hit_scan(
+            (hit_entity, weapon.impact_point, weapon.impact_normal) = hit_scan(
                 weapon.owner.entity,
                 Vec2d(0, 0),
                 Vec2d(0, -1),
@@ -301,11 +373,12 @@ class WeaponSystem(ComponentSystem):
 
             # Create the bullet.
             bullet_entity = weapon.entity.ecs().create_entity(weapon.config["bullet_config"])
-            body = bullet_entity.get_component(Body)
-            if body is not None:
-                body.position = bullet_position
-                body.velocity = bullet_velocity
-                body.orientation = shooting_at_dir.normalized().get_angle_degrees()+90
+
+            # Set the position.
+            bullet_orientation = shooting_at_dir.normalized().get_angle_degrees()+90
+            teleport(bullet_entity, bullet_position, bullet_velocity, bullet_orientation)
+
+            # Set the team.
             team = bullet_entity.get_component(Team)
             if team is not None:
                 team.team = weapon.owner.entity.get_component(Team).team
@@ -331,7 +404,7 @@ class TrackingSystem(ComponentSystem):
                     self_body.position,
                     f
                 )
-                if closest:
+                if closest is not None:
                     tracking.tracked.entity = closest.entity
 
 
@@ -619,13 +692,17 @@ class ThrustersSystem(ComponentSystem):
         """ Perform logic to determine what engines are firing based on the
         desired direction. Automatically counteract spin. """
 
+        # If no thrusters to fire then don't bother!
+        if len(thrusters.thrusters) == 0:
+            return
+
         # By default the engines should be off.
         for entity in thrusters.thrusters:
             thruster = entity.get_component(Thruster)
             thruster.thrust = 0
 
         # Come up with a dictionary key.
-        key = (direction.x, direction.y, torque)
+        key = (direction.x, direction.y, torque, len(thrusters.thrusters))
 
         # Ensure a configuration exists for this input.
         if not key in thrusters.thruster_configurations:
@@ -655,7 +732,7 @@ class WaveSpawnerSystem(ComponentSystem):
 
         # Check for end condition and show game ending message if so.
         if self.done:
-            if self.endgame_timer.tick():
+            if self.endgame_timer.tick(dt):
                 self.game_services.end_game()
         elif self.player_is_dead() or self.max_waves():
             self.done = True
@@ -676,12 +753,15 @@ class WaveSpawnerSystem(ComponentSystem):
 
     def player_is_dead(self):
         """ Check whether the player is dead. """
-        player = self.game_services.get_player()
-        return player.is_garbage
+        players = self.game_services.get_entity_manager().query(Player)
+        return len(players) == 0
 
     def spawn_wave(self):
         """ Spawn a wave of enemies, each one harder than the last."""
-        player = self.game_services.get_player()
+        players = self.game_services.get_entity_manager().query(Player)
+        if len(players) == 0:
+            return
+        player = players[0]
         player_body = player.get_component(Body)
         self.wave += 1
         for i in range(self.wave-1):
@@ -692,8 +772,8 @@ class WaveSpawnerSystem(ComponentSystem):
             y = 1 - (1-rnd)*2
             enemy_position = player_body.position + Vec2d(x, y)*500
             entity = self.game_services.get_entity_manager().create_entity(enemy_type)
-            entity.get_component(Body).position = enemy_position
             entity.get_component(Team).team = "enemy"
+            teleport(entity, enemy_position)
             self.spawned.append(entity)
 
     def wave_is_dead(self):
@@ -828,9 +908,8 @@ class TurretsSystem(ComponentSystem):
                 turret_team.team = team.team
 
             # Match position and velocity.
-            physics = self.game_services.get_entity_manager().get_system(Physics)
             turret_body = turret_entity.get_component(Body)
-            turret_body.position = physics.local_to_world(body.entity, turret.position)
+            turret_body.position = local_to_world(body.entity, turret.position)
             turret_body.velocity = body.velocity
 
             # Pin the bodies together.

@@ -31,14 +31,6 @@ class SpaceGameServices(ecs.GameServices):
     def get_renderer(self):
         return self.game.renderer
 
-    def get_player(self):
-        """ Get the player. """
-        return self.game.player
-
-    def get_camera(self):
-        """ Get the camera. """
-        return self.game.camera.get_component(components.Camera)
-
     def get_entity_manager(self):
         """ Return the entity manager. """
         return self.game.entity_manager
@@ -99,14 +91,10 @@ class Game(object):
         self.resource_loader.set_renderer(self.renderer)
 
         # The player
-        self.player = None
-
         # The input handling system.
         self.input_handling = None
 
         # The main camera.
-        self.camera = None
-
         # The enemy.
         self.wave_spawner = None
 
@@ -162,11 +150,15 @@ class Game(object):
             self.entity_manager.update(tick_time)
 
             # Draw
-            view = drawing.CameraView(self.renderer, self.camera)
-            self.renderer.pre_render(view)
-            self.drawing.draw(view)
-            self.renderer.post_render()
-            self.renderer.flip_buffers()
+            # Note: at the moment we only ever create one camera. If we create
+            # more we'll need a notion of where the camera is drawing to.
+            cameras = self.entity_manager.query(components.Camera)
+            for camera in cameras:
+                view = drawing.CameraView(self.renderer, camera)
+                self.renderer.pre_render(view)
+                self.drawing.draw(view)
+                self.renderer.post_render()
+                self.renderer.flip_buffers()
 
             # Maintain frame rate.
             clock.tick(fps)
@@ -216,21 +208,21 @@ class Game(object):
         self.resource_loader.preload()
 
         # Make the camera.
-        self.camera = self.entity_manager.create_entity_with(components.Camera,
+        camera = self.entity_manager.create_entity_with(components.Camera,
                                                              components.Body,
                                                              components.Tracking,
                                                              components.FollowsTracked)
-        self.camera.get_component(components.FollowsTracked).follow_type = "instant"
+        camera.get_component(components.FollowsTracked).follow_type = "instant"
 
         # Draw debug info if requested.
         self.game_services.debug_level = self.config.get_or_default("debug", 0)
 
         # Make the player
-        self.player = self.entity_manager.create_entity("player.txt")
-        self.camera.get_component(components.Tracking).tracked.entity = self.player
+        player = self.entity_manager.create_entity("player.txt")
+        camera.get_component(components.Tracking).tracked.entity = player
 
         # Make the input handling system.
-        self.input_handling = input_handling.InputHandling(self.game_services, self.player)
+        self.input_handling = input_handling.InputHandling(self.game_services)
 
         # Create the wave spawner.
         if not self.config.get_or_default("peaceful_mode", False):

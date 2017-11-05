@@ -1,5 +1,4 @@
 components:
-  src.components.EndProgramOnDeath: {}
   src.components.KillOnTimer:
     lifetime: 10
   src.components.Text:

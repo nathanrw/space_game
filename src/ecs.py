@@ -77,14 +77,6 @@ class GameServices(object):
         """ Get the renderer. """
         pass
 
-    def get_player(self):
-        """ Get the player's entity. """
-        pass
-
-    def get_camera(self):
-        """ Get the camera. """
-        pass
-
     def get_entity_manager(self):
         """ Get the entity manager. """
         pass
@@ -443,9 +435,7 @@ class EntityRefList(object):
 
     def __garbage_collect(self):
         """ Remove all dead references. """
-        for ref in self.__list:
-            if ref.entity is None:
-                self.__list.remove(ref)
+        self.__list = [ref for ref in self.__list if ref.entity is not None]
 
     def kill_all(self):
         """ Kill all entities in the list. """

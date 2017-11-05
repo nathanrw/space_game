@@ -2,6 +2,9 @@
 
 components:
 
+  # This entity represents the player!
+  src.components.Player: {}
+
   # The player's ship is on the player's team
   src.components.Team:
     team: player

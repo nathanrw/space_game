@@ -233,3 +233,9 @@ class Camera(Component):
         self.tracking = EntityRef(None, Body)
         self.zoom = 1
         self.screen_diagonal = (Vec2d(renderer.screen_size())/2).length
+
+
+class Player(Component):
+    """ An entity with this component is controlled by the player. """
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)

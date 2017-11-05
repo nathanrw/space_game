@@ -2,7 +2,7 @@ from pymunk.vec2d import Vec2d
 
 import pygame
 
-from .components import Thrusters
+from .components import Thrusters, Player, Camera
 
 class InputResponse(object):
     def __init__(self):
@@ -12,12 +12,11 @@ class InputResponse(object):
 class InputHandling(object):
     """ Handles input. """
 
-    def __init__(self, game_services, player):
+    def __init__(self, game_services):
         """ Initialise. """
 
         # Provides access to the bits of the game we want to manipulate.
         self.game_services = game_services
-        self.player = player
 
         # Initialse pygame's joystick functionality
         pygame.joystick.init()
@@ -122,20 +121,28 @@ class InputHandling(object):
 
     def zoom_in(self):
         """ Zoom the camera in."""
-        self.game_services.get_camera().zoom += 0.1
+        cameras = self.game_services.get_entity_manager().query(Camera)
+        for camera in cameras:
+            camera.get_component(Camera).zoom += 0.1
 
     def zoom_out(self):
         """ Zoom the camera out. """
-        self.game_services.get_camera().zoom -= 0.1
+        cameras = self.game_services.get_entity_manager().query(Camera)
+        for camera in cameras:
+            camera.get_component(Camera).zoom -= 0.1
 
     def move(self, direction):
         """ Move the player in a direction. """
-        thrusters = self.player.get_component(Thrusters)
-        if thrusters is not None:
-            thrusters.direction += direction
+        players = self.game_services.get_entity_manager().query(Player)
+        for player in players:
+            thrusters = player.get_component(Thrusters)
+            if thrusters is not None:
+                thrusters.direction += direction
 
     def turn(self, direction):
         """ Turn the player in a direction. """
-        thrusters = self.player.get_component(Thrusters)
-        if thrusters is not None:
-            thrusters.turn += direction
+        players = self.game_services.get_entity_manager().query(Player)
+        for player in players:
+            thrusters = player.get_component(Thrusters)
+            if thrusters is not None:
+                thrusters.turn += direction

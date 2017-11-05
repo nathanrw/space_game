@@ -4,7 +4,8 @@ components:
     mass: 100
     size: 20
 
-  src.components.Team: {}
+  src.components.Team:
+    team: enemy
 
   src.components.ExplodesOnDeath:
     explosion_config: explosions/big_explosion.txt
