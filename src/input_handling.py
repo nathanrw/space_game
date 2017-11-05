@@ -69,7 +69,13 @@ class InputHandling(object):
             pygame.K_g: (nothing, lambda: self.zoom_out()),
 
             # Quit.
-            pygame.K_ESCAPE: (nothing, request_quit)
+            pygame.K_ESCAPE: (nothing, request_quit),
+
+            # Save.
+            pygame.K_F8: (nothing, lambda: self.game_services.save()),
+
+            # Load.
+            pygame.K_F9: (nothing, lambda: self.game_services.load()),
         }
 
         # Joystick (button) controls.

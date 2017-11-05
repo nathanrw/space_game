@@ -163,8 +163,6 @@ class Text(Component):
         self.offset = 0
         self.scroll_speed = 300
         self.padding = 20
-        self.image = None
-        self.warning = None
         self.colour = (255, 255, 255)
         self.font_name = self.config["font_name"]
         self.small_font_size = config.get_or_default("small_font_size", 14)
@@ -175,12 +173,46 @@ class Text(Component):
         self.blink_period = self.config.get_or_default("blink_period", 1)
         self.blink_timer = Timer(self.blink_period)
 
+        # Note: these are caches of the rendered text for this component; they
+        # don't really form part of the components state, they are just a cheap
+        # and cheerful way to avoid re-rendering the text. We override
+        # __getstate__ below to stop them getting pickled.
+        self.image = None
+        self.warning = None
+
+    def __getstate__(self):
+        """ We override __getstate__ to get rid of cached data that we can't pickle."""
+        ret = self.__dict__.copy()
+        ret["image"] = None
+        ret["warning"] = None
+        return ret
+
 
 class AnimationComponent(Component):
     """ The entity has an animation. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-        self.anim = game_services.get_resource_loader().load_animation(config["anim_name"])
+
+        # Note: there are two aspects to this, the logical 'how far through are we' and
+        # the actual animation resource data. The former is part of our logical state,
+        # but the latter isn't. However, since they're coupled together at present we
+        # can't pickle them at all.
+        self.__anim = None
+
+    @property
+    def anim(self):
+        """ Get the anim, loading it if necessary. """
+        if self.__anim is None:
+            self.__anim = self.entity.game_services.get_resource_loader().load_animation(self.config["anim_name"])
+        return self.__anim
+
+    def __getstate__(self):
+        """ We override __getstate__ to get rid of cached data that we can't pickle."""
+        ret = self.__dict__.copy()
+        field_name = "_AnimationComponent__anim"
+        assert field_name in ret
+        ret[field_name] = None
+        return ret
 
 
 class Thruster(Component):

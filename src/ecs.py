@@ -41,8 +41,10 @@ Global services are exposed via a 'game services' object.  This is injected
 into each component.
 """
 
+import pickle
+
 from .config import Config
-from .utils import lookup_type
+from .utils import lookup_type, bail
 
 class GameInfo(object):
     """ Information about the running game. """
@@ -89,6 +91,12 @@ class GameServices(object):
         """ Tidy up and exit the program cleanly. """
         pass
 
+    def load(self):
+        pass
+
+    def save(self):
+        pass
+
     def get_info(self):
         """ Return information about the game. """
         return GameInfo()
@@ -123,6 +131,31 @@ class EntityManager(object):
         # Move new entities to the working set.
         self.__entities += self.__new_entities
         del self.__new_entities[:]
+
+    def save(self, output_file):
+        """ Save the state of the entity manager. """
+        self.__garbage_collect()
+        output = {
+            "entities" : self.__entities,
+            "new_entities" : self.__new_entities,
+            "components" : self.__component_store
+        }
+        pickle.dump(output, output_file)
+
+    def load(self, input_file):
+        """ Restore the state of the entity manager. """
+        try:
+            old_state = pickle.load(input_file)
+            entities = old_state["entities"]
+            new_entities = old_state["new_entities"]
+            for e in (entities + new_entities):
+                e.just_unpickled(self.__game_services)
+            components = old_state["components"]
+            self.__entities = entities
+            self.__new_entities = new_entities
+            self.__component_store = components
+        except:
+            bail()
 
     def __garbage_collect(self):
         """ Remove all of the objects that have been marked for deletion."""
@@ -359,7 +392,6 @@ class Component(object):
     def __init__(self, entity, game_services, config):
         """ Initialise the component. """
         self.__entity = entity
-        self.__game_services = game_services
         self.__config = config
 
     @property
@@ -494,3 +526,15 @@ class Entity(object):
     def has_component(self, t):
         """ Does the entity have a component of a particular type? """
         return self.get_component(t) is not None
+
+    def just_unpickled(self, game_services):
+        """ After an entity is unpickled it needs its game services to be set. """
+        self.__game_services = game_services
+
+    def __getstate__(self):
+        """ We can't serialize the game services. """
+        ret = self.__dict__.copy()
+        field_name = "_Entity__game_services"
+        assert field_name in ret
+        ret[field_name] = None
+        return ret

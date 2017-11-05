@@ -263,15 +263,11 @@ class ShootsAtTrackedSystem(ComponentSystem):
             gun = gun_ent.get_component(Weapon)
             tracking = entity.get_component(Tracking)
 
-            print "oo"
-
             # Get the tracked body.
             tracked = tracking.tracked.entity
             if tracked is None:
                 return
             tracked_body = tracked.get_component(Body)
-
-            print "bar"
 
             # Point at the object we're tracking. Note that in future it would be
             # good for this to be physically simulated, but for now we just hack

@@ -51,6 +51,14 @@ class SpaceGameServices(ecs.GameServices):
         """ Return the debug level. """
         return self.debug_level
 
+    def load(self):
+        """ Load the game. """
+        self.game.load()
+
+    def save(self):
+        """ Save the game. """
+        self.game.save()
+
 
 class Game(object):
     """ Class glueing all of the building blocks together into an actual
@@ -117,6 +125,9 @@ class Game(object):
         # Is the game running?
         self.running = False
 
+        # Should we load the game?
+        self.want_load = False
+
     def stop_running(self):
         """ Stop the game from running. """
         self.running = False
@@ -136,6 +147,11 @@ class Game(object):
         clock = pygame.time.Clock()
         tick_time = 1.0/fps
         while self.running:
+
+            # Has a load been requested?
+            if self.want_load:
+                self.entity_manager.load(open("space_game.save", "r"))
+                self.want_load = False
 
             ## Create any queued objects
             self.entity_manager.create_queued_objects()
@@ -240,6 +256,13 @@ class Game(object):
         # Finalise
         pygame.quit()
 
+    def load(self):
+        """ Schedule a load. """
+        self.want_load = True
+
+    def save(self):
+        """ Save the game. """
+        self.entity_manager.save(open("space_game.save", "w"))
 
 class DamageCollisionHandler(physics.CollisionHandler):
     """ Collision handler to apply bullet damage. """
