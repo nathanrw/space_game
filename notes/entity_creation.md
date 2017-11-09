@@ -27,3 +27,13 @@ Note sure of the best solution:
 
 I've 'fixed' it with a hack for now - enemies default to the
 'enemy' team so it all appears to work!
+
+Could have
+
+     class Compound(Component):
+       def __init__(self, entity, game_services, config):
+         Component.__init__(self, entity, game_services, config)
+         self.parent = EntityRef(Compound)
+         self.children = EntityRefList(Compound)
+         
+to associate entities that are part of the same whole.

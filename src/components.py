@@ -271,3 +271,19 @@ class Player(Component):
     """ An entity with this component is controlled by the player. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
+
+
+class Composite(Component):
+    """ An entity with this component participates in parent-child
+    relationships. """
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.parent = EntityRef(None, Composite)
+        self.children = EntityRefList(Composite)
+
+
+class CreatedBy(Component):
+    """ Keep track of who created an entity. """
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.creator = EntityRef(None)
