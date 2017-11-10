@@ -37,3 +37,15 @@ Could have
          self.children = EntityRefList(Compound)
          
 to associate entities that are part of the same whole.
+
+
+Could also add the parent-child structure to components that
+care (I think it's just team at the moment) as mentioned before:
+
+     class Team(Component):
+       ...
+       def __init__(...):
+         ...
+         self.parent = EntityRef(None, Team) # When this is set, inherit.
+
+This might actually be more idiomatic as it keeps relationships explicit.
