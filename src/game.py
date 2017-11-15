@@ -204,7 +204,6 @@ class Game(object):
 
         # Create the game systems.
         self.entity_manager.register_component_system(systems.FollowsTrackedSystem())
-        self.entity_manager.register_component_system(systems.ShootsAtTrackedSystem())
         self.entity_manager.register_component_system(systems.WeaponSystem())
         self.entity_manager.register_component_system(systems.TrackingSystem())
         self.entity_manager.register_component_system(systems.LaunchesFightersSystem())

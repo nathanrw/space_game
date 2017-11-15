@@ -272,55 +272,6 @@ class FollowsTrackedSystem(ComponentSystem):
             this_body.force = force
 
 
-class ShootsAtTrackedSystem(ComponentSystem):
-    """ Updates entities that shoot at other entities. """
-
-    def __init__(self):
-        """ Constructor. """
-        ComponentSystem.__init__(self, [ShootsAtTracked, Body, Tracking])
-
-    def update(self, dt):
-        """ Update the shooters. """
-
-        for entity in self.entities():
-
-            # Get components.
-            shooter = entity.get_component(ShootsAtTracked)
-            body = entity.get_component(Body)
-            gun_ent = shooter.weapon.entity
-            if gun_ent is None:
-                return
-            gun = gun_ent.get_component(Weapon)
-            tracking = entity.get_component(Tracking)
-
-            # Get the tracked body.
-            tracked = tracking.tracked.entity
-            if tracked is None:
-                return
-            tracked_body = tracked.get_component(Body)
-
-            # Point at the object we're tracking. Note that in future it would be
-            # good for this to be physically simulated, but for now we just hack
-            # it in...
-            direction = (tracked_body.position - body.position).normalized()
-            body.orientation = 90 + direction.angle_degrees
-
-            # Shoot at the object we're tracking.
-            if gun.shooting_at is None:
-                if not shooter.can_shoot and shooter.fire_timer.tick(dt):
-                    shooter.fire_timer.reset()
-                    shooter.can_shoot = True
-                if shooter.can_shoot:
-                    (hit_entity, hit_point, hit_normal) = hit_scan(entity)
-                    if hit_entity == tracked:
-                        shooter.can_shoot = False
-                        gun.shooting_at = DirectionProviderBody(entity, tracked)
-            else:
-                if shooter.burst_timer.tick(dt):
-                    shooter.burst_timer.reset()
-                    gun.shooting_at = None
-
-
 class WeaponSystem(ComponentSystem):
     """ Updates entities that shoot bullets. """
 
@@ -868,9 +819,55 @@ class TurretSystem(ComponentSystem):
     def update(self, dt):
         """ Update the system. """
         for entity in self.entities():
+
+            # Kill detached turrets
             turret = entity.get_component(Turret)
             if turret.attached_to is None:
                 entity.kill()
+                continue
+
+            # Get body
+            body = entity.get_component(Body)
+            if body is None:
+                return
+
+            # Get the weapon
+            gun_ent = turret.weapon.entity
+            if gun_ent is None:
+                return
+            gun = gun_ent.get_component(Weapon)
+
+            # Get tracked entity.
+            tracking = entity.get_component(Tracking)
+            if tracking is None:
+                return
+
+            # Get the tracked body.
+            tracked = tracking.tracked.entity
+            if tracked is None:
+                return
+            tracked_body = tracked.get_component(Body)
+
+            # Point at the object we're tracking. Note that in future it would be
+            # good for this to be physically simulated, but for now we just hack
+            # it in...
+            direction = (tracked_body.position - body.position).normalized()
+            body.orientation = 90 + direction.angle_degrees
+
+            # Shoot at the object we're tracking.
+            if gun.shooting_at is None:
+                if not turret.can_shoot and turret.fire_timer.tick(dt):
+                    turret.fire_timer.reset()
+                    turret.can_shoot = True
+                if turret.can_shoot:
+                    (hit_entity, hit_point, hit_normal) = hit_scan(entity)
+                    if hit_entity == tracked:
+                        turret.can_shoot = False
+                        gun.shooting_at = DirectionProviderBody(entity, tracked)
+            else:
+                if turret.burst_timer.tick(dt):
+                    turret.burst_timer.reset()
+                    gun.shooting_at = None
 
 
 class TurretsSystem(ComponentSystem):
@@ -911,9 +908,6 @@ class TurretsSystem(ComponentSystem):
             weapon = turret.weapon.entity.get_component(Weapon)
             assert weapon is not None
             weapon.owner.entity = turret_entity
-
-            # Note: merge this into Turret?
-            turret_entity.get_component(ShootsAtTracked).weapon = turret.weapon
 
             # Add the backreference and add to our list of turrets.
             turret.attached_to.entity = component.entity

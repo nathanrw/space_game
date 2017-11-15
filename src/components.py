@@ -70,17 +70,6 @@ class FollowsTracked(Component):
         self.follow_type = config.get_or_default("follow_type", "accelerate")
 
 
-class ShootsAtTracked(Component):
-    """ If the entity is a Weapon it shoots at the Tracked entity. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.fire_timer = Timer(config.get_or_default("fire_period", 1))
-        self.fire_timer.advance_to_fraction(0.8)
-        self.burst_timer = Timer(config.get_or_default("burst_period", 1))
-        self.can_shoot = False
-        self.weapon = EntityRef(None, Weapon)
-
-
 class Weapon(Component):
     """ The entity is a weapon that e.g. shoots bullets. """
     def __init__(self, entity, game_services, config):
@@ -244,6 +233,10 @@ class Turret(Component):
         self.position = Vec2d(0, 0)
         self.attached_to = EntityRef(None, Turrets)
         self.weapon = EntityRef(None, Weapon)
+        self.fire_timer = Timer(config.get_or_default("fire_period", 1))
+        self.fire_timer.advance_to_fraction(0.8)
+        self.burst_timer = Timer(config.get_or_default("burst_period", 1))
+        self.can_shoot = False
 
 
 class Turrets(Component):
