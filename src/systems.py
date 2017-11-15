@@ -50,21 +50,35 @@ def towards(e1, e2):
     return b2.position - b1.position
 
 
-def on_same_team(e1, e2):
-    """ Are two entities friendly towards one another? """
+def get_team(e):
+    """ Get the team of an entity.  If the entity does not have a team then
+    this returns None. """
+    assert e is not None
+    ret = None
+    ct = e.get_component(Team)
+    if ct is not None:
+        if ct.parent.entity is not None:
+            ret = get_team(ct.parent.entity)
+        if ret is None:
+            ret = ct.team
+    return ret
+
+
+def setup_team(e1, e2):
+    """ Put one entity under the team leadership of another. """
     t1 = e1.get_component(Team)
     t2 = e2.get_component(Team)
+    if t1 is not None and t2 is not None:
+        t2.parent.entity = e1
 
-    # If either or both not got team component, then on same team.
+
+def on_same_team(e1, e2):
+    """ Are two entities friendly towards one another? """
+    t1 = get_team(e1)
+    t2 = get_team(e2)
     if t1 is None or t2 is None:
         return True
-
-    # If both have team component but either not on a team, then on same team.
-    if t1.team == None or t2.team == None:
-        return True
-
-    # Otherwise on same team if teams match.
-    return t1.team == t2.team
+    return t1 == t2
 
 
 def consume_power(e, amount):
@@ -391,9 +405,7 @@ class WeaponSystem(ComponentSystem):
             teleport(bullet_entity, bullet_position, bullet_velocity, bullet_orientation)
 
             # Set the team.
-            team = bullet_entity.get_component(Team)
-            if team is not None:
-                team.team = weapon.owner.entity.get_component(Team).team
+            setup_team(weapon.owner.entity, bullet_entity)
 
 
 class TrackingSystem(ComponentSystem):
@@ -409,7 +421,6 @@ class TrackingSystem(ComponentSystem):
             self_body = entity.get_component(Body)
             tracking = entity.get_component(Tracking)
             if tracking.tracked.entity is None and tracking.track_type == "team":
-                self_team = entity.get_component(Team) # optional
                 def f(body):
                     return not on_same_team(entity, body.entity)
                 closest = entity.ecs().get_system(Physics).closest_body_with(
@@ -433,7 +444,6 @@ class LaunchesFightersSystem(ComponentSystem):
             launcher = entity.get_component(LaunchesFighters)
             body = entity.get_component(Body)
             tracking = entity.get_component(Tracking)
-            team = entity.get_component(Team)
             if launcher.spawn_timer.tick(dt):
                 launcher.spawn_timer.reset()
                 for i in range(launcher.config["num_fighters"]):
@@ -443,9 +453,7 @@ class LaunchesFightersSystem(ComponentSystem):
 
                     # Launch!
                     child = entity.ecs().create_entity(launcher.config["fighter_config"])
-                    child_team = child.get_component(Team)
-                    if child_team is not None:
-                        child_team.team = team.team
+                    setup_team(entity, child)
                     child_body = child.get_component(Body)
                     if child_body is not None:
                         child_body.position=body.position
@@ -884,9 +892,6 @@ class TurretsSystem(ComponentSystem):
         body = component.entity.get_component(Body)
         assert body is not None
 
-        # Get the team.
-        team = component.entity.get_component(Team)
-
         # Load the turrets.
         turret_cfgs = component.config.get_or_default("turrets", [])
         for cfg in turret_cfgs:
@@ -915,9 +920,7 @@ class TurretsSystem(ComponentSystem):
             component.turrets.add_ref_to(turret_entity)
 
             # Set the turret's team.
-            turret_team = turret_entity.get_component(Team)
-            if turret_team is not None and team is not None:
-                turret_team.team = team.team
+            setup_team(component.entity, turret_entity)
 
             # Match position and velocity.
             turret_body = turret_entity.get_component(Body)

@@ -152,6 +152,7 @@ class Team(Component):
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
         self.team = config.get_or_none("team")
+        self.parent = EntityRef(None, Team)
 
 
 class Text(Component):
