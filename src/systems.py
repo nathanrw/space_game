@@ -43,60 +43,17 @@ import scipy.optimize
 
 def towards(e1, e2):
     """ Get a direction from one entity to another. """
-    b1 = get_component_recursive(e1, Body)
-    b2 = get_component_recursive(e2, Body)
+    b1 = e1.get_component(Body)
+    b2 = e2.get_component(Body)
     if b1 is None or b2 is None:
         return Vec2d(0, 0)
     return b2.position - b1.position
 
 
-def get_or_create_composite(e):
-    """ Get the parent-child relationships for an entity.
-
-    This will generally be called by code that wants to *add* a relationship.
-    """
-    if not e.has_component(Composite):
-        e.add_component(Composite(e, e.game_services, Config()))
-    return e.get_component(Composite)
-
-
-def get_component_recursive(e, t, top_down = False):
-    """ Get a component from an entity or one of its ancestors.
-
-    The 'top_down' argument governs whether we start at the top of the
-    ancestral line or the bottom.
-
-    Note: it is assumed that there are no cycles; if there are cycles then
-    this method will run forever.
-    """
-
-    # Base case.
-    if e is None:
-        return None
-
-    # When top down, we we recurse first so skip this.
-    if not top_down and e.has_component(t):
-        return e.get_component(t)
-
-    # Recurse.
-    composite = e.get_component(Composite)
-    if composite is not None:
-        ret = get_component_recursive(composite.parent.entity, t, top_down)
-        if ret is not None:
-            return ret
-
-    # Now try this entity if we were recursing firse.
-    if top_down:
-        return e.get_component(t)
-
-    # Nope.
-    return None
-
-
 def on_same_team(e1, e2):
     """ Are two entities friendly towards one another? """
-    t1 = get_component_recursive(e1, Team, True)
-    t2 = get_component_recursive(e2, Team, True)
+    t1 = e1.get_component(Team)
+    t2 = e2.get_component(Team)
 
     # If either or both not got team component, then on same team.
     if t1 is None or t2 is None:
@@ -112,7 +69,7 @@ def on_same_team(e1, e2):
 
 def consume_power(e, amount):
     """ Consume an entity's power. """
-    p = get_component_recursive(e, Power)
+    p = e.get_component(Power)
     if p is None:
         return 0
     elif amount <= p.power:
@@ -127,7 +84,7 @@ def apply_damage_to_entity(damage, entity):
     """ Apply damage to an object we've hit. """
 
     # Shields can mitigate damage.
-    shields = get_component_recursive(entity, Shields)
+    shields = entity.get_component(Shields)
     if shields is not None:
         shields.hp -= damage
         if shields.hp < 0:
@@ -975,18 +932,3 @@ class TurretsSystem(ComponentSystem):
             joint.entity_b.entity = turret_entity
             joint.entity_b_local_point = Vec2d(0, 0)
             joint_entity.add_component(joint)
-
-
-class CompositeSystem(ComponentSystem):
-    """ Manages parent-child relationships. """
-
-    def __init__(self):
-        """ Constructor. """
-        ComponentSystem.__init__(self, [Composite])
-
-    def update(self, dt):
-        """ Update the system. """
-        for entity in self.entities():
-            composite = entity.get_component(Composite)
-            if composite.parent.entity is None and composite.owned_by_parent:
-                entity.kill()
