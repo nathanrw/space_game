@@ -44,8 +44,8 @@ class InputHandling(object):
         backwards = Vec2d(0, 1)
         left = Vec2d(-1, 0)
         right = Vec2d(1, 0)
-        turn_left = -1
-        turn_right = 1
+        turn_left = 1
+        turn_right = -1
 
         # Keyboard controls.
         kmap = {
