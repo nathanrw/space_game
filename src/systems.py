@@ -35,6 +35,7 @@ from ecs import ComponentSystem
 from components import *
 from physics import Physics
 from direction_providers import *
+from renderer import Renderer
 
 import random
 import numpy
@@ -93,6 +94,51 @@ def consume_power(e, amount):
         p.overloaded = True
         return 0
 
+def handle_damage_collision(dmg, hp):
+    """ Used to implement the 'damage on contact' behaviour. 
+    
+    'dmg' is a DamageOnContact component
+    
+    'hp' is a Hitpoints component.
+    """
+
+    # If our entity is about to die we might be about to spawn an
+    # explosion. If that's the case it should be travelling at the same
+    # speed as the thing we hit. So match velocities before our entity is
+    # killed.
+    if dmg.config.get_or_default("destroy_on_hit", True):
+        b1 = dmg.entity.get_component(Body)
+        b2 = hp.entity.get_component(Body)
+        if b1 is not None and b2 is not None:
+            b1.velocity = b2.velocity
+        do_explosion(dmg.entity)
+        dmg.entity.kill()
+
+    # Apply the damage.
+    apply_damage_to_entity(dmg.config["damage"], hp.entity)
+
+
+def do_explosion(entity):
+    """ If an entity explodes, create the explosion. """
+    explodes = entity.get_component(ExplodesOnDeath)
+    body = entity.get_component(Body)
+    if explodes is not None and body is not None:
+
+        # Create the explosion.
+        explosion = entity.ecs().create_entity(
+            explodes.config["explosion_config"])
+        teleport(explosion, body.position, body.velocity)
+
+        # Shake the camera.
+        cs = entity.ecs().get_system(CameraSystem)
+        shake_factor = explodes.config.get_or_default("shake_factor", 1)
+        cs.apply_shake(shake_factor, body.position)
+
+        # Play a sound.
+        sound = explodes.config.get_or_none("sound")
+        if sound is not None:
+            cs.play_sound(sound, body.position)
+
 
 def apply_damage_to_entity(damage, entity):
     """ Apply damage to an object we've hit. """
@@ -110,30 +156,8 @@ def apply_damage_to_entity(damage, entity):
     hitpoints = entity.get_component(Hitpoints)
     if hitpoints is not None:
         hitpoints.hp -= damage
-
-        # If the entities HP is below zero then it must die!
         if hitpoints.hp <= 0:
-
-            # Make the entity explode!
-            explodes = entity.get_component(ExplodesOnDeath)
-            body = entity.get_component(Body)
-            if explodes is not None and body is not None:
-
-                # Create the explosion.
-                explosion = entity.ecs().create_entity(explodes.config["explosion_config"])
-                teleport(explosion, body.position, body.velocity)
-
-                # Shake the camera.
-                cs = entity.ecs().get_system(CameraSystem)
-                shake_factor = explodes.config.get_or_default("shake_factor", 1)
-                cs.apply_shake(shake_factor, body.position)
-
-                # Play a sound.
-                sound = explodes.config.get_or_none("sound")
-                if sound is not None:
-                    cs.play_sound(sound, body.position)
-
-            # Ok, kill the entity.
+            do_explosion(entity)
             entity.kill()
 
 
@@ -182,7 +206,6 @@ def teleport(entity, to, to_velocity=None, to_orientation=None):
     # Move each attached entity the same distance and apply the same change
     # in orientation.
     to_move = get_attached_entities(entity)
-    print to_move
     for attached_entity in to_move:
         attached_body = attached_entity.get_component(Body)
         attached_body.position += relative_movement
@@ -391,7 +414,7 @@ class LaunchesFightersSystem(ComponentSystem):
             body = entity.get_component(Body)
             if body is None:
                 continue
-            if launcher.spawn_timer.tick(dt):
+            if len(launcher.launched) == 0 and launcher.spawn_timer.tick(dt):
                 launcher.spawn_timer.reset()
                 for i in range(launcher.config["num_fighters"]):
                     direction = Vec2d(0, 1)
@@ -400,6 +423,7 @@ class LaunchesFightersSystem(ComponentSystem):
 
                     # Launch!
                     child = entity.ecs().create_entity(launcher.config["fighter_config"])
+                    launcher.launched.add_ref_to(child)
                     setup_team(entity, child)
                     teleport(child,
                              body.position + (body.size + 10) * direction,
@@ -688,7 +712,7 @@ class WaveSpawnerSystem(ComponentSystem):
     def __init__(self):
         ComponentSystem.__init__(self, [])
         self.wave = 1
-        self.spawned = []
+        self.spawned = EntityRefList()
         self.message = None
         self.done = False
         self.endgame_timer = Timer(15)
@@ -740,11 +764,10 @@ class WaveSpawnerSystem(ComponentSystem):
             entity = self.game_services.get_entity_manager().create_entity(enemy_type)
             entity.get_component(Team).team = "enemy"
             teleport(entity, enemy_position)
-            self.spawned.append(entity)
+            self.spawned.add_ref_to(entity)
 
     def wave_is_dead(self):
         """ Has the last wave been wiped out? """
-        self.spawned = list( filter(lambda x: not x.is_garbage, self.spawned) )
         return len(self.spawned) == 0
 
     def prepare_for_wave(self):
@@ -846,23 +869,22 @@ class TurretSystem(ComponentSystem):
             if tracked is None:
                 continue
             tracked_body = tracked.get_component(Body)
+            body.orientation = 90 + towards(entity, tracked).angle_degrees
 
             # Shoot at the object we're tracking.
             if gun.shooting_at is None:
-                body.orientation = attached_body.orientation
                 if not turret.can_shoot and turret.fire_timer.tick(dt):
                     turret.fire_timer.reset()
                     turret.can_shoot = True
                 if turret.can_shoot:
                     (hit_entity, hit_point, hit_normal) = hit_scan(entity)
-                    if hit_entity == tracked:
+                    if hit_entity is not None and not on_same_team(entity, hit_entity):
                         turret.can_shoot = False
                         gun.shooting_at = DirectionProviderBody(entity, tracked)
             else:
                 # Point at the object we're tracking. Note that in future it would be
                 # good for this to be physically simulated, but for now we just hack
                 # it in...
-                body.orientation = 90 + gun.shooting_at.direction().angle_degrees
                 if turret.burst_timer.tick(dt):
                     turret.burst_timer.reset()
                     gun.shooting_at = None
@@ -906,6 +928,11 @@ class TurretsSystem(ComponentSystem):
             weapon = turret.weapon.entity.get_component(Weapon)
             assert weapon is not None
             weapon.owner.entity = turret_entity
+
+            # Set the level so that turrets display on top of ships.
+            anim = turret_entity.get_component(AnimationComponent)
+            if anim is not None:
+                anim.level = Renderer.LEVEL_MID_NEAR
 
             # Add the backreference and add to our list of turrets.
             turret.attached_to.entity = component.entity

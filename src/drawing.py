@@ -157,11 +157,16 @@ class Drawing(object):
         for entity in entities:
             body = entity.get_component(Body)
             animation = entity.get_component(AnimationComponent)
+            kwargs = {
+                "brightness": animation.config.get_or_default("brightness", 0.0)
+            }
+            if animation.level is not None:
+                kwargs["level"] = animation.level
             self.__renderer.add_job_animation(
                 -body.orientation,
                 body.position,
                 animation.anim,
-                brightness=animation.config.get_or_default("brightness", 0.0)
+                **kwargs
             )
 
     def __draw_thrusters(self, camera):

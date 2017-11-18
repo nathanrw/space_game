@@ -1,5 +1,5 @@
 components:
   src.components.Weapon:
     bullet_config: bullets/green_bullet.txt
-    shots_per_second: 1
+    shots_per_second: 4
 derive_from: weapons/red_blaster.txt

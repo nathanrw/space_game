@@ -238,7 +238,6 @@ class Game(object):
 
         # Create the game systems.
         self.entity_manager.register_component_system(systems.FollowsTrackedSystem())
-        self.entity_manager.register_component_system(systems.WeaponSystem())
         self.entity_manager.register_component_system(systems.TrackingSystem())
         self.entity_manager.register_component_system(systems.LaunchesFightersSystem())
         self.entity_manager.register_component_system(systems.KillOnTimerSystem())
@@ -252,6 +251,7 @@ class Game(object):
         self.entity_manager.register_component_system(systems.CameraSystem())
         self.entity_manager.register_component_system(systems.TurretSystem())
         self.entity_manager.register_component_system(systems.TurretsSystem())
+        self.entity_manager.register_component_system(systems.WeaponSystem())
 
         # Preload certain images.
         self.resource_loader.preload()
@@ -325,19 +325,8 @@ class DamageCollisionHandler(physics.CollisionHandler):
     def handle_matching_collision(self, dmg, hp):
         """ Apply the logical effect of the collision and return the result. """
 
-        # If our entity is about to die we might be about to spawn an
-        # explosion. If that's the case it should be travelling at the same
-        # speed as the thing we hit. So match velocities before our entity is
-        # killed.
-        if dmg.config.get_or_default("destroy_on_hit", True):
-            b1 = dmg.entity.get_component(components.Body)
-            b2 = hp.entity.get_component(components.Body)
-            if b1 is not None and b2 is not None:
-                b1.velocity = b2.velocity
-            dmg.entity.kill()
-
-        # Apply the damage.
-        systems.apply_damage_to_entity(dmg.config["damage"], hp.entity)
+        # Delegate to the function in 'systems'.
+        systems.handle_damage_collision(dmg, hp)
 
         # Return the result ( we handled the collision. )
         return physics.CollisionResult(True, True)

@@ -87,6 +87,7 @@ class LaunchesFighters(Component):
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
         self.spawn_timer = Timer(config["spawn_period"])
+        self.launched = EntityRefList()
 
 
 class KillOnTimer(Component):
@@ -188,6 +189,8 @@ class AnimationComponent(Component):
         # but the latter isn't. However, since they're coupled together at present we
         # can't pickle them at all.
         self.__anim = None
+
+        self.level = None
 
     @property
     def anim(self):
