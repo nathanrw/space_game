@@ -17,7 +17,7 @@ Dependencies
 
 In order to run "Space game," you will need the following packages installed:
 
-* Python 3 (should work fine on 2.7, though)
+* Python 2.7
 * pygame
 * pymunk
 * scipy / numpy
@@ -34,29 +34,27 @@ How to run
 
 or 
 
-    python run.py
+    python2 run.py
 
 Controls
 --------
 
-WASD - Move.
-
-QE - Rotate.
-
-TG - Zoom.
-
-RF - Cycle weapons.
-
-Mouse - Shoot.
-
-Running the tests
------------------
-
-At present, you would do e.g.
-
-    python -m unittest src.tests.utils_test
-
-from the root directory. I haven't yet invesitgated a better or more automatic way of doing this.
+    w: Move forwards
+    s: Move backwards
+    a: Move left
+    d: Move right
+    e: Rotate anticlockwise
+    q: Rotate clockwise
+    t: Zoom in
+    g: Zoom out
+    f8: Save
+    f9: Load
+    f11: Show keys
+    pause: Pause / unpause
+    escape: Quit
+    `: Simulate one frame then pause
+    Mouse 1: Shoot
+    Mouse wheel: Zoom in / out
 
 Profiling
 ---------
