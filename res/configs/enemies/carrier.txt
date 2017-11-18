@@ -7,7 +7,7 @@ components:
 
   src.components.LaunchesFighters:
     fighter_config: enemies/fighter.txt
-    num_fighters: 10
+    num_fighters: 2
     spawn_period: 10
     takeoff_speed: 700
     takeoff_spread: 30

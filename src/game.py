@@ -59,6 +59,14 @@ class SpaceGameServices(ecs.GameServices):
         """ Save the game. """
         self.game.save()
 
+    def toggle_pause(self):
+        """ Pause the game. """
+        self.game.toggle_pause()
+
+    def step(self):
+        """ Simulate one frame and then pause. """
+        self.game.step()
+
 
 class Game(object):
     """ Class glueing all of the building blocks together into an actual
@@ -128,6 +136,15 @@ class Game(object):
         # Should we load the game?
         self.want_load = False
 
+        # Should we pause the game?
+        self.want_pause = False
+
+        # Should we unpause the game?
+        self.want_resume = False
+
+        # Should we simulate one frame and then pause?
+        self.want_step = False
+
     def stop_running(self):
         """ Stop the game from running. """
         self.running = False
@@ -155,6 +172,23 @@ class Game(object):
 
             ## Create any queued objects
             self.entity_manager.create_queued_objects()
+
+            # If a pause has been scheduled then pause the game.
+            if self.want_pause:
+                self.want_pause = False
+                self.entity_manager.pause()
+
+            # If an unpause has been scheduled then unpause the game.
+            if self.want_resume:
+                self.want_resume = False
+                self.entity_manager.unpause()
+
+            # If a step has been scheduled then advance a frame and schedule a
+            # pause.
+            if self.want_step:
+                self.entity_manager.unpause()
+                self.want_pause = True
+                self.want_step = False
 
             # Input
             for e in pygame.event.get():
@@ -262,6 +296,17 @@ class Game(object):
     def save(self):
         """ Save the game. """
         self.entity_manager.save(open("space_game.save", "w"))
+
+    def toggle_pause(self):
+        """ Schedule a pause. """
+        if self.entity_manager.paused():
+            self.want_resume = True
+        else:
+            self.want_pause = True
+
+    def step(self):
+        """ Schedule a step. """
+        self.want_step = True
 
 class DamageCollisionHandler(physics.CollisionHandler):
     """ Collision handler to apply bullet damage. """

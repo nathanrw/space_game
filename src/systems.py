@@ -387,18 +387,19 @@ class LaunchesFightersSystem(ComponentSystem):
 
     def __init__(self):
         """ Constructor. """
-        ComponentSystem.__init__(self, [LaunchesFighters, Body, Tracking, Team])
+        ComponentSystem.__init__(self, [LaunchesFighters])
 
     def update(self, dt):
         """ Updates the carriers. """
         for entity in self.entities():
             launcher = entity.get_component(LaunchesFighters)
             body = entity.get_component(Body)
-            tracking = entity.get_component(Tracking)
+            if body is None:
+                continue
             if launcher.spawn_timer.tick(dt):
                 launcher.spawn_timer.reset()
                 for i in range(launcher.config["num_fighters"]):
-                    direction = towards(entity, tracking.tracked.entity)
+                    direction = Vec2d(0, 1)
                     spread = launcher.config["takeoff_spread"]
                     direction.rotate_degrees(spread*random.random()-spread/2.0)
 
@@ -848,12 +849,6 @@ class TurretSystem(ComponentSystem):
                 return
             tracked_body = tracked.get_component(Body)
 
-            # Point at the object we're tracking. Note that in future it would be
-            # good for this to be physically simulated, but for now we just hack
-            # it in...
-            direction = (tracked_body.position - body.position).normalized()
-            body.orientation = 90 + direction.angle_degrees
-
             # Shoot at the object we're tracking.
             if gun.shooting_at is None:
                 if not turret.can_shoot and turret.fire_timer.tick(dt):
@@ -865,6 +860,10 @@ class TurretSystem(ComponentSystem):
                         turret.can_shoot = False
                         gun.shooting_at = DirectionProviderBody(entity, tracked)
             else:
+                # Point at the object we're tracking. Note that in future it would be
+                # good for this to be physically simulated, but for now we just hack
+                # it in...
+                body.orientation = 90 + gun.shooting_at.direction().angle_degrees
                 if turret.burst_timer.tick(dt):
                     turret.burst_timer.reset()
                     gun.shooting_at = None

@@ -92,9 +92,19 @@ class GameServices(object):
         pass
 
     def load(self):
+        """ Load the game. """
         pass
 
     def save(self):
+        """ Save the game. """
+        pass
+
+    def toggle_pause(self):
+        """ Pause the game. """
+        pass
+
+    def step(self):
+        """ Move forward one frame and then pause. """
         pass
 
     def get_info(self):
@@ -124,6 +134,21 @@ class EntityManager(object):
 
         # The game services.  These get passed into the objects we create.
         self.__game_services = game_services
+
+        # Is the simulation paused?
+        self.__paused = False
+
+    def pause(self):
+        """ Pause the simulation. """
+        self.__paused = True
+
+    def unpause(self):
+        """ Unpause the simulation. """
+        self.__paused = False
+
+    def paused(self):
+        """ Is the simulation paused? """
+        return self.__paused
 
     def create_queued_objects(self):
         """ Create objects that have been queued. """
@@ -253,7 +278,8 @@ class EntityManager(object):
     def update(self, dt):
         """ Update all of the systems in priority order. """
         for system in self.__systems:
-            system.update(dt)
+            if not self.__paused or system.updates_when_paused:
+                system.update(dt)
         self.__garbage_collect()
 
 
@@ -376,6 +402,11 @@ class ComponentSystem(object):
     def priority(self):
         """ Priority - determines order of system update() calls. """
         return self.__priority
+
+    @property
+    def updates_when_paused(self):
+        """ Does this system keep going when the game is paused? """
+        return False
 
 
 class Component(object):

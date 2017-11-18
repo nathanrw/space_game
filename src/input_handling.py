@@ -34,6 +34,7 @@ class InputHandling(object):
 
         # A no op.
         def nothing(): pass
+        def nothing1(x): pass
 
         # Request to quit the game.
         def request_quit():
@@ -76,6 +77,12 @@ class InputHandling(object):
 
             # Load.
             pygame.K_F9: (nothing, lambda: self.game_services.load()),
+
+            # Pause the game.
+            pygame.K_PAUSE: (nothing, lambda: self.game_services.toggle_pause()),
+
+            # Step forward one frame.
+            pygame.K_BACKQUOTE: (nothing, lambda: self.game_services.step()),
         }
 
         # Joystick (button) controls.
@@ -88,6 +95,14 @@ class InputHandling(object):
                 lambda: self.turn(turn_left))
         }
 
+        # Mouse controls.
+        mousemap = {
+
+            # Zoom in / out with mouse wheel.
+            4: (nothing1, lambda pos: self.zoom_in()),
+            5: (nothing1, lambda pos: self.zoom_out()),
+        }
+
         if e.type == pygame.QUIT:
             # Quit requested from window manager.
             response.quit_requested = True
@@ -97,6 +112,11 @@ class InputHandling(object):
             # Handle a key press.
             if e.key in kmap:
                 kmap[e.key][e.type == pygame.KEYUP]()
+                response.event_handled = True
+
+        elif e.type == pygame.MOUSEBUTTONDOWN or e.type == pygame.MOUSEBUTTONUP:
+            if e.button in mousemap:
+                mousemap[e.button][e.type == pygame.MOUSEBUTTONUP](e.pos)
                 response.event_handled = True
 
         elif e.type == pygame.JOYAXISMOTION:
