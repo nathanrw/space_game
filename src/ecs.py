@@ -269,6 +269,13 @@ class EntityManager(object):
         # Don't expose entities that don't technically exist yet.
         return filter(lambda x: x not in self.__new_entities, matches)
 
+    def query_include_queued(self, type1, *types):
+        """ Get all entities with a particular set of components. 
+        
+        This includes entities that are queued for creation. """
+
+        return self.__component_store.query_entities(type1, *types)
+
     def get_system(self, system_type):
         """ Get a system by type. """
         for system in self.__systems:

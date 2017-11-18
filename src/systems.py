@@ -139,7 +139,7 @@ def apply_damage_to_entity(damage, entity):
 
 def get_attached_entities(start_entity):
     """ Get the entities attached to the one given. """
-    joints_entities = start_entity.ecs().query(Joint)
+    joints_entities = start_entity.ecs().query_include_queued(Joint)
     got = set()
     got.add(start_entity)
     while True:
@@ -172,27 +172,22 @@ def teleport(entity, to, to_velocity=None, to_orientation=None):
 
     # Change in position for attached bodies.
     relative_movement = to - body.position
-    body.position = to
-
-    # Relative rotation for attached bodies.
     relative_rotation = None
     if to_orientation is not None:
-        body.orientation = to_orientation
         relative_rotation = to_orientation - body.orientation
-
-    # Set the velocity.
+    relative_delta_v = None
     if to_velocity is not None:
-        body.velocity = to_velocity
+        relative_delta_v = to_velocity - body.velocity
 
-    # Find attached entities to move.
+    # Move each attached entity the same distance and apply the same change
+    # in orientation.
     to_move = get_attached_entities(entity)
-
-    # Move each attached entity relative to the one we teleported.
+    print to_move
     for attached_entity in to_move:
         attached_body = attached_entity.get_component(Body)
         attached_body.position += relative_movement
-        if to_velocity is not None:
-            attached_body.velocity = to_velocity
+        if relative_delta_v is not None:
+            attached_body.velocity += relative_delta_v
         if relative_rotation is not None:
             attached_body.orientation += relative_rotation
 
@@ -406,10 +401,9 @@ class LaunchesFightersSystem(ComponentSystem):
                     # Launch!
                     child = entity.ecs().create_entity(launcher.config["fighter_config"])
                     setup_team(entity, child)
-                    child_body = child.get_component(Body)
-                    if child_body is not None:
-                        child_body.position=body.position
-                        child_body.velocity=body.velocity + direction * launcher.config["takeoff_speed"]
+                    teleport(child,
+                             body.position + (body.size + 10) * direction,
+                             body.velocity + direction * launcher.config["takeoff_spread"])
 
 
 class KillOnTimerSystem(ComponentSystem):
@@ -823,34 +817,39 @@ class TurretSystem(ComponentSystem):
 
             # Kill detached turrets
             turret = entity.get_component(Turret)
-            if turret.attached_to is None:
+            if turret.attached_to.entity is None:
                 entity.kill()
                 continue
 
             # Get body
             body = entity.get_component(Body)
             if body is None:
-                return
+                continue
 
             # Get the weapon
             gun_ent = turret.weapon.entity
             if gun_ent is None:
-                return
+                continue
             gun = gun_ent.get_component(Weapon)
 
             # Get tracked entity.
             tracking = entity.get_component(Tracking)
             if tracking is None:
-                return
+                continue
+
+            attached_body = turret.attached_to.entity.get_component(Body)
+            if attached_body is None:
+                continue
 
             # Get the tracked body.
             tracked = tracking.tracked.entity
             if tracked is None:
-                return
+                continue
             tracked_body = tracked.get_component(Body)
 
             # Shoot at the object we're tracking.
             if gun.shooting_at is None:
+                body.orientation = attached_body.orientation
                 if not turret.can_shoot and turret.fire_timer.tick(dt):
                     turret.fire_timer.reset()
                     turret.can_shoot = True

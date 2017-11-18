@@ -10,7 +10,7 @@ components:
 
   src.physics.Body:
     mass: 1
-    size: 20
+    size: 5
 
   src.components.Turret: {}
 

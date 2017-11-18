@@ -10,10 +10,10 @@ components:
     turrets:
       - weapon_config: weapons/green_blaster.txt
         turret_config: enemies/turret.txt
-        position: [-10, 0]
+        position: [-15, 0]
       - weapon_config: weapons/green_blaster.txt
         turret_config: enemies/turret.txt
-        position: [10, 0]
+        position: [15, 0]
 
   src.components.AnimationComponent:
     anim_name: enemy_destroyer
