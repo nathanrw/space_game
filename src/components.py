@@ -268,15 +268,3 @@ class Player(Component):
     """ An entity with this component is controlled by the player. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-
-
-class Widget(Component):
-    """ A GUI widget. """
-    TYPE_PANEL = 0
-    TYPE_BUTTON = 1
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.parent = EntityRef(None, Widget)
-        self.children = EntityRefList(Widget)
-        self.position = (0, 0)
-        self.size = (0, 0)
