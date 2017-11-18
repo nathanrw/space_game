@@ -15,8 +15,8 @@ from pymunk.vec2d import Vec2d
 import pygame
 import collections
 
-from .components import Thrusters, Player, Camera
-
+from .components import Thrusters, Player, Camera, Turrets, Turret
+from .direction_providers import DirectionProviderScreen
 
 class InputResponse(object):
     """ The result of executing an Action.  This is bubbled back up to the
@@ -102,6 +102,32 @@ class FuncAction(Action):
         return ret
 
 
+class ShootAction(Action):
+    """ An action to start shooting. """
+
+    def __init__(self, description, handler):
+        """ Constructor. """
+        Action.__init__(self, description)
+        self.handler = handler
+
+    def execute_position(self, position, alternate):
+        """ Start shooting at the given point. """
+        if not alternate:
+            self.handler.start_shooting(position)
+        else:
+            self.handler.stop_shooting()
+        ret = InputResponse()
+        ret.event_handled = True
+        return ret
+
+    def execute_linear(self, value):
+        """ Keep looking in the right direction. """
+        self.handler.maintain_aim(value)
+        ret = InputResponse()
+        ret.event_handled = True
+        return ret
+
+
 class Actions(object):
     """ A table of actions. """
 
@@ -157,6 +183,7 @@ class Actions(object):
                                lambda: handler.game_services.step())
         self.SHOW_KEYS = FuncAction("Show keys",
                                     lambda: handler.print_keybindings())
+        self.SHOOT = ShootAction("Shoot", handler)
 
 
 class KeyMap(object):
@@ -204,11 +231,14 @@ class KeyMap(object):
 class InputHandling(object):
     """ Handles input. """
 
-    def __init__(self, game_services):
+    def __init__(self, view, game_services):
         """ Initialise. """
 
         # Provides access to the bits of the game we want to manipulate.
         self.game_services = game_services
+
+        # The view.
+        self.__view = view
 
         # Initialse pygame's joystick functionality
         pygame.joystick.init()
@@ -255,11 +285,19 @@ class InputHandling(object):
 
         # Mouse controls.
         self.__mouse_map = KeyMap("Mouse", {
+            1: self.__actions.SHOOT,
             4: self.__actions.ZOOM_IN,
             5: self.__actions.ZOOM_OUT,
         })
 
+        # Mouse motion.
+        self.__mouse_motion_map = KeyMap("Mouse motion", {
+            1: self.__actions.SHOOT
+        })
+
         self.__zoom_increment = 0.03
+
+        self.__shooting = False
 
     def print_keybindings(self):
         """ Output the keybindings. """
@@ -283,6 +321,14 @@ class InputHandling(object):
             return self.__actions.QUIT.execute(True)
         elif e.type == pygame.KEYDOWN or e.type == pygame.KEYUP:
             return self.__kmap.execute(e.key, e.type == pygame.KEYUP)
+        elif e.type == pygame.MOUSEMOTION:
+            ret = InputResponse()
+            ret.event_handled = True
+            for button in e.buttons:
+                ret1 = self.__mouse_motion_map.execute_linear(button, e.pos)
+                if ret1.event_handled == True:
+                    ret = ret1
+            return ret
         elif e.type == pygame.MOUSEBUTTONDOWN or e.type == pygame.MOUSEBUTTONUP:
             return self.__mouse_map.execute_position(e.button,
                                                      e.pos,
@@ -329,3 +375,29 @@ class InputHandling(object):
             thrusters = player.get_component(Thrusters)
             if thrusters is not None:
                 thrusters.turn += direction
+
+    def start_shooting(self, point):
+        """ Start shooting at a given point. """
+        self.__shooting = True
+        players = self.game_services.get_entity_manager().query(Player)
+        for player in players:
+            at = DirectionProviderScreen(point, player, self.__view)
+            turrets = player.get_component(Turrets)
+            for turret_ent in turrets.turrets:
+                turret = turret_ent.get_component(Turret)
+                turret.shooting_at = at
+
+    def stop_shooting(self):
+        """ Stop shooting. """
+        self.__shooting = False
+        players = self.game_services.get_entity_manager().query(Player)
+        for player in players:
+            turrets = player.get_component(Turrets)
+            for turret_ent in turrets.turrets:
+                turret = turret_ent.get_component(Turret)
+                turret.shooting_at = None
+
+    def maintain_aim(self, point):
+        """ Keep aiming at the given point. """
+        if self.__shooting:
+            self.start_shooting(point)

@@ -357,7 +357,7 @@ class WeaponSystem(ComponentSystem):
                 return
 
             # Position the bullet somewhere sensible.
-            separation = body.size*2
+            separation = body.size*4
             bullet_position = Vec2d(body.position) + shooting_at_dir * separation
 
             # Work out the muzzle velocity.
@@ -861,21 +861,27 @@ class TurretSystem(ComponentSystem):
                 continue
             gun = gun_ent.get_component(Weapon)
 
-            # Get tracked entity.
-            tracking = entity.get_component(Tracking)
-            if tracking is None:
-                continue
-
             attached_body = turret.attached_to.entity.get_component(Body)
             if attached_body is None:
                 continue
 
-            # Get the tracked body.
-            tracked = tracking.tracked.entity
-            if tracked is None:
-                continue
-            tracked_body = tracked.get_component(Body)
-            body.orientation = 90 + towards(entity, tracked).angle_degrees
+            # Get the tracked body.  Note the special case for the player. This
+            # could be made more elegant!
+            shooting_at = turret.shooting_at
+            if shooting_at is None and turret.attached_to.entity.get_component(Player) is None:
+                # Get tracked entity.
+                tracking = entity.get_component(Tracking)
+                if tracking is not None:
+                    tracked = tracking.tracked.entity
+                    if tracked is not None:
+                        shooting_at = DirectionProviderBody(entity, tracked)
+            if shooting_at is not None:
+                body.orientation = 90 + shooting_at.direction().angle_degrees
+            body.angular_velocity = 0
+
+            # Stop the gun if we've stopped shooting
+            if shooting_at is None and gun.shooting_at is not None:
+                gun.shooting_at = None
 
             # Shoot at the object we're tracking.
             if gun.shooting_at is None:
@@ -884,13 +890,10 @@ class TurretSystem(ComponentSystem):
                     turret.can_shoot = True
                 if turret.can_shoot:
                     (hit_entity, hit_point, hit_normal) = hit_scan(entity)
-                    if hit_entity is not None and not on_same_team(entity, hit_entity):
+                    if hit_entity is None or not on_same_team(entity, hit_entity):
                         turret.can_shoot = False
-                        gun.shooting_at = DirectionProviderBody(entity, tracked)
+                        gun.shooting_at = shooting_at
             else:
-                # Point at the object we're tracking. Note that in future it would be
-                # good for this to be physically simulated, but for now we just hack
-                # it in...
                 if turret.burst_timer.tick(dt):
                     turret.burst_timer.reset()
                     gun.shooting_at = None

@@ -270,8 +270,12 @@ class Game(object):
         player = self.entity_manager.create_entity("player.txt")
         camera.get_component(components.Tracking).tracked.entity = player
 
+        # Create a view to pass to the input handling - this lets it map between
+        # world and screen coordinates.
+        view = drawing.CameraView(self.renderer, camera)
+
         # Make the input handling system.
-        self.input_handling = input_handling.InputHandling(self.game_services)
+        self.input_handling = input_handling.InputHandling(view, self.game_services)
 
         # Create the wave spawner.
         if not self.config.get_or_default("peaceful_mode", False):

@@ -240,6 +240,7 @@ class Turret(Component):
         self.fire_timer.advance_to_fraction(0.8)
         self.burst_timer = Timer(config.get_or_default("burst_period", 1))
         self.can_shoot = False
+        self.shooting_at = None
 
 
 class Turrets(Component):
