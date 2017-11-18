@@ -3,7 +3,7 @@ derive_from: enemies/base_enemy.txt
 components:
 
   src.components.Thrusters:
-    max_thrust: 100000
+    max_thrust: 50000
 
   src.components.FollowsTracked:
     acceleration: 1000

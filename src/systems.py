@@ -284,10 +284,16 @@ class FollowsTrackedSystem(ComponentSystem):
             # how far away the target is, and how far away we want to be.
             frac = min(max(displacement.length / target_dist, rvel.length/200), 1)
 
+
             # Apply force in the interpolated direction.
             thrust = this_body.mass * follows.config["acceleration"]
             force = frac * thrust * direction
-            this_body.force = force
+            physics = self.game_services.get_entity_manager().get_system(Physics)
+            physics.apply_force_at_local_point(
+                entity,
+                force,
+                Vec2d(0, 0)
+            )
 
 
 class WeaponSystem(ComponentSystem):

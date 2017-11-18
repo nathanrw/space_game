@@ -259,6 +259,8 @@ class InputHandling(object):
             5: self.__actions.ZOOM_OUT,
         })
 
+        self.__zoom_increment = 0.03
+
     def print_keybindings(self):
         """ Output the keybindings. """
         for map in (self.__kmap,
@@ -300,13 +302,17 @@ class InputHandling(object):
         """ Zoom the camera in."""
         cameras = self.game_services.get_entity_manager().query(Camera)
         for camera in cameras:
-            camera.get_component(Camera).zoom += 0.1
+            camera.get_component(Camera).zoom += self.__zoom_increment
 
     def zoom_out(self):
         """ Zoom the camera out. """
         cameras = self.game_services.get_entity_manager().query(Camera)
         for camera in cameras:
-            camera.get_component(Camera).zoom -= 0.1
+            c = camera.get_component(Camera)
+            c.zoom -= self.__zoom_increment
+            if c.zoom <= self.__zoom_increment:
+                c.zoom = self.__zoom_increment
+
 
     def move(self, direction):
         """ Move the player in a direction. """

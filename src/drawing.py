@@ -367,6 +367,7 @@ class Drawing(object):
             arg_rect,
             colour=col_back,
             coords=Renderer.COORDS_SCREEN,
+            level=Renderer.LEVEL_FORE,
             brightness=0.2
         )
 
@@ -377,6 +378,7 @@ class Drawing(object):
             rect,
             colour=col_0,
             coords=Renderer.COORDS_SCREEN,
+            level=Renderer.LEVEL_FORE,
             brightness=0.2
         )
 
@@ -386,6 +388,7 @@ class Drawing(object):
             rect,
             colour=col_1,
             coords=Renderer.COORDS_SCREEN,
+            level=Renderer.LEVEL_FORE,
             brightness=0.2
         )
 
@@ -401,11 +404,14 @@ class Drawing(object):
                 Rect(position, size),
                 width=1,
                 colour=(255, 255, 255),
+                level=Renderer.LEVEL_FORE,
                 coords=Renderer.COORDS_SCREEN
+
             )
             self.__renderer.add_job_lines(
                 points,
                 width=2,
                 colour=(200, 200, 200),
+                level=Renderer.LEVEL_FORE,
                 coords=Renderer.COORDS_SCREEN
             )
