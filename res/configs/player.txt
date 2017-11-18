@@ -2,8 +2,11 @@
 
 components:
 
+  # This entity represents the player!
+  src.components.Player: {}
+
   # The player's ship is on the player's team
-  src.behaviours.Team:
+  src.components.Team:
     team: player
 
   # The ship is a body in space.
@@ -12,34 +15,55 @@ components:
     size: 35
 
   # The ship is powered.
-  src.behaviours.Power:
+  src.components.Power:
     capacity: 100
     recharge_rate: 10
 
-  # The ship has weapons.
-  src.behaviours.Weapons:
-    weapons:
-      - weapons/red_blaster.txt
-      - weapons/torpedo_gun.txt
-      - weapons/laser_beam.txt
-
   # The ship explodes when it is destroyed.
-  src.behaviours.ExplodesOnDeath:
+  src.components.ExplodesOnDeath:
     explosion_config: explosions/big_explosion.txt
 
   # The ship can take damage.
-  src.behaviours.Hitpoints:
+  src.components.Hitpoints:
     hp: 50
 
   # The ship is shielded.
-  src.behaviours.Shields:
+  src.components.Shields:
     hp: 5
     recharge_rate: 2
 
+  # The ship has turrets.
+  src.components.Turrets:
+    turrets:
+      - weapon_config: weapons/laser_beam.txt
+        turret_config: enemies/turret.txt
+        position: [-20, 0]
+      - weapon_config: weapons/laser_beam.txt
+        turret_config: enemies/turret.txt
+        position: [20, 0]
+
   # The ship can move.
-  src.behaviours.Thrusters:
-    max_thrust: 100000
+  src.components.Thrusters:
+    thrusters:
+      - position: [-20, -20]
+        orientation: [1, 0]
+        max_thrust: 8000
+      - position: [-20, 20]
+        orientation: [1, 0]
+        max_thrust: 8000
+      - position: [20, -20]
+        orientation: [-1, 0]
+        max_thrust: 8000
+      - position: [20, 20]
+        orientation: [-1, 0]
+        max_thrust: 8000
+      - position: [0, -20]
+        orientation: [0, 1]
+        max_thrust: 8000
+      - position: [0, 20]
+        orientation: [0, -1]
+        max_thrust: 50000
 
   # The ship has an animation.
-  src.behaviours.AnimationComponent:
+  src.components.AnimationComponent:
     anim_name: player_ship

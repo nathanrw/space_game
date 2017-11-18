@@ -5,37 +5,37 @@ derive_from: bullets/base_bullet.txt
 components:
 
   # Does more damage than a regular bullet.
-  src.behaviours.DamageOnContact:
+  src.components.DamageOnContact:
     damage: 5
 
   # A torpedo explodes, naturally!
-  src.behaviours.ExplodesOnDeath:
+  src.components.ExplodesOnDeath:
     explosion_config: explosions/big_explosion.txt
 
   # A torpedo has a team (it shoots and follows the opposite team.)
-  src.behaviours.Team: {}
+  src.components.Team: {}
 
   # A torpedo follows a target.
-  src.behaviours.Tracking: {}
+  src.components.Tracking: {}
 
   # A torpedo seeks out its target.
-  src.behaviours.FollowsTracked:
+  src.components.FollowsTracked:
     acceleration: 3000
     desired_distance_to_player: 0.1
 
   # A torpedo is driven by thrusters.
-  src.behaviours.Thrusters:
+  src.components.Thrusters:
     max_thrust: 100000
 
   # A torpedo has a small blaster turrent on board!
-  src.behaviours.Turrets:
+  src.components.Turrets:
     hardpoints:
     - weapon_config: enemies/torpedo_turret.txt
       x: 0
       y: 0
 
   # Make it look like a torpedo
-  src.behaviours.AnimationComponent:
+  src.components.AnimationComponent:
     anim_name: rocket
     brightness: 0
 

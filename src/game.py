@@ -1,56 +1,35 @@
 """
 A space game written in Python.
-
-It currently depends on pygame for windowing, event handling etc, and on
-pymunk for physics.
-
-The program is structured with the intention than various distinct concerns
-can be separated. The implementation of physics and the implementation of
-drawing know nothing about one another, for instance. This is a work in progress
-though. I'd like to make it realise this ideal more.
-
-Entity creation is data-driven. Entities are defined in configuration
-.txt files containing json data; these live under res/configs.
-
-Things I would like to work on now:
-
-1) Make it more of a game i.e. support controllers, add more types of enemy,
-   weapon etc.
-
-2) Make the use of pymunk more idiomatic. It's currently horrendous.
-   
 """
 
+# Standard imports.
 import pygame
 import os
 import sys
 
-from .physics import Physics
-from .drawing import Drawing
-from .behaviours import DamageCollisionHandler, Camera, WaveSpawner
-from .utils import Config, GameServices, GameInfo, ResourceLoader, EntityManager
-from .input_handling import InputHandling
+# Local imports.
+import components
+import drawing
+import ecs
+import input_handling
+import physics
+import resource
+import systems
+import utils
 
-class SpaceGameServices(GameServices):
-    """ The services exposed to the entitys. This is separate from
+
+class SpaceGameServices(ecs.GameServices):
+    """ The services exposed to the entities. This is separate from
     the game class itself to try and keep control of the interface - since
     this is basically global state you can get at from anywhere. """
-    
+
     def __init__(self, game):
         self.game = game
-        self.info = GameInfo()
+        self.info = ecs.GameInfo()
         self.debug_level = 0
 
     def get_renderer(self):
         return self.game.renderer
-
-    def get_player(self):
-        """ Get the player. """
-        return self.game.player
-
-    def get_camera(self):
-        """ Get the camera. """
-        return self.game.camera.get_component(Camera)
 
     def get_entity_manager(self):
         """ Return the entity manager. """
@@ -71,11 +50,28 @@ class SpaceGameServices(GameServices):
     def get_debug_level(self):
         """ Return the debug level. """
         return self.debug_level
-                
+
+    def load(self):
+        """ Load the game. """
+        self.game.load()
+
+    def save(self):
+        """ Save the game. """
+        self.game.save()
+
+    def toggle_pause(self):
+        """ Pause the game. """
+        self.game.toggle_pause()
+
+    def step(self):
+        """ Simulate one frame and then pause. """
+        self.game.step()
+
+
 class Game(object):
     """ Class glueing all of the building blocks together into an actual
     game. """
-    
+
     def __init__(self):
         """ Initialise the game systems. """
 
@@ -92,7 +88,7 @@ class Game(object):
         self.game_services = SpaceGameServices(self)
 
         # The resource loader.
-        self.resource_loader = ResourceLoader()
+        self.resource_loader = resource.ResourceLoader()
 
         # The configuration.
         if os.path.isfile("./config.txt"):
@@ -102,43 +98,52 @@ class Game(object):
 
         # Create the renderer.
         renderer_name = self.config.get_or_default("renderer", "src.pygame_renderer.PygameRenderer")
-        renderer_class = self.game_services.lookup_type(renderer_name)
+        renderer_class = utils.lookup_type(renderer_name)
         screen_size = (self.config.get_or_default("screen_width", 1024),
                        self.config.get_or_default("screen_height", 768))
         self.renderer = renderer_class(screen_size, self.config, data_path="./res")
 
         # The resource loaded needs a renderer to load images etc.
-        self.resource_loader.renderer = self.renderer
+        self.resource_loader.set_renderer(self.renderer)
 
         # The player
-        self.player = None
-
         # The input handling system.
         self.input_handling = None
 
         # The main camera.
-        self.camera = None
-
         # The enemy.
         self.wave_spawner = None
 
         # The physics
-        self.physics = Physics()
+        self.physics = physics.Physics()
 
         # Plug the systems in. Note that systems can be created dynamically,
         # but we want to manipulate them so we specify them up front.
-        self.entity_manager = EntityManager(self.game_services)
+        self.entity_manager = ecs.EntityManager(self.game_services)
         self.entity_manager.register_component_system(self.physics)
 
         # Configure the resource loader.
-        self.resource_loader.minimise_image_loading = \
+        self.resource_loader.set_minimise_image_loading(
             self.config.get_or_default("minimise_image_loading", False)
+        )
 
         # The drawing visitor.
-        self.drawing = Drawing(self.game_services)
+        self.drawing = drawing.Drawing(self.game_services)
 
         # Is the game running?
         self.running = False
+
+        # Should we load the game?
+        self.want_load = False
+
+        # Should we pause the game?
+        self.want_pause = False
+
+        # Should we unpause the game?
+        self.want_resume = False
+
+        # Should we simulate one frame and then pause?
+        self.want_step = False
 
     def stop_running(self):
         """ Stop the game from running. """
@@ -160,8 +165,30 @@ class Game(object):
         tick_time = 1.0/fps
         while self.running:
 
+            # Has a load been requested?
+            if self.want_load:
+                self.entity_manager.load(open("space_game.save", "r"))
+                self.want_load = False
+
             ## Create any queued objects
             self.entity_manager.create_queued_objects()
+
+            # If a pause has been scheduled then pause the game.
+            if self.want_pause:
+                self.want_pause = False
+                self.entity_manager.pause()
+
+            # If an unpause has been scheduled then unpause the game.
+            if self.want_resume:
+                self.want_resume = False
+                self.entity_manager.unpause()
+
+            # If a step has been scheduled then advance a frame and schedule a
+            # pause.
+            if self.want_step:
+                self.entity_manager.unpause()
+                self.want_pause = True
+                self.want_step = False
 
             # Input
             for e in pygame.event.get():
@@ -173,10 +200,15 @@ class Game(object):
             self.entity_manager.update(tick_time)
 
             # Draw
-            self.renderer.pre_render(self.camera.get_component(Camera))
-            self.drawing.draw(self.camera.get_component(Camera))
-            self.renderer.post_render()
-            self.renderer.flip_buffers()
+            # Note: at the moment we only ever create one camera. If we create
+            # more we'll need a notion of where the camera is drawing to.
+            cameras = self.entity_manager.query(components.Camera)
+            for camera in cameras:
+                view = drawing.CameraView(self.renderer, camera)
+                self.renderer.pre_render(view)
+                self.drawing.draw(view)
+                self.renderer.post_render()
+                self.renderer.flip_buffers()
 
             # Maintain frame rate.
             clock.tick(fps)
@@ -184,7 +216,7 @@ class Game(object):
             # Calculate some metrics
             limited_fps = 1.0/(clock.get_time() / 1000.0)
             raw_fps = 1.0/(clock.get_rawtime() / 1000.0)
-            time_ratio =  (1.0/fps) / (clock.get_time()/1000.0) 
+            time_ratio =  (1.0/fps) / (clock.get_time()/1000.0)
 
             # Remember how long the frame took.
             self.game_services.info.update_framerate(limited_fps,
@@ -198,36 +230,56 @@ class Game(object):
         game is over. If the file "preload.txt" does not exist, then it will
         be filled with a list of resources to preload next time the game is
         run. """
-        
+
         # Initialise the pygame display.
         pygame.init()
         pygame.mixer.init()
         self.renderer.initialise()
 
+        # Create the game systems.
+        self.entity_manager.register_component_system(systems.FollowsTrackedSystem())
+        self.entity_manager.register_component_system(systems.TrackingSystem())
+        self.entity_manager.register_component_system(systems.LaunchesFightersSystem())
+        self.entity_manager.register_component_system(systems.KillOnTimerSystem())
+        self.entity_manager.register_component_system(systems.PowerSystem())
+        self.entity_manager.register_component_system(systems.ShieldSystem())
+        self.entity_manager.register_component_system(systems.TextSystem())
+        self.entity_manager.register_component_system(systems.AnimSystem())
+        self.entity_manager.register_component_system(systems.ThrusterSystem())
+        self.entity_manager.register_component_system(systems.ThrustersSystem())
+        self.entity_manager.register_component_system(systems.WaveSpawnerSystem())
+        self.entity_manager.register_component_system(systems.CameraSystem())
+        self.entity_manager.register_component_system(systems.TurretSystem())
+        self.entity_manager.register_component_system(systems.TurretsSystem())
+        self.entity_manager.register_component_system(systems.WeaponSystem())
+
         # Preload certain images.
         self.resource_loader.preload()
 
-        # Make the camera. Im not 100% sure about this being a entity like any other
-        # since it's clearly special - drawing requires one, the player moves it, etc. But
-        # at the same time it's convenient to attach the background drawable to it, and we
-        # might want to give it physical properties in future. We'll see.
-        self.camera = self.entity_manager.create_entity_with(Camera)
+        # Make the camera.
+        camera = self.entity_manager.create_entity_with(components.Camera,
+                                                             components.Body,
+                                                             components.Tracking,
+                                                             components.FollowsTracked)
+        camera.get_component(components.FollowsTracked).follow_type = "instant"
 
         # Draw debug info if requested.
         self.game_services.debug_level = self.config.get_or_default("debug", 0)
 
         # Make the player
-        self.player = self.entity_manager.create_entity("player.txt")
+        player = self.entity_manager.create_entity("player.txt")
+        camera.get_component(components.Tracking).tracked.entity = player
+
+        # Create a view to pass to the input handling - this lets it map between
+        # world and screen coordinates.
+        view = drawing.CameraView(self.renderer, camera)
 
         # Make the input handling system.
-        self.input_handling = InputHandling(self.game_services, self.player)
-
-        # Make the camera follow the player.
-        self.camera.get_component(Camera).track(self.player)
+        self.input_handling = input_handling.InputHandling(view, self.game_services)
 
         # Create the wave spawner.
         if not self.config.get_or_default("peaceful_mode", False):
-            self.wave_spawner = self.entity_manager.create_entity_with(WaveSpawner)
+            self.entity_manager.register_component_system(systems.WaveSpawnerSystem())
 
         # Make it so that bullets can damage things.
         self.physics.add_collision_handler(DamageCollisionHandler())
@@ -240,3 +292,45 @@ class Game(object):
 
         # Finalise
         pygame.quit()
+
+    def load(self):
+        """ Schedule a load. """
+        self.want_load = True
+
+    def save(self):
+        """ Save the game. """
+        self.entity_manager.save(open("space_game.save", "w"))
+
+    def toggle_pause(self):
+        """ Schedule a pause. """
+        if self.entity_manager.paused():
+            self.want_resume = True
+        else:
+            self.want_pause = True
+
+    def step(self):
+        """ Schedule a step. """
+        self.want_step = True
+
+class DamageCollisionHandler(physics.CollisionHandler):
+    """ Collision handler to apply bullet damage. """
+
+    def __init__(self):
+        """ Constructor. """
+
+        # Match entities that cause damage on contact to entities that can be
+        # damaged.
+        physics.CollisionHandler.__init__(
+            self,
+            components.DamageOnContact,
+            components.Hitpoints
+        )
+
+    def handle_matching_collision(self, dmg, hp):
+        """ Apply the logical effect of the collision and return the result. """
+
+        # Delegate to the function in 'systems'.
+        systems.handle_damage_collision(dmg, hp)
+
+        # Return the result ( we handled the collision. )
+        return physics.CollisionResult(True, True)

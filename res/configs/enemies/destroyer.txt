@@ -3,16 +3,19 @@ derive_from: enemies/base_flying_enemy.txt
 
 components:
 
-  src.behaviours.Hitpoints:
+  src.components.Hitpoints:
     hp: 40
 
-  src.behaviours.Turrets:
-    hardpoints:
-    - weapon_config: enemies/turret.txt
-      x: 0
-      y: 0
+  src.components.Turrets:
+    turrets:
+      - weapon_config: weapons/green_blaster.txt
+        turret_config: enemies/turret.txt
+        position: [-15, 0]
+      - weapon_config: weapons/green_blaster.txt
+        turret_config: enemies/turret.txt
+        position: [15, 0]
 
-  src.behaviours.AnimationComponent:
+  src.components.AnimationComponent:
     anim_name: enemy_destroyer
 
   src.physics.Body:
@@ -20,11 +23,11 @@ components:
     size: 40
 
   # The ship is powered.
-  src.behaviours.Power:
+  src.components.Power:
     capacity: 100
     recharge_rate: 10
 
   # The ship is shielded.
-  src.behaviours.Shields:
+  src.components.Shields:
     hp: 50
     recharge_rate: 50

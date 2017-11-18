@@ -3,10 +3,50 @@
 from pygame import Rect
 import random
 
-from .physics import Body, Thruster, Vec2d
-from .behaviours import Hitpoints, Text, Shields, AnimationComponent, Weapon, Power
-from .renderer import Renderer
-from .utils import Polygon
+from .physics import Physics
+from .components import Body, Thrusters, Thruster, Hitpoints, Text, Shields, \
+                        AnimationComponent, Weapon, Power, Camera
+from .renderer import Renderer, View
+from .ecs import EntityRef
+from .utils import Vec2d, Polygon
+
+class CameraView(View):
+    """ A view defined by a camera entity. """
+
+    def __init__(self, renderer, camera_entity):
+        """ Set up the view. """
+        View.__init__(self, renderer)
+        self.__camera = EntityRef(camera_entity, Camera, Body)
+
+    @property
+    def position(self):
+        """ Get the position of the camera, adjusted for shake. """
+        return self.__body_component.position + Vec2d(self.__camera_component.horizontal_shake,
+                                                      self.__camera_component.vertical_shake)
+
+    @position.setter
+    def position(self, value):
+        """ Set the (actual) position of the camera. """
+        self.__body_component.position = Vec2d(value)
+
+    @property
+    def zoom(self):
+        """ Get the zoom level. """
+        return self.__camera_component.zoom
+
+    @zoom.setter
+    def zoom(self, value):
+        """ Set the zoom level. """
+        if value > 0:
+            self.__camera_component.zoom = value
+
+    @property
+    def __camera_component(self):
+        return self.__camera.entity.get_component(Camera)
+
+    @property
+    def __body_component(self):
+        return self.__camera.entity.get_component(Body)
 
 class Drawing(object):
     """ An object that can draw the state of the game using a renderer. """
@@ -48,7 +88,7 @@ class Drawing(object):
             # We want weapons that are attached to a parent entity with a Body,
             # for position.
             weapon = entity.get_component(Weapon)
-            parent = entity.parent
+            parent = weapon.owner.entity
             if parent is None:
                 continue
             body = parent.get_component(Body)
@@ -58,7 +98,7 @@ class Drawing(object):
             # We only care about beam weapons that are currently firing.
             if weapon.weapon_type != "beam":
                 continue
-            if not weapon.shooting:
+            if weapon.shooting_at is None:
                 continue
             if weapon.impact_point is None:
                 continue
@@ -116,25 +156,31 @@ class Drawing(object):
         entities = self.__entity_manager.query(Body, AnimationComponent)
         for entity in entities:
             body = entity.get_component(Body)
-            component = entity.get_component(AnimationComponent)
-            anim = component.get_anim()
+            animation = entity.get_component(AnimationComponent)
+            kwargs = {
+                "brightness": animation.config.get_or_default("brightness", 0.0)
+            }
+            if animation.level is not None:
+                kwargs["level"] = animation.level
             self.__renderer.add_job_animation(
                 -body.orientation,
                 body.position,
-                anim,
-                brightness=component.config.get_or_default("brightness", 0.0)
+                animation.anim,
+                **kwargs
             )
 
     def __draw_thrusters(self, camera):
         """ Draw the thrusters affecting the body. """
-        entities = self.__entity_manager.query(Body)
+        physics = self.__entity_manager.get_system(Physics)
+        entities = self.__entity_manager.query(Body, Thrusters)
         for entity in entities:
-            body = entity.get_component(Body)
-            for thruster in body.thrusters():
-                if thruster.on():
-                    pos = thruster.world_position(body)
-                    dir = thruster.world_direction(body)
-                    length = thruster.thrust() / 500.0
+            thrusters = entity.get_component(Thrusters)
+            for thruster_ent in thrusters.thrusters:
+                thruster = thruster_ent.get_component(Thruster)
+                if thruster.thrust > 0:
+                    pos = physics.local_to_world(entity, thruster.position)
+                    dir = physics.local_dir_to_world(entity, thruster.direction)
+                    length = thruster.thrust / 500.0
                     length *= (1.0 + random.random()*0.1 - 0.2)
                     poly = Polygon.make_bullet_polygon(pos, pos-(dir*length))
                     self.__renderer.add_job_polygon(
@@ -185,67 +231,63 @@ class Drawing(object):
             component = entity.get_component(Text)
 
             # Cache an image of the rendered text.
-            if component.cached_image() is None:
+            if component.image is None:
                 font = self.__resource_loader.load_font(
-                    component.font_name(),
-                    component.large_font_size()
+                    component.font_name,
+                    component.large_font_size
                 )
-                component.set_cached_image(
-                    self.__renderer.compatible_image_from_text(
-                        component.text(),
-                        font,
-                        component.colour()
-                    )
+                component.image = self.__renderer.compatible_image_from_text(
+                    component.text,
+                    font,
+                    component.colour
                 )
 
             # Render the text.
-            if component.visible():
+            if component.visible:
                 pos = Vec2d(self.__renderer.screen_rect().center) \
-                        - Vec2d(component.cached_image().get_size()) / 2
+                        - Vec2d(component.image.get_size()) / 2
                 self.__renderer.add_job_image(
                     pos,
-                    component.cached_image(),
+                    component.image,
                     coords=Renderer.COORDS_SCREEN,
                     brightness=0.25
                 )
 
             # Draw a scrolling warning.
-            if component.blink():
+            if component.blink:
 
                 # Cache an image of the rendered 'warning' string.
-                if component.cached_warning() is None:
+                if component.warning is None:
                     small_font = self.__resource_loader.load_font(
-                        component.font_name(),
-                        component.small_font_size()
+                        component.font_name,
+                        component.small_font_size
                     )
-                    component.set_cached_warning(
-                        self.__renderer.compatible_image_from_text(
-                            "WARNING",
-                            small_font,
-                            component.colour()
-                        )
+                    component.warning = self.__renderer.compatible_image_from_text(
+                        "WARNING",
+                        small_font,
+                        component.colour
                     )
 
                 # Get positions of the 'WARNING' strips
                 pos = Vec2d(self.__renderer.screen_rect().center) \
-                      - Vec2d(component.cached_image().get_size()) / 2
-                y0 = int(pos.y-component.cached_warning().get_height()-10)
-                y1 = int(pos.y+component.cached_image().get_height()+10)
+                      - Vec2d(component.image.get_size()) / 2
+                y0 = int(pos.y-component.warning.get_height()-10)
+                y1 = int(pos.y+component.image.get_height()+10)
 
                 # Draw a row of 'warnings' at the top and bottom.
                 for (forwards, y) in ((True, y0), (False, y1)):
 
                     # Draw a row of 'WARNING's.
-                    (image_width, image_height) = component.cached_warning().get_size()
+                    (image_width, image_height) = component.warning.get_size()
                     (screen_width, screen_height) = self.__renderer.screen_size()
-                    x = component.offset()
+                    x = component.offset
                     if not forwards:
                         x = -x
-                    start_i = -(x%(image_width+component.padding()))
-                    for i in range(int(start_i), screen_width, image_width + component.padding()):
+                    start_i = -(x%(image_width+component.padding))
+                    for i in range(int(start_i), screen_width, image_width + component.padding):
                         self.__renderer.add_job_image(
                             (i, y),
-                            component.cached_warning(),
+                            component.warning,
                             coords=Renderer.COORDS_SCREEN,
                             brightness=0.25
                         )
@@ -256,16 +298,16 @@ class Drawing(object):
                     rect.bottom = y-5
                     self.__renderer.add_job_rect(
                         rect,
-                        colour=component.colour(),
+                        colour=component.colour,
                         coords=Renderer.COORDS_SCREEN,
                         brightness=0.25
                     )
 
                     # Draw the bottom bar.
-                    rect.top=y+component.cached_warning().get_height()+5
+                    rect.top=y+component.warning.get_height()+5
                     self.__renderer.add_job_rect(
                         rect,
-                        colour=component.colour(),
+                        colour=component.colour,
                         coords=Renderer.COORDS_SCREEN,
                         brightness=0.25
                     )
@@ -325,6 +367,7 @@ class Drawing(object):
             arg_rect,
             colour=col_back,
             coords=Renderer.COORDS_SCREEN,
+            level=Renderer.LEVEL_FORE,
             brightness=0.2
         )
 
@@ -335,6 +378,7 @@ class Drawing(object):
             rect,
             colour=col_0,
             coords=Renderer.COORDS_SCREEN,
+            level=Renderer.LEVEL_FORE,
             brightness=0.2
         )
 
@@ -344,6 +388,7 @@ class Drawing(object):
             rect,
             colour=col_1,
             coords=Renderer.COORDS_SCREEN,
+            level=Renderer.LEVEL_FORE,
             brightness=0.2
         )
 
@@ -359,11 +404,14 @@ class Drawing(object):
                 Rect(position, size),
                 width=1,
                 colour=(255, 255, 255),
+                level=Renderer.LEVEL_FORE,
                 coords=Renderer.COORDS_SCREEN
+
             )
             self.__renderer.add_job_lines(
                 points,
                 width=2,
                 colour=(200, 200, 200),
+                level=Renderer.LEVEL_FORE,
                 coords=Renderer.COORDS_SCREEN
             )

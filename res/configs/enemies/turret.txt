@@ -1,20 +1,18 @@
-derive_from: enemies/base_enemy.txt
-
 components:
 
-  src.behaviours.Hitpoints:
-    hp: 2
-
-  src.behaviours.AnimationComponent:
+  src.components.AnimationComponent:
     anim_name: enemy_turret
 
   src.physics.Body:
     mass: 1
-    size: 20
+    size: 1
 
-  src.behaviours.Weapons:
-    burst_period: 3
-    fire_period: 1
-    weapons:
-      - weapons/green_blaster.txt
-    auto_fire: 1
+  src.components.Turret: {}
+
+  src.components.Power:
+    capacity: 100
+    recharge_rate: 10
+
+  src.components.Team: {}
+
+  src.components.Tracking: {}

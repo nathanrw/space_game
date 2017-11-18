@@ -15,7 +15,8 @@ class LoadingScreen(object):
         self.progress = 0
         self.renderer = renderer
         self.view = View(renderer)
-        self.title = renderer.load_compatible_image("res/images/title.bmp")
+        self.font = renderer.load_compatible_font("res/fonts/nasdaqer/NASDAQER.ttf", 72)
+        self.title = renderer.compatible_image_from_text("SPACE GAME", self.font, (255, 255, 255))
         self.background = renderer.load_compatible_image("res/images/857-tileable-classic-nebula-space-patterns/6.jpg")
         self.__draw()
 
