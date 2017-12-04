@@ -1039,6 +1039,14 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_rect(self, rect, **kwargs):
         """ Render rectangle. """
+        width = kwargs.get("width", 0)
+        if width > 0:
+            kwargs["width"] = 0
+            self.render_rect(Rect(rect.left, rect.top, rect.width, width), **kwargs)
+            self.render_rect(Rect(rect.left, rect.bottom-width, rect.width, width), **kwargs)
+            self.render_rect(Rect(rect.left, rect.top+width, width, rect.height-width*2), **kwargs)
+            self.render_rect(Rect(rect.right-width, rect.top+width, width, rect.height-width*2), **kwargs)
+            return
         (coords, level) = self.__parse_kwargs(kwargs)
         buffer = self.__command_buffers.get_buffer(coords, level, GL.GL_TRIANGLES)
         buffer.add_quad(rect.center, rect.size, **kwargs)

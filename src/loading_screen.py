@@ -42,7 +42,7 @@ class LoadingScreen(object):
         bar_rect.height = 60
         bar_rect.center = screen_rect.center
         bar_rect.top += self.title.get_height() / 2
-        brightness = 1.0 * (float(self.progress)/self.total)
+        brightness = 0.2 * (float(self.progress)/self.total)
 
         # Draw the background image
         self.renderer.add_job_background(self.background)
@@ -54,16 +54,13 @@ class LoadingScreen(object):
                                     brightness=brightness)
 
         # Draw the loading bar
-        sz = 8
+        sz = 4.0
         self.renderer.add_job_rect(bar_rect,
                                    colour=(255, 255, 255),
+                                   width=sz,
                                    coords=Renderer.COORDS_SCREEN,
                                    brightness=brightness)
-        bar_rect.inflate_ip(-sz, -sz)
-        self.renderer.add_job_rect(bar_rect,
-                                   colour=(0, 0, 0),
-                                   coords=Renderer.COORDS_SCREEN)
-        bar_rect.inflate_ip(-sz, -sz)
+        bar_rect.inflate_ip(-sz*4, -sz*4)
         left = bar_rect.left
         bar_rect.width = int(bar_rect.width * (float(self.progress)/self.total))
         bar_rect.left = left
