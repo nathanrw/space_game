@@ -387,6 +387,15 @@ class TextureArray(object):
     """ A texture array for rendering many sprites without changing
     textures. """
 
+    class Cursor(object):
+        """ A cursor into the texture array. """
+        def __init__(self):
+            self.current_page = 0
+            self.row_x = 0
+            self.row_y = 0
+            self.row_height = 0
+            self.end = 0
+
     def __init__(self):
         """ Initialise the texture array, this creates storage for the
         array but does not load any textures. """
@@ -395,6 +404,7 @@ class TextureArray(object):
         self.__width = 1024
         self.__height = 1024
         self.__depth = 20
+        self.__scratch_depth = 2
 
         # Allocate the texture array.
         # NOTE: If this goes wrong, we're probably trying to do this before
@@ -414,7 +424,7 @@ class TextureArray(object):
             GL.GL_RGBA8, # internal format
             self.__width,
             self.__height,
-            self.__depth,
+            self.__depth + self.__scratch_depth,
             0, #border
             GL.GL_RGBA, # format
             GL.GL_UNSIGNED_BYTE, # data type
@@ -426,10 +436,13 @@ class TextureArray(object):
         # row starts at a y coordinate flush with the bottom of the tallest
         # item in the current row. Note that this will end up with lots of
         # wasted space, we don't do any work to optimise the packing!
-        self.__current_page = 0
-        self.__row_x = 0
-        self.__row_y = 0
-        self.__row_height = 0
+        self.__cursor = TextureArray.Cursor()
+        self.__cursor.end = self.__depth
+
+        # Initialise the scratch cursor.
+        self.__scratch_cursor = TextureArray.Cursor()
+        self.__scratch_cursor.index = self.__depth
+        self.__scratch_cursor.end = self.__depth + self.__scratch_depth
 
         # Map from filenames to virtual textures.
         self.__filename_map = {}
@@ -451,22 +464,34 @@ class TextureArray(object):
 
     def load_image(self, image):
         """ Load a texture from a pygame surface. """
+        return self.__load_image(image, self.__cursor)
+
+    def load_image_dynamic(self, image):
+        """ Load a texture that persists for the duration of this frame. """
+        return self.__load_image(image, self.__scratch_cursor)
+
+    def __load_image(self, image, cursor):
+        """ Load an image into the array at position 'cursor'. """
 
         # If the image is too big then tough luck...
         if image.get_width() > self.__width or image.get_height() > self.__height:
             raise Exception("Image is too large for texture array")
 
         # If it doesn't fit on the current row then advance the row.
-        if image.get_width() > self.__width - self.__row_x:
-            self.__row_y += self.__row_height
-            self.__row_x = 0
+        if image.get_width() > self.__width - cursor.row_x:
+            cursor.row_y += cursor.row_height
+            cursor.row_x = 0
 
         # If it doesnt fit on the page advance the page.
-        if image.get_height() > self.__height - self.__row_y:
-            self.__current_page += 1
-            self.__row_x = 0
-            self.__row_y = 0
-            self.__row_height = 0
+        if image.get_height() > self.__height - cursor.row_y:
+            cursor.current_page += 1
+            cursor.row_x = 0
+            cursor.row_y = 0
+            cursor.row_height = 0
+
+        # We're out of memory - return a dummy texture.
+        if cursor.current_page >= cursor.end:
+            return VirtualTexture.create_null_texture()
 
         # Ok, upload the image to the texture array.
         image_bytes = pygame.image.tostring(image, "RGBA", 1)
@@ -474,9 +499,9 @@ class TextureArray(object):
         GL.glTexSubImage3D(
             GL.GL_TEXTURE_2D_ARRAY,
             0, # Mipmap number
-            self.__row_x, # x offset
-            self.__row_y, # y offset
-            self.__current_page, # z offset
+            cursor.row_x, # x offset
+            cursor.row_y, # y offset
+            cursor.current_page, # z offset
             image.get_width(),
             image.get_height(),
             1, # Depth
@@ -487,15 +512,15 @@ class TextureArray(object):
 
         # Remember the location of this texture in the atlas.
         ret = VirtualTexture(self,
-                             self.__row_x,
-                             self.__row_y,
+                             cursor.row_x,
+                             cursor.row_y,
                              image.get_width(),
                              image.get_height(),
-                             self.__current_page)
+                             cursor.current_page)
 
         # Advance the cursor.
-        self.__row_x += image.get_width()
-        self.__row_height = max(self.__row_height, image.get_height())
+        cursor.row_x += image.get_width()
+        cursor.row_height = max(cursor.row_height, image.get_height())
 
         # Return the texture info.
         return ret
@@ -505,6 +530,14 @@ class TextureArray(object):
         if not filename in self.__filename_map:
             return VirtualTexture.create_null_texture()
         return self.__filename_map[filename]
+
+    def reset_scratch(self):
+        """ Reset the scratch cursor. All virtual textures into the scratch
+        area now point to garbage. """
+        self.__scratch_cursor.current_page = 0
+        self.__scratch_cursor.row_x = 0
+        self.__scratch_cursor.row_y = 0
+        self.__scratch_cursor.row_height = 0
 
     def begin(self):
         """ Begin rendering with the texture array. """
@@ -769,8 +802,8 @@ class CommandBuffer(object):
         while i+1 < len(points):
 
             # Get the segment.
-            p0 = points[i]
-            p1 = points[i+1]
+            p0 = Vec2d(points[i])
+            p1 = Vec2d(points[i+1])
 
             # Skip 0-length segment.
             if (p0 - p1).length == 0:
@@ -908,6 +941,9 @@ class PygameOpenGLRenderer(Renderer):
 
         # Cache the view.
         self.__view = view
+
+        # Delete scratch textures.
+        self.__texture_array.reset_scratch()
 
         # Reset command buffers
         self.__command_buffers.reset()
@@ -1081,9 +1117,14 @@ class PygameOpenGLRenderer(Renderer):
         else:
             buffer.add_circle_lines(position, radius, **kwargs)
 
-    def render_text(self, font, position, text, **kwargs):
+    def render_text(self, font, text, position, **kwargs):
         """ Render some text. """
-        pass
+        colour = kwargs.get("colour", (255, 255, 255))
+        text = self.__texture_array.load_image_dynamic(
+            font.render(text, True, colour)
+        )
+        del kwargs["colour"]
+        self.render_image(position, text, **kwargs)
 
     def render_animation(self, position, orientation, anim, **kwargs):
         """ Render an animation. """
