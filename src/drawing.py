@@ -322,24 +322,30 @@ class Drawing(object):
         # Load the font.
         if self.__font == None:
             self.__font = self.__resource_loader.load_font(
-                "res/fonts/nasdaqer/NASDAQER.ttf",
+                "res/fonts/xolonium/Xolonium-Regular.ttf",
                 12
             )
 
         game_info = self.__game_services.get_info()
 
+        self.__renderer.add_job_text(
+            self.__font,
+            "FPS (average): %s" % int(sum(game_info.framerates) / (len(game_info.framerates)+1)),
+            (10, 10)
+        )
+
         # Draw the framerate.
         self.__renderer.add_job_text(
             self.__font,
-            "FPS (limited): %04.1f" % game_info.framerate,
-            (10, 10)
+            "FPS (limited): %s" % int(game_info.framerate),
+            (10, 30)
         )
 
         # Draw the unlimited framerate.
         self.__renderer.add_job_text(
             self.__font,
-            "FPS (raw): %04.1f" % game_info.raw_framerate,
-            (10, 30)
+            "FPS (raw): %s" % int(game_info.raw_framerate),
+            (10, 50)
         )
 
         # Draw a graph of the framerate over time.
@@ -347,7 +353,7 @@ class Drawing(object):
             camera,
             game_info.framerates,
             70,
-            (10, 50),
+            (10, 70),
             (100, 15)
         )
 
@@ -355,7 +361,7 @@ class Drawing(object):
         self.__renderer.add_job_text(
             self.__font,
             "Time scale: %03.1f" % game_info.time_ratio,
-            (10, 70)
+            (10, 90)
         )
 
     def __draw_bar(self, camera, arg_rect, fraction,
