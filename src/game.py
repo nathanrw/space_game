@@ -106,21 +106,14 @@ class Game(object):
         # The resource loaded needs a renderer to load images etc.
         self.resource_loader.set_renderer(self.renderer)
 
-        # The player
         # The input handling system.
         self.input_handling = None
 
-        # The main camera.
         # The enemy.
         self.wave_spawner = None
 
-        # The physics
-        self.physics = physics.Physics()
-
-        # Plug the systems in. Note that systems can be created dynamically,
-        # but we want to manipulate them so we specify them up front.
+        # Create the entity manager.
         self.entity_manager = ecs.EntityManager(self.game_services)
-        self.entity_manager.register_component_system(self.physics)
 
         # Configure the resource loader.
         self.resource_loader.set_minimise_image_loading(
@@ -149,87 +142,11 @@ class Game(object):
         """ Stop the game from running. """
         self.running = False
 
-    def run_update_loop(self):
-        """ Run an update loop. This sets self.running to True and
-        exits when something sets it to false. Note that this is a
-        separate function from run() since we might want a number of
-        update loops - e.g. as a cheap way of having the loading
-        screen use the same code as the rest of the game, or even
-        maybe for implementing different modes (using the call stack
-        to stack them.)"""
-
-        # Main loop.
-        self.running = True
-        fps = 60
-        clock = pygame.time.Clock()
-        tick_time = 1.0/fps
-        while self.running:
-
-            # Has a load been requested?
-            if self.want_load:
-                self.entity_manager.load(open("space_game.save", "r"))
-                self.want_load = False
-
-            ## Create any queued objects
-            self.entity_manager.create_queued_objects()
-
-            # If a pause has been scheduled then pause the game.
-            if self.want_pause:
-                self.want_pause = False
-                self.entity_manager.pause()
-
-            # If an unpause has been scheduled then unpause the game.
-            if self.want_resume:
-                self.want_resume = False
-                self.entity_manager.unpause()
-
-            # If a step has been scheduled then advance a frame and schedule a
-            # pause.
-            if self.want_step:
-                self.entity_manager.unpause()
-                self.want_pause = True
-                self.want_step = False
-
-            # Input
-            for e in pygame.event.get():
-                response = self.input_handling.handle_input(e)
-                if response.quit_requested:
-                    self.running = False
-
-            # Update the systems.
-            self.entity_manager.update(tick_time)
-
-            # Draw
-            # Note: at the moment we only ever create one camera. If we create
-            # more we'll need a notion of where the camera is drawing to.
-            cameras = self.entity_manager.query(components.Camera)
-            for camera in cameras:
-                view = drawing.CameraView(self.renderer, camera)
-                self.renderer.pre_render(view)
-                self.drawing.draw(view)
-                self.renderer.post_render()
-                self.renderer.flip_buffers()
-
-            # Maintain frame rate.
-            clock.tick(fps)
-
-            # Calculate some metrics
-            limited_fps = 1.0/(clock.get_time() / 1000.0)
-            raw_fps = 1.0/(clock.get_rawtime() / 1000.0)
-            time_ratio =  (1.0/fps) / (clock.get_time()/1000.0)
-
-            # Remember how long the frame took.
-            self.game_services.info.update_framerate(limited_fps,
-                                                     raw_fps,
-                                                     time_ratio)
-
     def run(self):
         """ The game loop. This performs initialisation including setting
         up pygame, and shows a loading screen while certain resources are
         preloaded. Then, we enter the game loop wherein we remain until the
-        game is over. If the file "preload.txt" does not exist, then it will
-        be filled with a list of resources to preload next time the game is
-        run. """
+        game is over. """
 
         # Initialise the pygame display.
         pygame.init()
@@ -237,6 +154,7 @@ class Game(object):
         self.renderer.initialise()
 
         # Create the game systems.
+        self.entity_manager.register_component_system(physics.Physics())
         self.entity_manager.register_component_system(systems.FollowsTrackedSystem())
         self.entity_manager.register_component_system(systems.TrackingSystem())
         self.entity_manager.register_component_system(systems.LaunchesFightersSystem())
@@ -282,13 +200,70 @@ class Game(object):
             self.entity_manager.register_component_system(systems.WaveSpawnerSystem())
 
         # Make it so that bullets can damage things.
-        self.physics.add_collision_handler(DamageCollisionHandler())
+        self.entity_manager.get_system(physics.Physics).add_collision_handler(
+            DamageCollisionHandler()
+        )
 
         # Set the scrolling background.
         self.drawing.set_background("res/images/857-tileable-classic-nebula-space-patterns/6.jpg")
 
         # Run the game loop.
-        self.run_update_loop()
+        self.running = True
+        fps = 60
+        clock = pygame.time.Clock()
+        tick_time = 1.0/fps
+        while self.running:
+
+            # Has a load been requested?
+            if self.want_load:
+                self.entity_manager.load(open("space_game.save", "r"))
+                self.want_load = False
+
+            ## Create any queued objects
+            self.entity_manager.create_queued_objects()
+
+            # If a pause has been scheduled then pause the game.
+            if self.want_pause:
+                self.want_pause = False
+                self.entity_manager.pause()
+
+            # If an unpause has been scheduled then unpause the game.
+            if self.want_resume:
+                self.want_resume = False
+                self.entity_manager.unpause()
+
+            # If a step has been scheduled then advance a frame and schedule a
+            # pause.
+            if self.want_step:
+                self.entity_manager.unpause()
+                self.want_pause = True
+                self.want_step = False
+
+            # Input
+            for e in pygame.event.get():
+                response = self.input_handling.handle_input(e)
+                if response.quit_requested:
+                    self.running = False
+
+            # Update the systems.
+            self.entity_manager.update(tick_time)
+
+            # Draw
+            self.renderer.pre_render(view)
+            self.drawing.draw(view)
+            self.renderer.post_render()
+            self.renderer.flip_buffers()
+
+            # Maintain frame rate.
+            clock.tick(fps)
+
+            # Remember how long the frame took.
+            limited_fps = 1.0/(clock.get_time() / 1000.0)
+            raw_fps = 1.0/(clock.get_rawtime() / 1000.0)
+            time_ratio =  (1.0/fps) / (clock.get_time()/1000.0)
+            self.game_services.info.update_framerate(limited_fps,
+                                                     raw_fps,
+                                                     time_ratio)
 
         # Finalise
         pygame.quit()
@@ -311,6 +286,7 @@ class Game(object):
     def step(self):
         """ Schedule a step. """
         self.want_step = True
+
 
 class DamageCollisionHandler(physics.CollisionHandler):
     """ Collision handler to apply bullet damage. """
