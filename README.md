@@ -68,6 +68,17 @@ directory. You can view the results with
 
     ./bin/print_profile_results
 
+Running the Tests
+-----------------
+
+You can run the tests like so:
+
+    ./bin/run_tests
+
+or like so (or equivalent:)
+
+    python2 -m unittest discover -p "*_test.py"
+
 Why?
 ----
 

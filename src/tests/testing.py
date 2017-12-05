@@ -2,7 +2,9 @@
 
 import pygame
 
-from ..utils import GameServices, Entity, EntityManager, ResourceLoader, Config
+from ..ecs import GameServices, Entity, EntityManager
+from ..resource import ResourceLoader
+from ..config import Config
 from ..components import Camera
 
 class MockGameServices(GameServices):
