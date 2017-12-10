@@ -41,3 +41,17 @@ It might be possible to do something *simple* gives me what I want without
 doing that.
 
 There might be something out there that does just that but I haven't seen it.
+
+nuklear
+-------
+
+A header-only c library. This is an immediate-mode GUI with no dependencies,
+input is specified via function call, drawing is done into an intermediate
+'command buffer' representation and state is stored in a context object.
+
+This looks fantastic, exactly what I want, but it's in C. However, because
+it's in simple C, it should be fairly simple to call it from python either
+via ctypes or via a SWIG wrapper.
+
+I would have to create both linux & windows builds. It would probably be
+helpful to get it on pypi.
