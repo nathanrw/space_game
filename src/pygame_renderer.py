@@ -171,6 +171,12 @@ class PygameRenderer(Renderer):
             self.__surface.blit(image, view.point_to_screen(position, coords))
         self.__add_job((level, coords), do_it)
 
+    def render_nuklear(self, nuklear, **kwargs):
+        (coords, level) = self.__parse_kwargs(kwargs)
+        def do_it(view):
+            nuklear.render_to_surface(self.__surface)
+        self.__add_job((level, coords), do_it)
+
     def __parse_kwargs(self, kwargs_dict):
         """ Extract level and coordinate system, map colour. """
         coords = self.__get_or_default(kwargs_dict, "coords", Renderer.COORDS_WORLD)

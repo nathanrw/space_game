@@ -242,6 +242,12 @@ class Renderer(object):
                             coords=Renderer.COORDS_SCREEN)
         self.render_image(position, image, **kwargs)
 
+    def add_job_nuklear(self, nuklear, **kwargs):
+        self.__set_defaults(kwargs,
+                            level=Renderer.LEVEL_FORE_NEAR,
+                            coords=Renderer.COORDS_SCREEN)
+        self.render_nuklear(nuklear, **kwargs)
+
     def __set_defaults(self, got_kwargs, **kwargs):
         """ Set default kwargs."""
         for key in kwargs:
@@ -291,4 +297,9 @@ class Renderer(object):
     @abc.abstractmethod
     def render_image(self, position, image, **kwargs):
         """ Render an image. """
+        pass
+
+    @abc.abstractmethod
+    def render_nuklear(self, nuklear, **kwargs):
+        """ Render the nuklear GUI. """
         pass

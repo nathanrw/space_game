@@ -1154,6 +1154,10 @@ class PygameOpenGLRenderer(Renderer):
                         texref=image,
                         **kwargs)
 
+    def render_nuklear(self, nuklear, **kwargs):
+        """ Render the nuklear GUI. """
+        return # Not yet implemented.
+
     def __load_shader_program(self, name):
         """ Load a shader program. """
         return ShaderProgram(os.path.join(self.__data_path, os.path.join("shaders", name)))

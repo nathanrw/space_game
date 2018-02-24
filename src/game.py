@@ -6,6 +6,8 @@ A space game written in Python.
 import pygame
 import os
 import sys
+import pynk
+import pynk.nkpygame
 
 # Local imports.
 import components
@@ -138,6 +140,9 @@ class Game(object):
         # Should we simulate one frame and then pause?
         self.want_step = False
 
+        # The GUI
+        self.nkpygame = None
+
     def stop_running(self):
         """ Stop the game from running. """
         self.running = False
@@ -206,6 +211,11 @@ class Game(object):
         # Set the scrolling background.
         self.drawing.set_background("res/images/857-tileable-classic-nebula-space-patterns/6.jpg")
 
+        # Make the GUI
+        font = pygame.font.SysFont("Consolas", 14)
+        self.nkpygame = pynk.nkpygame.NkPygame(font)
+        self.nkpygame.setup()
+
         # Run the game loop.
         self.running = True
         fps = 60
@@ -239,19 +249,37 @@ class Game(object):
                 self.want_step = False
 
             # Input
+            events = []
             for e in pygame.event.get():
                 response = self.input_handling.handle_input(e)
                 if response.quit_requested:
                     self.running = False
+                events.append(e)
+            self.nkpygame.handle_events(events)
 
             # Update the systems.
             self.entity_manager.update(tick_time)
 
+            winflags = pynk.lib.NK_WINDOW_BORDER |\
+                       pynk.lib.NK_WINDOW_MOVABLE |\
+                       pynk.lib.NK_WINDOW_SCALABLE |\
+                       pynk.lib.NK_WINDOW_CLOSABLE |\
+                       pynk.lib.NK_WINDOW_MINIMIZABLE |\
+                       pynk.lib.NK_WINDOW_TITLE
+
+            if pynk.lib.nk_begin(self.nkpygame.ctx, "Hello World", pynk.lib.nk_rect(50, 50, 100, 100), winflags):
+                pynk.lib.nk_layout_row_static(self.nkpygame.ctx, 30, 80, 1)
+                if pynk.lib.nk_button_label(self.nkpygame.ctx, "quit"):
+                    self.running = False
+            pynk.lib.nk_end(self.nkpygame.ctx)
+
             # Draw
             self.renderer.pre_render(view)
             self.drawing.draw(view)
+            self.renderer.add_job_nuklear(self.nkpygame)
             self.renderer.post_render()
             self.renderer.flip_buffers()
+            pynk.lib.nk_clear(self.nkpygame.ctx)
 
             # Maintain frame rate.
             clock.tick(fps)
@@ -265,6 +293,7 @@ class Game(object):
                                                      time_ratio)
 
         # Finalise
+        self.nkpygame.teardown()
         pygame.quit()
 
     def load(self):
