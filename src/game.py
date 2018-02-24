@@ -165,7 +165,6 @@ class Game(object):
         self.entity_manager.register_component_system(systems.AnimSystem())
         self.entity_manager.register_component_system(systems.ThrusterSystem())
         self.entity_manager.register_component_system(systems.ThrustersSystem())
-        self.entity_manager.register_component_system(systems.WaveSpawnerSystem())
         self.entity_manager.register_component_system(systems.CameraSystem())
         self.entity_manager.register_component_system(systems.TurretSystem())
         self.entity_manager.register_component_system(systems.TurretsSystem())
