@@ -99,6 +99,10 @@ class GameServices(object):
         """ Save the game. """
         pass
 
+    def paused(self):
+        """ Is the game paused? """
+        return False
+
     def toggle_pause(self):
         """ Pause the game. """
         pass
@@ -258,7 +262,7 @@ class EntityManager(object):
 
     def get_all_components(self, entity):
         """ Get all components of an entity. """
-        return self.__component_store.get_all(entity)
+        return self.__component_store.get_all_components(entity)
 
     def query(self, type1, *types):
         """ Get all entities with a particular set of components. """

@@ -13,8 +13,10 @@ The scheme allows for keyboard, mouse and joystick input.
 from pymunk.vec2d import Vec2d
 
 import pygame
+import pynk
 import collections
 
+from .physics import Physics
 from .components import Thrusters, Player, Camera, Turrets, Turret
 from .direction_providers import DirectionProviderScreen
 
@@ -179,6 +181,8 @@ class Actions(object):
                                lambda: handler.game_services.load())
         self.TOGGLE_PAUSE = FuncAction("Pause / unpause",
                                        lambda: handler.game_services.toggle_pause())
+        self.TOGGLE_INPUT = FuncAction("Toggle input",
+                                       lambda: handler.toggle_input())
         self.STEP = FuncAction("Simulate one frame then pause",
                                lambda: handler.game_services.step())
         self.SHOW_KEYS = FuncAction("Show keys",
@@ -228,6 +232,149 @@ class KeyMap(object):
             print "    " + key_display_func(key) + ": " + self.__mapping[key].description
 
 
+class InputContext(object):
+    """ A context for input. """
+
+    def __init__(self, actions, keyboard_actions={},
+                                joystick_actions={},
+                                joystick_axis_actions={},
+                                joystick_ball_actions={},
+                                joystick_hat_actions={},
+                                mouse_actions={},
+                                mouse_motion_actions={}):
+        self.actions = actions
+
+        # Keyboard controls.
+        self.kmap = KeyMap("Keyboard", keyboard_actions)
+
+        # Joystick (button) controls.
+        self.js_map = KeyMap("Joystick buttons", joystick_actions)
+
+        # Joystick (axis) controls.
+        self.js_axis_map = KeyMap("Joystick axes", joystick_axis_actions)
+
+        # Joystick (ball) controls.
+        self.js_ball_map = KeyMap("Joystick balls", joystick_ball_actions)
+
+        # Joystick (hat) controls.
+        self.js_hat_map = KeyMap("Joystick hats", joystick_hat_actions)
+
+        # Mouse controls.
+        self.mouse_map = KeyMap("Mouse", mouse_actions)
+
+        # Mouse motion.
+        self.mouse_motion_map = KeyMap("Mouse motion", mouse_motion_actions)
+
+    def print_keybindings(self):
+        """ Output the keybindings. """
+        for map in (self.kmap,
+                    self.mouse_map,
+                    self.js_map,
+                    self.js_hat_map,
+                    self.js_axis_map,
+                    self.js_ball_map):
+            key_display_func = lambda x: str(x)
+            if map == self.kmap:
+                key_display_func = pygame.key.name
+            map.print_keybindings(key_display_func)
+
+    def handle_input(self, e):
+        """ Dispatch a pygame input event to the relevant key mapping table
+         and return the response. """
+
+        if e.type == pygame.QUIT:
+            # Quit requested from window manager.
+            return self.actions.QUIT.execute(True)
+        elif e.type == pygame.KEYDOWN or e.type == pygame.KEYUP:
+            return self.kmap.execute(e.key, e.type == pygame.KEYUP)
+        elif e.type == pygame.MOUSEMOTION:
+            ret = InputResponse()
+            ret.event_handled = True
+            for button in e.buttons:
+                ret1 = self.mouse_motion_map.execute_linear(button, e.pos)
+                if ret1.event_handled == True:
+                    ret = ret1
+            return ret
+        elif e.type == pygame.MOUSEBUTTONDOWN or e.type == pygame.MOUSEBUTTONUP:
+            return self.mouse_map.execute_position(e.button,
+                                                   e.pos,
+                                                   e.type == pygame.MOUSEBUTTONUP)
+        elif e.type == pygame.JOYAXISMOTION:
+            return self.js_axis_map.execute_linear(e.axis, e.value)
+        elif e.type == pygame.JOYBALLMOTION:
+            return self.js_axis_map.execute_linear(e.ball, e.rel)
+        elif e.type == pygame.JOYBUTTONDOWN or e.type == pygame.JOYBUTTONUP:
+            return self.kmap.execute(e.button, e.type == pygame.JOYBUTTONUP)
+        elif e.type == pygame.JOYHATMOTION:
+            return self.js_hat_map.execute_linear(e.hat, e.value)
+
+        return InputResponse()
+
+
+class InputContextFlight(InputContext):
+    """ Flying a spaceship """
+
+    def __init__(self, actions):
+        InputContext.__init__(
+            self,
+            actions,
+
+            # Keyboard controls.
+            keyboard_actions = {
+                pygame.K_w: actions.MOVE_FORWARDS,
+                pygame.K_a: actions.MOVE_LEFT,
+                pygame.K_s: actions.MOVE_BACKWARDS,
+                pygame.K_d: actions.MOVE_RIGHT,
+                pygame.K_q: actions.ROTATE_CLOCKWISE,
+                pygame.K_e: actions.ROTATE_ANTICLOCKWISE,
+                pygame.K_t: actions.ZOOM_IN,
+                pygame.K_g: actions.ZOOM_OUT,
+                pygame.K_ESCAPE: actions.QUIT,
+                pygame.K_F8: actions.SAVE,
+                pygame.K_F9: actions.LOAD,
+                pygame.K_PAUSE: actions.TOGGLE_PAUSE,
+                pygame.K_BACKQUOTE: actions.STEP,
+                pygame.K_F11: actions.SHOW_KEYS,
+                pygame.K_F12: actions.TOGGLE_INPUT
+            },
+
+            # Joystick (button) controls.
+            joystick_actions = {
+                4: actions.ROTATE_CLOCKWISE,
+                5: actions.ROTATE_ANTICLOCKWISE,
+            },
+
+            # Mouse controls.
+            mouse_actions = {
+                1: actions.SHOOT,
+                4: actions.ZOOM_IN,
+                5: actions.ZOOM_OUT,
+            },
+
+            # Mouse motion.
+            mouse_motion_actions = {
+                1: actions.SHOOT
+            }
+        )
+
+
+class InputContextMenu(InputContext):
+    """ GUI interaction context. """
+    pass
+
+    def __init__(self, actions):
+        InputContext.__init__(
+            self,
+            actions,
+            keyboard_actions = {
+                pygame.K_PAUSE: actions.TOGGLE_PAUSE,
+                pygame.K_BACKQUOTE: actions.STEP,
+                pygame.K_F11: actions.SHOW_KEYS,
+                pygame.K_F12: actions.TOGGLE_INPUT
+            }
+        )
+
+
 class InputHandling(object):
     """ Handles input. """
 
@@ -250,50 +397,10 @@ class InputHandling(object):
         # The actions table.
         self.__actions = Actions(self)
 
-        # Keyboard controls.
-        self.__kmap = KeyMap("Keyboard", {
-            pygame.K_w: self.__actions.MOVE_FORWARDS,
-            pygame.K_a: self.__actions.MOVE_LEFT,
-            pygame.K_s: self.__actions.MOVE_BACKWARDS,
-            pygame.K_d: self.__actions.MOVE_RIGHT,
-            pygame.K_q: self.__actions.ROTATE_CLOCKWISE,
-            pygame.K_e: self.__actions.ROTATE_ANTICLOCKWISE,
-            pygame.K_t: self.__actions.ZOOM_IN,
-            pygame.K_g: self.__actions.ZOOM_OUT,
-            pygame.K_ESCAPE: self.__actions.QUIT,
-            pygame.K_F8: self.__actions.SAVE,
-            pygame.K_F9: self.__actions.LOAD,
-            pygame.K_PAUSE: self.__actions.TOGGLE_PAUSE,
-            pygame.K_BACKQUOTE: self.__actions.STEP,
-            pygame.K_F11: self.__actions.SHOW_KEYS,
-        })
-
-        # Joystick (button) controls.
-        self.__js_map = KeyMap("Joystick buttons", {
-            4: self.__actions.ROTATE_CLOCKWISE,
-            5: self.__actions.ROTATE_ANTICLOCKWISE,
-        })
-
-        # Joystick (axis) controls.
-        self.__js_axis_map = KeyMap("Joystick axes", {})
-
-        # Joystick (ball) controls.
-        self.__js_ball_map = KeyMap("Joystick balls", {})
-
-        # Joystick (hat) controls.
-        self.__js_hat_map = KeyMap("Joystick hats", {})
-
-        # Mouse controls.
-        self.__mouse_map = KeyMap("Mouse", {
-            1: self.__actions.SHOOT,
-            4: self.__actions.ZOOM_IN,
-            5: self.__actions.ZOOM_OUT,
-        })
-
-        # Mouse motion.
-        self.__mouse_motion_map = KeyMap("Mouse motion", {
-            1: self.__actions.SHOOT
-        })
+        # Input contexts
+        self.__in_menu = False
+        self.__ctx_flight = InputContextFlight(self.__actions)
+        self.__ctx_menu = InputContextMenu(self.__actions)
 
         self.__zoom_increment = 0.03
 
@@ -301,48 +408,52 @@ class InputHandling(object):
 
     def print_keybindings(self):
         """ Output the keybindings. """
-        for map in (self.__kmap,
-                    self.__mouse_map,
-                    self.__js_map,
-                    self.__js_hat_map,
-                    self.__js_axis_map,
-                    self.__js_ball_map):
-            key_display_func = lambda x: str(x)
-            if map == self.__kmap:
-                key_display_func = pygame.key.name
-            map.print_keybindings(key_display_func)
+        print "Flight"
+        print "======"
+        self.__ctx_flight.print_keybindings()
+        print "Menu"
+        print "===="
+        self.__ctx_menu.print_keybindings()
 
     def handle_input(self, e):
         """ Dispatch a pygame input event to the relevant key mapping table
          and return the response. """
+        ctx = self.__ctx_flight if not self.__in_menu else self.__ctx_menu
+        return ctx.handle_input(e)
 
-        if e.type == pygame.QUIT:
-            # Quit requested from window manager.
-            return self.__actions.QUIT.execute(True)
-        elif e.type == pygame.KEYDOWN or e.type == pygame.KEYUP:
-            return self.__kmap.execute(e.key, e.type == pygame.KEYUP)
-        elif e.type == pygame.MOUSEMOTION:
-            ret = InputResponse()
-            ret.event_handled = True
-            for button in e.buttons:
-                ret1 = self.__mouse_motion_map.execute_linear(button, e.pos)
-                if ret1.event_handled == True:
-                    ret = ret1
-            return ret
-        elif e.type == pygame.MOUSEBUTTONDOWN or e.type == pygame.MOUSEBUTTONUP:
-            return self.__mouse_map.execute_position(e.button,
-                                                     e.pos,
-                                                     e.type == pygame.MOUSEBUTTONUP)
-        elif e.type == pygame.JOYAXISMOTION:
-            return self.__js_axis_map.execute_linear(e.axis, e.value)
-        elif e.type == pygame.JOYBALLMOTION:
-            return self.__js_axis_map.execute_linear(e.ball, e.rel)
-        elif e.type == pygame.JOYBUTTONDOWN or e.type == pygame.JOYBUTTONUP:
-            return self.__kmap.execute(e.button, e.type == pygame.JOYBUTTONUP)
-        elif e.type == pygame.JOYHATMOTION:
-            return self.__js_hat_map.execute_linear(e.hat, e.value)
+    def handle_gui_input(self, nkpygame):
+        """ Show the GUI. """
+        if self.__in_menu:
 
-        return InputResponse()
+            # Menu bar
+            rect = pynk.lib.nk_rect(10, 10, 300, 60)
+            if pynk.lib.nk_begin(nkpygame.ctx, "Menu Bar", rect, pynk.lib.NK_WINDOW_BORDER):
+                pynk.lib.nk_layout_row_begin(nkpygame.ctx, pynk.lib.NK_STATIC, 30, 2)
+                pynk.lib.nk_layout_row_push(nkpygame.ctx, 100)
+                pynk.lib.nk_label(nkpygame.ctx, "MENU", pynk.lib.NK_TEXT_LEFT)
+                pynk.lib.nk_layout_row_end(nkpygame.ctx)
+            pynk.lib.nk_end(nkpygame.ctx)
+
+            # Entity info tooltip
+            ecs = self.game_services.get_entity_manager()
+            physics = ecs.get_system(Physics)
+            screen_pos = pygame.mouse.get_pos()
+            world_pos = self.__view.screen_to_world(screen_pos)
+            entity = physics.get_entity_at(world_pos)
+            if entity is not None:
+                components = ecs.get_all_components(entity)
+                rect = pynk.lib.nk_rect(screen_pos[0], screen_pos[1], 100, 120)
+                if pynk.lib.nk_begin(nkpygame.ctx, "Entity Info", rect, pynk.lib.NK_WINDOW_BORDER):
+                    pynk.lib.nk_layout_row_begin(nkpygame.ctx, pynk.lib.NK_STATIC, 30, 2)
+                    for component in components:
+                        pynk.lib.nk_layout_row_push(nkpygame.ctx, 100)
+                        pynk.lib.nk_label(nkpygame.ctx, str(component.__class__), pynk.lib.NK_TEXT_LEFT)
+                    pynk.lib.nk_layout_row_end(nkpygame.ctx)
+                pynk.lib.nk_end(nkpygame.ctx)
+
+    def toggle_input(self):
+        """ Toggle the input mode. """
+        self.__in_menu = not self.__in_menu
 
     def zoom_in(self):
         """ Zoom the camera in."""

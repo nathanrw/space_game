@@ -61,6 +61,10 @@ class SpaceGameServices(ecs.GameServices):
         """ Save the game. """
         self.game.save()
 
+    def paused(self):
+        """ Is the game paused? """
+        return self.game.paused()
+
     def toggle_pause(self):
         """ Pause the game. """
         self.game.toggle_pause()
@@ -254,24 +258,13 @@ class Game(object):
                 response = self.input_handling.handle_input(e)
                 if response.quit_requested:
                     self.running = False
-                events.append(e)
+                if not response.event_handled:
+                    events.append(e)
             self.nkpygame.handle_events(events)
+            self.input_handling.handle_gui_input(self.nkpygame)
 
             # Update the systems.
             self.entity_manager.update(tick_time)
-
-            winflags = pynk.lib.NK_WINDOW_BORDER |\
-                       pynk.lib.NK_WINDOW_MOVABLE |\
-                       pynk.lib.NK_WINDOW_SCALABLE |\
-                       pynk.lib.NK_WINDOW_CLOSABLE |\
-                       pynk.lib.NK_WINDOW_MINIMIZABLE |\
-                       pynk.lib.NK_WINDOW_TITLE
-
-            if pynk.lib.nk_begin(self.nkpygame.ctx, "Hello World", pynk.lib.nk_rect(50, 50, 100, 100), winflags):
-                pynk.lib.nk_layout_row_static(self.nkpygame.ctx, 30, 80, 1)
-                if pynk.lib.nk_button_label(self.nkpygame.ctx, "quit"):
-                    self.running = False
-            pynk.lib.nk_end(self.nkpygame.ctx)
 
             # Draw
             self.renderer.pre_render(view)
@@ -303,6 +296,10 @@ class Game(object):
     def save(self):
         """ Save the game. """
         self.entity_manager.save(open("space_game.save", "w"))
+
+    def paused(self):
+        """ Is the game paused? """
+        return self.entity_manager.paused()
 
     def toggle_pause(self):
         """ Schedule a pause. """
