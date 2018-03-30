@@ -289,7 +289,6 @@ class InputContext(object):
             return self.kmap.execute(e.key, e.type == pygame.KEYUP)
         elif e.type == pygame.MOUSEMOTION:
             ret = InputResponse()
-            ret.event_handled = True
             for button in e.buttons:
                 ret1 = self.mouse_motion_map.execute_linear(button, e.pos)
                 if ret1.event_handled == True:
@@ -375,6 +374,90 @@ class InputContextMenu(InputContext):
         )
 
 
+class GUIElement(object):
+    """ State and logic for a chunk of GUI. """
+
+    def __init__(self, game_services, actions, view):
+        """ Constructor. """
+        self.game_services = game_services
+        self.actions = actions
+        self.view = view
+
+    def process(self, nkpygame):
+        """ Define the structure and behaviour of the GUI. """
+        pass
+
+
+class GUIElementMenu(GUIElement):
+    """ A menu for the game. """
+
+    def process(self, nkpygame):
+        """ Display a menu bar. """
+        ret = InputResponse()
+        rect = pynk.lib.nk_rect(10, 10, 100, 35)
+        if pynk.lib.nk_begin(nkpygame.ctx, "Menu Bar", rect, pynk.lib.NK_WINDOW_NO_SCROLLBAR):
+            pynk.lib.nk_menubar_begin(nkpygame.ctx)
+            pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 25, 1)
+            if pynk.lib.nk_menu_begin_label(nkpygame.ctx, "MENU", pynk.lib.NK_TEXT_LEFT, pynk.lib.nk_vec2(120, 200)):
+                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 25, 1)
+                if pynk.lib.nk_menu_item_label(nkpygame.ctx, "QUIT", pynk.lib.NK_TEXT_LEFT):
+                    ret = self.actions.QUIT.execute(True)
+                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 25, 1)
+                if pynk.lib.nk_menu_item_label(nkpygame.ctx, "HIDE GUI", pynk.lib.NK_TEXT_LEFT):
+                    ret = self.actions.TOGGLE_INPUT.execute(True)
+                pynk.lib.nk_menu_end(nkpygame.ctx)
+        pynk.lib.nk_end(nkpygame.ctx)
+        return ret
+
+
+class GUIElementInfoTooltip(GUIElement):
+    """ An info tooltip for entities. """
+
+    def __init__(self, game_services, actions, view):
+        """ Constructor. """
+        GUIElement.__init__(self, game_services, actions, view)
+        self.entity = None
+        self.tt_rect = None
+
+    def process(self, nkpygame):
+        """ Display the tooltip. """
+
+        ret = InputResponse()
+
+        # Get the mouse position and find the entity we're hovering over, if
+        # any.
+        ecs = self.game_services.get_entity_manager()
+        physics = ecs.get_system(Physics)
+        screen_pos = pygame.mouse.get_pos()
+        world_pos = self.view.screen_to_world(screen_pos)
+        entity = physics.get_entity_at(world_pos)
+
+        # If the mouse is interacting with the tooltip, we don't want to change
+        # the tooltip.  Otherwise, we can update the tooltip.
+        outside_tooltip = self.tt_rect is None or \
+                         (screen_pos[0]+1 < self.tt_rect.x or
+                          screen_pos[0]-1 > self.tt_rect.x+self.tt_rect.w or
+                          screen_pos[1]+1 < self.tt_rect.y or
+                          screen_pos[1]-1 > self.tt_rect.x+self.tt_rect.h)
+        if outside_tooltip:
+            self.entity = entity
+            if entity is None:
+                self.tt_rect = None
+            else:
+                self.tt_rect = pynk.lib.nk_rect(screen_pos[0], screen_pos[1], 300, 320)
+
+        # Define the tooltip.
+        if self.entity is not None:
+            if pynk.lib.nk_begin(nkpygame.ctx, "Entity Info", self.tt_rect, 0):
+                components = ecs.get_all_components(self.entity)
+                for component in components:
+                    pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 30, 1)
+                    pynk.lib.nk_label(nkpygame.ctx, component.__class__.__name__, pynk.lib.NK_TEXT_LEFT)
+            pynk.lib.nk_end(nkpygame.ctx)
+
+        return ret
+
+
 class InputHandling(object):
     """ Handles input. """
 
@@ -402,6 +485,12 @@ class InputHandling(object):
         self.__ctx_flight = InputContextFlight(self.__actions)
         self.__ctx_menu = InputContextMenu(self.__actions)
 
+        # GUI
+        self.__gui_elements = [
+            GUIElementMenu(self.game_services, self.__actions, self.__view),
+            GUIElementInfoTooltip(self.game_services, self.__actions, self.__view)
+        ]
+
         self.__zoom_increment = 0.03
 
         self.__shooting = False
@@ -424,32 +513,8 @@ class InputHandling(object):
     def handle_gui_input(self, nkpygame):
         """ Show the GUI. """
         if self.__in_menu:
-
-            # Menu bar
-            rect = pynk.lib.nk_rect(10, 10, 300, 60)
-            if pynk.lib.nk_begin(nkpygame.ctx, "Menu Bar", rect, pynk.lib.NK_WINDOW_BORDER):
-                pynk.lib.nk_layout_row_begin(nkpygame.ctx, pynk.lib.NK_STATIC, 30, 2)
-                pynk.lib.nk_layout_row_push(nkpygame.ctx, 100)
-                pynk.lib.nk_label(nkpygame.ctx, "MENU", pynk.lib.NK_TEXT_LEFT)
-                pynk.lib.nk_layout_row_end(nkpygame.ctx)
-            pynk.lib.nk_end(nkpygame.ctx)
-
-            # Entity info tooltip
-            ecs = self.game_services.get_entity_manager()
-            physics = ecs.get_system(Physics)
-            screen_pos = pygame.mouse.get_pos()
-            world_pos = self.__view.screen_to_world(screen_pos)
-            entity = physics.get_entity_at(world_pos)
-            if entity is not None:
-                components = ecs.get_all_components(entity)
-                rect = pynk.lib.nk_rect(screen_pos[0], screen_pos[1], 100, 120)
-                if pynk.lib.nk_begin(nkpygame.ctx, "Entity Info", rect, pynk.lib.NK_WINDOW_BORDER):
-                    pynk.lib.nk_layout_row_begin(nkpygame.ctx, pynk.lib.NK_STATIC, 30, 2)
-                    for component in components:
-                        pynk.lib.nk_layout_row_push(nkpygame.ctx, 100)
-                        pynk.lib.nk_label(nkpygame.ctx, str(component.__class__), pynk.lib.NK_TEXT_LEFT)
-                    pynk.lib.nk_layout_row_end(nkpygame.ctx)
-                pynk.lib.nk_end(nkpygame.ctx)
+            for element in self.__gui_elements:
+                element.process(nkpygame)
 
     def toggle_input(self):
         """ Toggle the input mode. """
