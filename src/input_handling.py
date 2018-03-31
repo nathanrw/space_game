@@ -15,10 +15,14 @@ from pymunk.vec2d import Vec2d
 import pygame
 import pynk
 import collections
+import inspect
 
 from .physics import Physics
 from .components import Thrusters, Player, Camera, Turrets, Turret
 from .direction_providers import DirectionProviderScreen
+from .ecs import EntityRef, EntityRefList
+from .resource import Animation
+from .utils import Timer
 
 class InputResponse(object):
     """ The result of executing an Action.  This is bubbled back up to the
@@ -387,6 +391,17 @@ class GUIElement(object):
         """ Define the structure and behaviour of the GUI. """
         pass
 
+    def tree_push(self, ctx, tree_type, title, state, number=0):
+        """ The 'nk_tree_push' macro generates a unique ID for your tree based on the
+        current line number and file name.  But in Python we don't have the C preprocessor,
+        but we can get this information by inspecting the call stack. """
+        # See https://stackoverflow.com/questions/6810999/how-to-determine-file-function-and-line-number/6811020
+        callerframerecord = inspect.stack()[1]
+        frame = callerframerecord[0]
+        info = inspect.getframeinfo(frame)
+        string = info.filename + str(info.lineno)
+        return pynk.lib.nk_tree_push_hashed(ctx, tree_type, title, state, string, len(string), number)
+
 
 class GUIElementMenu(GUIElement):
     """ A menu for the game. """
@@ -394,7 +409,7 @@ class GUIElementMenu(GUIElement):
     def process(self, nkpygame):
         """ Display a menu bar. """
         ret = InputResponse()
-        rect = pynk.lib.nk_rect(10, 10, 100, 35)
+        rect = pynk.lib.nk_rect(10, 10, 50, 35)
         if pynk.lib.nk_begin(nkpygame.ctx, "Menu Bar", rect, pynk.lib.NK_WINDOW_NO_SCROLLBAR):
             pynk.lib.nk_menubar_begin(nkpygame.ctx)
             pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 25, 1)
@@ -444,15 +459,57 @@ class GUIElementInfoTooltip(GUIElement):
             if entity is None:
                 self.tt_rect = None
             else:
-                self.tt_rect = pynk.lib.nk_rect(screen_pos[0], screen_pos[1], 300, 320)
+                vw, vh = self.view.size
+                w, h = (300, 320)
+                x, y = screen_pos
+                if x+w > vw:
+                    x = vw-w
+                if y+h > vh:
+                    y = vh-h
+                self.tt_rect = pynk.lib.nk_rect(x, y, w, h)
 
         # Define the tooltip.
         if self.entity is not None:
             if pynk.lib.nk_begin(nkpygame.ctx, "Entity Info", self.tt_rect, 0):
+                title = self.entity.name + " (%s)" % self.entity.id
+                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 15, 1);
+                pynk.lib.nk_label(nkpygame.ctx, title, pynk.lib.NK_TEXT_LEFT)
                 components = ecs.get_all_components(self.entity)
-                for component in components:
-                    pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 30, 1)
-                    pynk.lib.nk_label(nkpygame.ctx, component.__class__.__name__, pynk.lib.NK_TEXT_LEFT)
+                for i, component in enumerate(components):
+                    name = component.__class__.__name__
+                    if self.tree_push(nkpygame.ctx, pynk.lib.NK_TREE_TAB, name, pynk.lib.NK_MINIMIZED, i):
+                        for key in component.__dict__:
+                            value = getattr(component, key)
+                            if isinstance(value, EntityRef):
+                                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 15, 2);
+                                pynk.lib.nk_label(nkpygame.ctx, key, pynk.lib.NK_TEXT_LEFT)
+                                if value.entity is not None:
+                                    outstr = "%s (%s)" % (value.entity.name, value.entity.id)
+                                    if pynk.lib.nk_button_label(nkpygame.ctx, outstr):
+                                        self.entity = value.entity
+                                else:
+                                    pynk.lib.nk_label(nkpygame.ctx, "None", pynk.lib.NK_TEXT_RIGHT)
+                            elif isinstance(value, EntityRefList):
+                                if self.tree_push(nkpygame.ctx, pynk.lib.NK_TREE_TAB, key, pynk.lib.NK_MINIMIZED):
+                                    pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 15, 1);
+                                    for ent in value:
+                                        outstr = "%s (%s)" % (ent.name, ent.id)
+                                        if pynk.lib.nk_button_label(nkpygame.ctx, outstr):
+                                            self.entity = ent
+                                    pynk.lib.nk_tree_pop(nkpygame.ctx)
+
+                            else:
+                                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 15, 2);
+                                pynk.lib.nk_label(nkpygame.ctx, key, pynk.lib.NK_TEXT_LEFT)
+                                value_str = ""
+                                if isinstance(value, Timer):
+                                    value_str = "%.2f/%.2f" % (value.timer, value.period)
+                                elif isinstance(value, Animation):
+                                    value_str = "%.2f/%.2f" % (value.timer.timer, value.timer.period)
+                                else:
+                                    value_str = str(value)
+                                pynk.lib.nk_label(nkpygame.ctx, value_str, pynk.lib.NK_TEXT_RIGHT)
+                        pynk.lib.nk_tree_pop(nkpygame.ctx)
             pynk.lib.nk_end(nkpygame.ctx)
 
         return ret

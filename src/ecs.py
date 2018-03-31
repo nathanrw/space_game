@@ -142,6 +142,9 @@ class EntityManager(object):
         # Is the simulation paused?
         self.__paused = False
 
+        # Next unique entity ID.
+        self.__next_id = 0
+
     def pause(self):
         """ Pause the simulation. """
         self.__paused = True
@@ -218,8 +221,10 @@ class EntityManager(object):
             config = Config()
 
         # Instantiate the object.
-        t = lookup_type(config.get_or_default("type", "src.ecs.Entity"))
-        obj = t(self.__game_services)
+        obj = Entity(self.__game_services)
+        obj.name = config.name.title()
+        obj.id = self.__next_id
+        self.__next_id += 1
 
         # Add components specified in the config.
         components = config.get_or_default("components", Config())
@@ -537,6 +542,8 @@ class Entity(object):
         """ Constructor. """
         self.__is_garbage = False
         self.__game_services = game_services
+        self.id = 0
+        self.name = ""
 
     @property
     def is_garbage(self):

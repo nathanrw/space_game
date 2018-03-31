@@ -51,6 +51,14 @@ class Config(object):
         if a_dict is not None:
             self.__data = self.__build_config_dict(a_dict).__data
 
+    @property
+    def name(self):
+        """ Get the config name."""
+        if self.__filename is not None:
+            return os.path.splitext(os.path.basename(self.__filename))[0]
+        else:
+            return "anonymous"
+
     def load(self, filename):
         """ Load data from a file. Remember the file so we can save it later.
 

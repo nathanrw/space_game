@@ -188,12 +188,14 @@ class Game(object):
                                                              components.Tracking,
                                                              components.FollowsTracked)
         camera.get_component(components.FollowsTracked).follow_type = "instant"
+        camera.name = "Camera"
 
         # Draw debug info if requested.
         self.game_services.debug_level = self.config.get_or_default("debug", 0)
 
         # Make the player
         player = self.entity_manager.create_entity("player.txt")
+        player.name = "Player"
         camera.get_component(components.Tracking).tracked.entity = player
 
         # Create a view to pass to the input handling - this lets it map between

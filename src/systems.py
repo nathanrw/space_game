@@ -572,6 +572,7 @@ class ThrustersSystem(ComponentSystem):
                 thruster = Thruster(thruster_ent, self.game_services, cfg)
                 thruster.attached_to.entity = component.entity
                 thruster_ent.add_component(thruster)
+                thruster_ent.name = "Thruster"
                 component.thrusters.add_ref_to(thruster_ent)
 
     def update(self, dt):
