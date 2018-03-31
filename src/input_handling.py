@@ -18,7 +18,7 @@ import collections
 import inspect
 
 from .physics import Physics
-from .components import Thrusters, Player, Camera, Turrets, Turret
+from .components import AnimationComponent, Thrusters, Player, Camera, Turrets, Turret
 from .direction_providers import DirectionProviderScreen
 from .ecs import EntityRef, EntityRefList
 from .resource import Animation
@@ -412,12 +412,12 @@ class GUIElementMenu(GUIElement):
         rect = pynk.lib.nk_rect(10, 10, 50, 35)
         if pynk.lib.nk_begin(nkpygame.ctx, "Menu Bar", rect, pynk.lib.NK_WINDOW_NO_SCROLLBAR):
             pynk.lib.nk_menubar_begin(nkpygame.ctx)
-            pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 25, 1)
+            pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1)
             if pynk.lib.nk_menu_begin_label(nkpygame.ctx, "MENU", pynk.lib.NK_TEXT_LEFT, pynk.lib.nk_vec2(120, 200)):
-                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 25, 1)
+                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1)
                 if pynk.lib.nk_menu_item_label(nkpygame.ctx, "QUIT", pynk.lib.NK_TEXT_LEFT):
                     ret = self.actions.QUIT.execute(True)
-                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 25, 1)
+                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1)
                 if pynk.lib.nk_menu_item_label(nkpygame.ctx, "HIDE GUI", pynk.lib.NK_TEXT_LEFT):
                     ret = self.actions.TOGGLE_INPUT.execute(True)
                 pynk.lib.nk_menu_end(nkpygame.ctx)
@@ -460,7 +460,7 @@ class GUIElementInfoTooltip(GUIElement):
                 self.tt_rect = None
             else:
                 vw, vh = self.view.size
-                w, h = (300, 320)
+                w, h = (400, 350)
                 x, y = screen_pos
                 if x+w > vw:
                     x = vw-w
@@ -472,16 +472,19 @@ class GUIElementInfoTooltip(GUIElement):
         if self.entity is not None:
             if pynk.lib.nk_begin(nkpygame.ctx, "Entity Info", self.tt_rect, 0):
                 title = self.entity.name + " (%s)" % self.entity.id
-                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 15, 1);
+                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1);
                 pynk.lib.nk_label(nkpygame.ctx, title, pynk.lib.NK_TEXT_LEFT)
                 components = ecs.get_all_components(self.entity)
                 for i, component in enumerate(components):
                     name = component.__class__.__name__
-                    if self.tree_push(nkpygame.ctx, pynk.lib.NK_TREE_TAB, name, pynk.lib.NK_MINIMIZED, i):
-                        for key in component.__dict__:
+                    if self.tree_push(nkpygame.ctx, pynk.lib.NK_TREE_TAB, name, pynk.lib.NK_MAXIMIZED, i):
+                        keys = filter(lambda x: not "__" in x, component.__dict__.keys())
+                        if isinstance(component, AnimationComponent):
+                            keys.append("anim")
+                        for key in keys:
                             value = getattr(component, key)
                             if isinstance(value, EntityRef):
-                                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 15, 2);
+                                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 2);
                                 pynk.lib.nk_label(nkpygame.ctx, key, pynk.lib.NK_TEXT_LEFT)
                                 if value.entity is not None:
                                     outstr = "%s (%s)" % (value.entity.name, value.entity.id)
@@ -491,7 +494,7 @@ class GUIElementInfoTooltip(GUIElement):
                                     pynk.lib.nk_label(nkpygame.ctx, "None", pynk.lib.NK_TEXT_RIGHT)
                             elif isinstance(value, EntityRefList):
                                 if self.tree_push(nkpygame.ctx, pynk.lib.NK_TREE_TAB, key, pynk.lib.NK_MINIMIZED):
-                                    pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 15, 1);
+                                    pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1);
                                     for ent in value:
                                         outstr = "%s (%s)" % (ent.name, ent.id)
                                         if pynk.lib.nk_button_label(nkpygame.ctx, outstr):
@@ -499,13 +502,15 @@ class GUIElementInfoTooltip(GUIElement):
                                     pynk.lib.nk_tree_pop(nkpygame.ctx)
 
                             else:
-                                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 15, 2);
+                                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 2);
                                 pynk.lib.nk_label(nkpygame.ctx, key, pynk.lib.NK_TEXT_LEFT)
                                 value_str = ""
                                 if isinstance(value, Timer):
                                     value_str = "%.2f/%.2f" % (value.timer, value.period)
                                 elif isinstance(value, Animation):
                                     value_str = "%.2f/%.2f" % (value.timer.timer, value.timer.period)
+                                elif isinstance(value, Vec2d):
+                                    value_str = "%.2f, %.2f" % (value.x, value.y)
                                 else:
                                     value_str = str(value)
                                 pynk.lib.nk_label(nkpygame.ctx, value_str, pynk.lib.NK_TEXT_RIGHT)
