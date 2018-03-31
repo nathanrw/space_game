@@ -22,8 +22,9 @@ In order to run "Space game," you will need the following packages installed:
 * pymunk
 * scipy / numpy
 * pyYAML
+* pynk
 
-The easiest way to install the libraries is `pip3 install pygame pymunk scipy pyyaml`.
+The easiest way to install the libraries is `pip2 install pygame pymunk scipy pyyaml pynk`.
 
 How to run
 ----------
@@ -50,6 +51,7 @@ Controls
     f8: Save
     f9: Load
     f11: Show keys
+    f12: Show GUI
     pause: Pause / unpause
     escape: Quit
     `: Simulate one frame then pause
