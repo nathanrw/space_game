@@ -28,7 +28,6 @@ class SpaceGameServices(ecs.GameServices):
     def __init__(self, game):
         self.game = game
         self.info = ecs.GameInfo()
-        self.debug_level = 0
 
     def get_renderer(self):
         return self.game.renderer
@@ -48,10 +47,6 @@ class SpaceGameServices(ecs.GameServices):
     def end_game(self):
         """ Stop the game from running. """
         self.game.stop_running()
-
-    def get_debug_level(self):
-        """ Return the debug level. """
-        return self.debug_level
 
     def load(self):
         """ Load the game. """
@@ -218,7 +213,10 @@ class Game(object):
         self.drawing.set_background("res/images/857-tileable-classic-nebula-space-patterns/6.jpg")
 
         # Make the GUI
-        font = pygame.font.SysFont("Consolas", 14)
+        font = self.resource_loader.load_font(
+            "res/fonts/xolonium/Xolonium-Regular.ttf",
+            12
+        )
         self.nkpygame = pynk.nkpygame.NkPygame(font)
         self.nkpygame.setup()
 

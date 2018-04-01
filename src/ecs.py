@@ -73,7 +73,7 @@ class GameServices(object):
     """ Functionality required of the game. """
 
     def __init__(self):
-        pass
+        self.debug_level = 0
 
     def get_renderer(self):
         """ Get the renderer. """
@@ -114,10 +114,6 @@ class GameServices(object):
     def get_info(self):
         """ Return information about the game. """
         return GameInfo()
-
-    def get_debug_level():
-        """ Get the debug level. """
-        return 0
 
 
 class EntityManager(object):

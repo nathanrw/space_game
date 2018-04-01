@@ -77,9 +77,6 @@ class Drawing(object):
         self.__draw_hitpoints(camera)
         self.__draw_text(camera)
 
-        # Draw the debug info.
-        self.__draw_debug_info(camera)
-
     def __draw_lasers(self, camera):
         """ Draw laser beams. """
         entities = self.__entity_manager.query(Weapon)
@@ -312,58 +309,6 @@ class Drawing(object):
                         brightness=0.25
                     )
 
-    def __draw_debug_info(self, camera):
-        """ Draw the information. """
-
-        # Check the debug level.
-        if self.__game_services.get_debug_level() <= 0:
-            return
-
-        # Load the font.
-        if self.__font == None:
-            self.__font = self.__resource_loader.load_font(
-                "res/fonts/xolonium/Xolonium-Regular.ttf",
-                12
-            )
-
-        game_info = self.__game_services.get_info()
-
-        self.__renderer.add_job_text(
-            self.__font,
-            "FPS (average): %s" % int(sum(game_info.framerates) / (len(game_info.framerates)+1)),
-            (10, 10)
-        )
-
-        # Draw the framerate.
-        self.__renderer.add_job_text(
-            self.__font,
-            "FPS (limited): %s" % int(game_info.framerate),
-            (10, 30)
-        )
-
-        # Draw the unlimited framerate.
-        self.__renderer.add_job_text(
-            self.__font,
-            "FPS (raw): %s" % int(game_info.raw_framerate),
-            (10, 50)
-        )
-
-        # Draw a graph of the framerate over time.
-        self.__draw_graph(
-            camera,
-            game_info.framerates,
-            70,
-            (10, 70),
-            (100, 15)
-        )
-
-        # Draw the time ratio.
-        self.__renderer.add_job_text(
-            self.__font,
-            "Time scale: %03.1f" % game_info.time_ratio,
-            (10, 90)
-        )
-
     def __draw_bar(self, camera, arg_rect, fraction,
                    col_back, col_0, col_1):
         """ Draw a progress bar """
@@ -397,27 +342,3 @@ class Drawing(object):
             level=Renderer.LEVEL_FORE,
             brightness=0.2
         )
-
-    def __draw_graph(self, camera, values, maximum, position, size):
-        """ Draw a graph from a list of values. """
-        points = []
-        for i, value in enumerate(values):
-            x = position[0] + size[0] * (float(i)/(len(values)))
-            y = position[1] + size[1] - size[1] * (value/float(maximum))
-            points.append((x, y))
-        if len(points) > 2:
-            self.__renderer.add_job_rect(
-                Rect(position, size),
-                width=1,
-                colour=(255, 255, 255),
-                level=Renderer.LEVEL_FORE,
-                coords=Renderer.COORDS_SCREEN
-
-            )
-            self.__renderer.add_job_lines(
-                points,
-                width=2,
-                colour=(200, 200, 200),
-                level=Renderer.LEVEL_FORE,
-                coords=Renderer.COORDS_SCREEN
-            )

@@ -402,6 +402,50 @@ class GUIElement(object):
         string = info.filename + str(info.lineno)
         return pynk.lib.nk_tree_push_hashed(ctx, tree_type, title, state, string, len(string), number)
 
+    @property
+    def always_visible(self):
+        """ Should the element always be shown even if not in GUI context? """
+        return False
+
+
+class GUIElementDebugInfo(GUIElement):
+    """ A debug output area. """
+
+    def process(self, nkpygame):
+        """ Display the debug info. """
+
+        ret = InputResponse()
+
+        if self.game_services.debug_level <= 0:
+            return ret
+
+        game_info = self.game_services.get_info()
+
+        average_fps = sum(game_info.framerates) / (len(game_info.framerates)+1)
+
+        rect = pynk.lib.nk_rect(10, 60, 200, 260)
+        wflags = pynk.lib.NK_WINDOW_MOVABLE | pynk.lib.NK_WINDOW_TITLE
+        if pynk.lib.nk_begin(nkpygame.ctx, "Debug Info", rect, wflags):
+            pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 2)
+            pynk.lib.nk_label(nkpygame.ctx, "FPS (average)", pynk.lib.NK_TEXT_LEFT)
+            pynk.lib.nk_label(nkpygame.ctx, "%.2f" % average_fps, pynk.lib.NK_TEXT_RIGHT)
+            pynk.lib.nk_label(nkpygame.ctx, "FPS (limited)", pynk.lib.NK_TEXT_LEFT)
+            pynk.lib.nk_label(nkpygame.ctx, "%.2f" % game_info.framerate, pynk.lib.NK_TEXT_RIGHT)
+            pynk.lib.nk_label(nkpygame.ctx, "FPS (raw)", pynk.lib.NK_TEXT_LEFT)
+            pynk.lib.nk_label(nkpygame.ctx, "%.2f" % game_info.raw_framerate, pynk.lib.NK_TEXT_RIGHT)
+            pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 100, 1)
+            pynk.lib.nk_chart_begin(nkpygame.ctx, pynk.lib.NK_CHART_LINES, len(game_info.framerates), 0, 50)
+            for value in game_info.framerates:
+                pynk.lib.nk_chart_push(nkpygame.ctx, value)
+            pynk.lib.nk_chart_end(nkpygame.ctx)
+        pynk.lib.nk_end(nkpygame.ctx)
+        return ret
+
+    @property
+    def always_visible(self):
+        """ The debug info should always be visible when switched on. """
+        return True
+
 
 class GUIElementMenu(GUIElement):
     """ A menu for the game. """
@@ -409,18 +453,25 @@ class GUIElementMenu(GUIElement):
     def process(self, nkpygame):
         """ Display a menu bar. """
         ret = InputResponse()
-        rect = pynk.lib.nk_rect(10, 10, 50, 35)
+        rect = pynk.lib.nk_rect(10, 10, 60, 35)
         if pynk.lib.nk_begin(nkpygame.ctx, "Menu Bar", rect, pynk.lib.NK_WINDOW_NO_SCROLLBAR):
             pynk.lib.nk_menubar_begin(nkpygame.ctx)
             pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1)
-            if pynk.lib.nk_menu_begin_label(nkpygame.ctx, "MENU", pynk.lib.NK_TEXT_LEFT, pynk.lib.nk_vec2(120, 200)):
+            if pynk.lib.nk_menu_begin_label(nkpygame.ctx, "Menu", pynk.lib.NK_TEXT_LEFT, pynk.lib.nk_vec2(120, 200)):
                 pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1)
-                if pynk.lib.nk_menu_item_label(nkpygame.ctx, "QUIT", pynk.lib.NK_TEXT_LEFT):
+                flag = pynk.ffi.new("int*", self.game_services.debug_level)
+                pynk.lib.nk_checkbox_label(nkpygame.ctx, "Debug Mode", flag);
+                self.game_services.debug_level = flag[0]
+
+                pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1)
+                if pynk.lib.nk_menu_item_label(nkpygame.ctx, "Quit", pynk.lib.NK_TEXT_LEFT):
                     ret = self.actions.QUIT.execute(True)
+
                 pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1)
-                if pynk.lib.nk_menu_item_label(nkpygame.ctx, "HIDE GUI", pynk.lib.NK_TEXT_LEFT):
+                if pynk.lib.nk_menu_item_label(nkpygame.ctx, "Hide GUI", pynk.lib.NK_TEXT_LEFT):
                     ret = self.actions.TOGGLE_INPUT.execute(True)
                 pynk.lib.nk_menu_end(nkpygame.ctx)
+
         pynk.lib.nk_end(nkpygame.ctx)
         return ret
 
@@ -439,6 +490,9 @@ class GUIElementInfoTooltip(GUIElement):
 
         ret = InputResponse()
 
+        if self.game_services.debug_level <= 0:
+            return ret
+
         # Get the mouse position and find the entity we're hovering over, if
         # any.
         ecs = self.game_services.get_entity_manager()
@@ -449,11 +503,12 @@ class GUIElementInfoTooltip(GUIElement):
 
         # If the mouse is interacting with the tooltip, we don't want to change
         # the tooltip.  Otherwise, we can update the tooltip.
+        padding = 5
         outside_tooltip = self.tt_rect is None or \
-                         (screen_pos[0]+1 < self.tt_rect.x or
-                          screen_pos[0]-1 > self.tt_rect.x+self.tt_rect.w or
-                          screen_pos[1]+1 < self.tt_rect.y or
-                          screen_pos[1]-1 > self.tt_rect.x+self.tt_rect.h)
+                         (screen_pos[0]+padding < self.tt_rect.x or
+                          screen_pos[0]-padding > self.tt_rect.x+self.tt_rect.w or
+                          screen_pos[1]+padding < self.tt_rect.y or
+                          screen_pos[1]-padding > self.tt_rect.x+self.tt_rect.h)
         if outside_tooltip:
             self.entity = entity
             if entity is None:
@@ -470,7 +525,7 @@ class GUIElementInfoTooltip(GUIElement):
 
         # Define the tooltip.
         if self.entity is not None:
-            if pynk.lib.nk_begin(nkpygame.ctx, "Entity Info", self.tt_rect, 0):
+            if pynk.lib.nk_begin(nkpygame.ctx, "Entity Info", self.tt_rect, pynk.lib.NK_WINDOW_TITLE):
                 title = self.entity.name + " (%s)" % self.entity.id
                 pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1);
                 pynk.lib.nk_label(nkpygame.ctx, title, pynk.lib.NK_TEXT_LEFT)
@@ -550,7 +605,8 @@ class InputHandling(object):
         # GUI
         self.__gui_elements = [
             GUIElementMenu(self.game_services, self.__actions, self.__view),
-            GUIElementInfoTooltip(self.game_services, self.__actions, self.__view)
+            GUIElementInfoTooltip(self.game_services, self.__actions, self.__view),
+            GUIElementDebugInfo(self.game_services, self.__actions, self.__view)
         ]
 
         self.__zoom_increment = 0.03
@@ -574,8 +630,8 @@ class InputHandling(object):
 
     def handle_gui_input(self, nkpygame):
         """ Show the GUI. """
-        if self.__in_menu:
-            for element in self.__gui_elements:
+        for element in self.__gui_elements:
+            if self.__in_menu or element.always_visible:
                 element.process(nkpygame)
 
     def toggle_input(self):
