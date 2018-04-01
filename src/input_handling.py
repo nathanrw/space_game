@@ -434,7 +434,7 @@ class GUIElementDebugInfo(GUIElement):
             pynk.lib.nk_label(nkpygame.ctx, "FPS (raw)", pynk.lib.NK_TEXT_LEFT)
             pynk.lib.nk_label(nkpygame.ctx, "%.2f" % game_info.raw_framerate, pynk.lib.NK_TEXT_RIGHT)
             pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 100, 1)
-            pynk.lib.nk_chart_begin(nkpygame.ctx, pynk.lib.NK_CHART_LINES, len(game_info.framerates), 0, 50)
+            pynk.lib.nk_chart_begin(nkpygame.ctx, pynk.lib.NK_CHART_LINES, len(game_info.framerates), 0, 60)
             for value in game_info.framerates:
                 pynk.lib.nk_chart_push(nkpygame.ctx, value)
             pynk.lib.nk_chart_end(nkpygame.ctx)
