@@ -19,31 +19,31 @@ Vertex Specification
 * Make VertexData store all attributes interleaved in the same array.
 * Add a way to pass a compatible buffer directly to a VertexData.
 
-     # * * * * * 
-     # Renderer.initialise()
-     self.__nuklear_shader = self.__load_shader_program("nuklear")
-     self.__nuklear_vertices = self.__nuklear_shader.create_vertex_buffers()
+      # * * * * * 
+      # Renderer.initialise()
+      self.__nuklear_shader = self.__load_shader_program("nuklear")
+      self.__nuklear_vertices = self.__nuklear_shader.create_vertex_buffers()
      
-     # * * * * * * 
-     # VertexData
-     def get_vertex_specification() # For nk_convert() to give the right format.
-     def set_buffer(...) # To pass in the resulting buffer.
+      # * * * * * * 
+      # VertexData
+      def get_vertex_specification() # For nk_convert() to give the right format.
+      def set_buffer(...) # To pass in the resulting buffer.
      
-     # * * * * * 
-     # Renderer.post_render()
-     GL.glEnable(Gl.GL_SCISSOR)
-     commands = get_nuklear_command_queue()
-     nk_convert(commands, ...) # Note - get vertex format from VertexData
-     self.__nuklear_vertices.set_buffer(...)
-     elem_offset = 0
-     with Bind(self.__nuklear_shader,
-               self.__nuklear_vertices,
-               TextureUnitBinding(self.__texture_array, GL.GL_TEXTURE0)):
-         for each command:
-             GL.glScissor(...)
-             self.__nuklear_vertices.draw_elements(..., elem_offset, ...)
-             elem_offset += ...
-     GL.glDisable(GL.GL_SCISSOR)
+      # * * * * * 
+      # Renderer.post_render()
+      GL.glEnable(Gl.GL_SCISSOR)
+      commands = get_nuklear_command_queue()
+      nk_convert(commands, ...) # Note - get vertex format from VertexData
+      self.__nuklear_vertices.set_buffer(...)
+      elem_offset = 0
+      with Bind(self.__nuklear_shader,
+                self.__nuklear_vertices,
+                TextureUnitBinding(self.__texture_array, GL.GL_TEXTURE0)):
+          for each command:
+              GL.glScissor(...)
+              self.__nuklear_vertices.draw_elements(..., elem_offset, ...)
+              elem_offset += ...
+      GL.glDisable(GL.GL_SCISSOR)
 
 Font Atlas
 ------------
