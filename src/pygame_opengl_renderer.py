@@ -36,6 +36,7 @@ import math
 import os
 import os.path
 import numpy
+import pynk
 import re
 
 from pymunk import Vec2d
@@ -151,6 +152,9 @@ class ShaderProgram(object):
                         data_array_type = "f"
                     elif data_type == "vec3":
                         data_dims = 3
+                        data_array_type = "f"
+                    elif data_type == "vec4":
+                        data_dims = 4
                         data_array_type = "f"
                     else:
                         raise Exception("Unknown attribute data type: %s" % data_type)
@@ -591,6 +595,8 @@ class VertexData(object):
         self.__n = 0
         self.__max = default_size
         self.__vao = GL.glGenVertexArrays(1)
+        self.__element_array = None
+        self.__elements_buffer = None
         GL.glBindVertexArray(self.__vao)
         for (name, size, data_type) in attribute_formats:
             self.__sizes[name] = size
@@ -606,6 +612,11 @@ class VertexData(object):
     def draw(self, primitive_type):
         """ Draw the vertices. """
         GL.glDrawArrays(primitive_type, 0, len(self))
+
+    def draw_elements(self, primitive_type, num_elements, offset):
+        """ Draw elements. """
+        assert self.__elements_buffer is not None
+        GL.glDrawElements(primitive_type, num_elements, GL.GL_UNSIGNED_SHORT, offset)
 
     def reset(self):
         """ Reset the vertex data so it can be re-used. """
@@ -668,6 +679,17 @@ class VertexData(object):
 
         # we've added a vertex.
         self.__n += 1
+
+    def add_nuklear(self, nuklear):
+        """ Convert nuklear vertex data. """
+        cmds = pynk.ffi.new("nk_buffer")
+        vbuf = pynk.ffi.new("nk_buffer")
+        ebuf = pynk.ffi.new("nk_buffer")
+        config = pynk.ffi.new("nk_convert_config")
+        pynk.lib.nk_buffer_init_default(cmds)
+        pynk.lib.nk_buffer_init_default(vbuf)
+        pynk.lib.nk_buffer_init_default(ebuf)
+        pynk.lib.nk_convert(nuklear.ctx, cmds, vbuf, ebuf, config)
 
     def begin(self):
         """ Setup the vertex attributes for rendering. """
@@ -887,6 +909,7 @@ class PygameOpenGLRenderer(Renderer):
         self.__texture_array = None
         self.__command_buffers = None
         self.__view = None
+        self.__nuklear = None
 
     def initialise(self):
         """ Initialise the pygame display. """
@@ -935,6 +958,11 @@ class PygameOpenGLRenderer(Renderer):
         # Initialise command buffers.  Jobs will be sorted by layer and coordinate system and added
         # to an appropriate command buffer for later dispatch.
         self.__command_buffers = CommandBufferArray(self.__anim_shader)
+
+        # Create a special buffer and shader for rendering nuklear, which
+        # creates its vertex buffer.
+        self.__nuklear_shader = self.__load_shader_program("nuklear")
+        self.__nuklear_buffer = self.__nuklear_shader.create_vertex_buffers()
 
     def pre_render(self, view):
         """ Prepare to build commands. """
@@ -1018,8 +1046,29 @@ class PygameOpenGLRenderer(Renderer):
             GL.glUniform1i(self.__fbo_shader.get_uniform_location("bright_regions"), 1)
             self.__ndc_quad.draw(GL.GL_QUADS)
 
+        # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+        # Render the GUI.
+        if self.__nuklear:
+            with Bind(self.__nuklear_shader,
+                      self.__nuklear_buffer):
+                offset = 0
+                cmd = pynk.lib.nk__begin(self.__nuklear.ctx)
+                while cmd:
+                    if cmd.elem_count == 0: continue
+                    GL.glBindTexture(GL.GL_TEXTURE_2D, cmd.texture.id)
+                    GL.glScissor(cmd.clip_rect.x,
+                                 screen_height - (cmd.clip_rect.y + cmd.clip_rect.h),
+                                 cmd.clip_rect.w,
+                                 cmd.clip_rect.h)
+                    self.__nuklear_buffer.draw_elements(GL.GL_TRIANGLES, cmd.elem_count, offset)
+                    offset += cmd.elem_count
+                    cmd = lib.nk__next(self.__nuklear.ctx, nuklear_command)
+                GL.glBindTexture(GL.GL_TEXTURE2D, 0)
+                GL.glScissor(0, 0, *self.__view.size)
+
         # We're not rendering any more.
         self.__view = None
+        self.__nuklear = None
 
     def flip_buffers(self):
         """ Update the pygame display. """
@@ -1156,7 +1205,10 @@ class PygameOpenGLRenderer(Renderer):
 
     def render_nuklear(self, nuklear, **kwargs):
         """ Render the nuklear GUI. """
-        return # Not yet implemented.
+        (screen_width, screen_height) = self.screen_size()
+        self.__nuklear = nuklear
+        self.__nuklear_buffer.reset()
+        self.__nuklear_buffer.add_nuklear(nuklear)
 
     def __load_shader_program(self, name):
         """ Load a shader program. """
