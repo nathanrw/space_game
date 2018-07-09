@@ -589,8 +589,7 @@ class VertexData(object):
     def __init__(self, shader_program, attribute_formats, default_size=32):
         """ Initialise a vertex data block. """
         self.__shader_program = shader_program
-        self.__arrays = {}
-        self.__vbos = {}
+        self.__offsets = {}
         self.__sizes = {}
         self.__n = 0
         self.__max = default_size
@@ -598,15 +597,20 @@ class VertexData(object):
         self.__element_array = None
         self.__elements_buffer = None
         GL.glBindVertexArray(self.__vao)
+        self.__size = 0
         for (name, size, data_type) in attribute_formats:
+            if data_type != 'f':
+                raise Exception("Only float data supported at present.")
             self.__sizes[name] = size
-            self.__arrays[name] = numpy.zeros(default_size * size, data_type)
-            self.__vbos[name] = OpenGL.arrays.vbo.VBO(self.__arrays[name])
-            self.__vbos[name].bind()
+            self.__offsets[name] = self.__size
+            self.__size += size
+        self.__array = numpy.zeros(default_size * self.__size, 'f')
+        self.__vbo = OpenGL.arrays.vbo.VBO(self.__array)
+        self.__vbo.bind()
+        for (name, size, data_type) in attribute_formats:
             GL.glEnableVertexAttribArray(self.__shader_program.get_attribute_location(name))
-            gl_type = {'f': GL.GL_FLOAT}[data_type]
             GL.glVertexAttribPointer(self.__shader_program.get_attribute_location(name),
-                                     self.__sizes[name], gl_type, GL.GL_FALSE, 0, None)
+                                     self.__sizes[name], GL.GL_FLOAT, GL.GL_FALSE, self.__offsets[name], None)
         GL.glBindVertexArray(0)
 
     def draw(self, primitive_type):
@@ -647,60 +651,83 @@ class VertexData(object):
         # Expand the buffer if necessary.
         if self.__n == self.__max:
             self.__max *= 2
-            for name in self.__arrays:
-                # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-                # NOTE: not doing refcheck here since it fails. I'm not sure
-                # why, something in the vbo code must be creating a view onto
-                # the array. This shuts up the exception, but it could mean
-                # that the code is going to go horribly wrong. Dont try this
-                # at home kids.
-                #
-                # Need to work out what the right thing to do here is.
-                # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-                self.__arrays[name].resize(self.__max * self.__sizes[name], refcheck=False)
+            # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+            # NOTE: not doing refcheck here since it fails. I'm not sure
+            # why, something in the vbo code must be creating a view onto
+            # the array. This shuts up the exception, but it could mean
+            # that the code is going to go horribly wrong. Dont try this
+            # at home kids.
+            #
+            # Need to work out what the right thing to do here is.
+            # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+            self.__array.resize(self.__max * self.__size, refcheck=False)
 
         # Add the vertex attributes. If the attribute has not been specified
         # then we default it to zero, otherwise we'll end up rendering garbage.
-        for key in self.__vbos:
-            array = self.__arrays[key]
-            size = self.__sizes[key]
+        for key in self.__offsets:
+            offset = self.__offsets[key]
             data = None
             if key in kwargs:
                 data = kwargs[key]
             else:
-                data = numpy.zeros(size)
+                data = numpy.zeros(self.__sizes[name])
             try:
                 # Try to interpret the data as a vector.
                 for (i, component) in enumerate(data):
-                    array[self.__n*size+i] = component
+                    self.__array[self.__n*self.__size+offset+i] = component
             except TypeError:
                 # Ok, it's a scalar.
-                array[self.__n*size] = data
+                array[self.__n*self.__size+offset] = data
 
         # we've added a vertex.
         self.__n += 1
 
     def add_nuklear(self, nuklear):
         """ Convert nuklear vertex data. """
+
+        # Output buffer for nuklear commands
         cmds = pynk.ffi.new("nk_buffer")
-        vbuf = pynk.ffi.new("nk_buffer")
-        ebuf = pynk.ffi.new("nk_buffer")
-        config = pynk.ffi.new("nk_convert_config")
         pynk.lib.nk_buffer_init_default(cmds)
+
+        # Output vertex buffer data.
+        vbuf = pynk.ffi.new("nk_buffer")
         pynk.lib.nk_buffer_init_default(vbuf)
+
+        # Output element buffer data.
+        ebuf = pynk.ffi.new("nk_buffer")
         pynk.lib.nk_buffer_init_default(ebuf)
+
+        # Specify vertex format.
+        config = pynk.ffi.new("nk_convert_config")
+        vertex_layout = pynk.ffi.new("nk_draw_vertex_layout_element[]", [
+            [pynk.lib.NK_VERTEX_POSITION, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["position"]],
+            [pynk.lib.NK_VERTEX_TEXCOORD, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["texcoord"]],
+            [pynk.lib.NK_VERTEX_COLOR, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["colour"]],
+            [pynk.lib.NK_VERTEX_LAYOUT_END]
+        ])
+        #NK_MEMSET(&config, 0, sizeof(config));
+        config.vertex_layout = vertex_layout;
+        config.vertex_size = self.__size
+        config.vertex_alignment = 0
+        #config.null = dev->null;
+        config.circle_segment_count = 22
+        config.curve_segment_count = 22
+        config.arc_segment_count = 22
+        config.global_alpha = 1.0
+        #config.shape_AA = AA;
+        #config.line_AA = AA;
+
+        # Get the buffer data.
         pynk.lib.nk_convert(nuklear.ctx, cmds, vbuf, ebuf, config)
 
     def begin(self):
         """ Setup the vertex attributes for rendering. """
 
-        # Update each data array.  I'm not entirely sure whether we need
+        # Update the data array.  I'm not entirely sure whether we need
         # to do this or not, and 'set_array()' might be sufficient on its
         # own (doing 'bind()' as well)
-        for name in self.__vbos:
-            vbo = self.__vbos[name]
-            vbo.set_array(self.__arrays[name])
-            vbo.bind()
+        self.__vbo.set_array(self.__array)
+        self.__vbo.bind()
 
         # Bind the attributes.
         GL.glBindVertexArray(self.__vao)
