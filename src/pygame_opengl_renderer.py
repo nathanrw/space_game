@@ -594,8 +594,6 @@ class VertexData(object):
         self.__n = 0
         self.__max = default_size
         self.__vao = GL.glGenVertexArrays(1)
-        self.__element_array = None
-        self.__elements_buffer = None
         GL.glBindVertexArray(self.__vao)
         self.__size = 0
         for (name, size, data_type) in attribute_formats:
@@ -607,6 +605,9 @@ class VertexData(object):
         self.__array = numpy.zeros(default_size * self.__size, 'f')
         self.__vbo = OpenGL.arrays.vbo.VBO(self.__array)
         self.__vbo.bind()
+        self.__element_array = numpy.zeros(0, 'i')
+        self.__elements_buffer = OpenGL.arrays.vbo.VBO(self.__element_array, target=GL.GL_ELEMENT_ARRAY_BUFFER)
+        self.__elements_buffer.bind()
         for (name, size, data_type) in attribute_formats:
             GL.glEnableVertexAttribArray(self.__shader_program.get_attribute_location(name))
             GL.glVertexAttribPointer(self.__shader_program.get_attribute_location(name),
@@ -700,9 +701,9 @@ class VertexData(object):
         # Specify vertex format.
         config = pynk.ffi.new("nk_convert_config")
         vertex_layout = pynk.ffi.new("nk_draw_vertex_layout_element[]", [
-            [pynk.lib.NK_VERTEX_POSITION, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["position"]],
-            [pynk.lib.NK_VERTEX_TEXCOORD, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["texcoord"]],
-            [pynk.lib.NK_VERTEX_COLOR, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["colour"]],
+            [pynk.lib.NK_VERTEX_POSITION, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["position"]*4],
+            [pynk.lib.NK_VERTEX_TEXCOORD, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["texcoord"]*4],
+            [pynk.lib.NK_VERTEX_COLOR, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["colour"]*4],
             [pynk.lib.NK_VERTEX_LAYOUT_END]
         ])
         #NK_MEMSET(&config, 0, sizeof(config));
@@ -720,6 +721,19 @@ class VertexData(object):
         # Get the buffer data.
         pynk.lib.nk_convert(nuklear.ctx, cmds, vbuf, ebuf, config)
 
+        # Copy the data over to our buffers.
+        array = numpy.frombuffer(pynk.ffi.buffer(pynk.lib.nk_buffer_memory(vbuf), vbuf.size), "f")
+        elements = numpy.frombuffer(pynk.ffi.buffer(pynk.lib.nk_buffer_memory(ebuf), ebuf.size), 'i')
+        self.__array[:] = array
+        self.__element_array[:] = elements
+        self.__n = len(array)
+        self.__max = self.__n
+
+        # Free the buffers.
+        pynk.lib.nk_buffer_free(cmds)
+        pynk.lib.nk_buffer_free(vbuf)
+        pynk.lib.nk_buffer_free(ebuf)
+
     def begin(self):
         """ Setup the vertex attributes for rendering. """
 
@@ -728,6 +742,8 @@ class VertexData(object):
         # own (doing 'bind()' as well)
         self.__vbo.set_array(self.__array)
         self.__vbo.bind()
+        self.__element_buffer.set_array(self.__element_array)
+        self.__element_buffer.bind()
 
         # Bind the attributes.
         GL.glBindVertexArray(self.__vao)
