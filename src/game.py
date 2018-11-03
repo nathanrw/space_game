@@ -82,7 +82,10 @@ class Game(object):
         path = os.path.dirname(os.path.dirname(__file__))
         if (os.path.basename(path) == "library.zip"):
             path = os.path.dirname(path)
-        os.chdir( path )
+        if len(path) > 0:
+            os.chdir( path )
+        if not os.path.isdir("res"):
+            raise Exception("Unable to locate resource tree.")
         sys.path += ["."]
 
         # Services exposed to the entities.

@@ -605,13 +605,13 @@ class VertexData(object):
         self.__array = numpy.zeros(default_size * self.__size, 'f')
         self.__vbo = OpenGL.arrays.vbo.VBO(self.__array)
         self.__vbo.bind()
-        self.__element_array = numpy.zeros(0, 'i')
-        self.__elements_buffer = OpenGL.arrays.vbo.VBO(self.__element_array, target=GL.GL_ELEMENT_ARRAY_BUFFER)
-        self.__elements_buffer.bind()
+        #self.__element_array = numpy.zeros(0, 'i')
+        #self.__elements_buffer = OpenGL.arrays.vbo.VBO(self.__element_array, target=GL.GL_ELEMENT_ARRAY_BUFFER)
+        #self.__elements_buffer.bind()
         for (name, size, data_type) in attribute_formats:
             GL.glEnableVertexAttribArray(self.__shader_program.get_attribute_location(name))
             GL.glVertexAttribPointer(self.__shader_program.get_attribute_location(name),
-                                     self.__sizes[name], GL.GL_FLOAT, False, self.__size*4, self.__vbo+self.__offsets[name]*4)
+                                     self.__sizes[name], GL.GL_FLOAT, GL.GL_FALSE, self.__size*4, self.__offsets[name]*4)
         GL.glBindVertexArray(0)
 
     def draw(self, primitive_type):
@@ -684,6 +684,7 @@ class VertexData(object):
 
     def add_nuklear(self, nuklear):
         """ Convert nuklear vertex data. """
+        return
 
         # Output buffer for nuklear commands
         cmds = pynk.ffi.new("struct nk_buffer*")
@@ -703,9 +704,8 @@ class VertexData(object):
             [pynk.lib.NK_VERTEX_POSITION, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["position"]*4],
             [pynk.lib.NK_VERTEX_TEXCOORD, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["texcoord"]*4],
             [pynk.lib.NK_VERTEX_COLOR, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["colour"]*4],
-            [pynk.lib.NK_VERTEX_ATTRIBUTE_COUNT, pynk.lib.NK_FORMAT_COUNT, 0] # NK_VERTEX_LAYOUT_END
+            [pynk.lib.NK_VERTEX_ATTRIBUTE_COUNT, pynk.lib.NK_FORMAT_COUNT, 0]
         ])
-        # Note: cffi zero initialises by default
         #NK_MEMSET(&config, 0, sizeof(config));
         config.vertex_layout = vertex_layout;
         config.vertex_size = self.__size
@@ -719,7 +719,6 @@ class VertexData(object):
         #config.line_AA = AA;
 
         # Get the buffer data.
-        return # Next line crashes.
         pynk.lib.nk_convert(nuklear.ctx, cmds, vbuf, ebuf, config)
 
         # Copy the data over to our buffers.
@@ -748,11 +747,8 @@ class VertexData(object):
         # own (doing 'bind()' as well)
         self.__vbo.set_array(self.__array)
         self.__vbo.bind()
-        self.__elements_buffer.set_array(self.__element_array)
-        self.__elements_buffer.bind()
-
-        if OpenGL.FULL_LOGGING:
-            self.print_out()
+        #self.__elements_buffer.set_array(self.__element_array)
+        #self.__elements_buffer.bind()
 
         # Bind the attributes.
         GL.glBindVertexArray(self.__vao)
@@ -760,24 +756,6 @@ class VertexData(object):
     def end(self):
         """ Unbind the VAO. """
         GL.glBindVertexArray(0)
-
-    def print_out(self):
-        """ Print out the structure of the buffer.  This is useful for debugging. """
-        space = 20
-        for name in self.__offsets:
-            print (name + " " * (space - len(name))),
-        print ("")
-        for i in range(0, self.__n):
-            for name in self.__offsets:
-                offset = self.__offsets[name]
-                components = ""
-                for j in xrange(self.__sizes[name]):
-                    components += str(round(self.__array[i*self.__size+offset+j], 2)) + ", "
-                components = components[:-2]
-                components = components + " " * (space-len(components))
-                print (components),
-            print ("")
-        print ("")
 
     def __len__(self):
         """ Return the number of vertices. """
@@ -1118,7 +1096,7 @@ class PygameOpenGLRenderer(Renderer):
 
         # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
         # Render the GUI.
-        if self.__nuklear:
+        if False and self.__nuklear:
             with Bind(self.__nuklear_shader,
                       self.__nuklear_buffer):
                 offset = 0
