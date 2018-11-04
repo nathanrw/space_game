@@ -70,8 +70,8 @@ class ShaderProgram(object):
         self.__shader_program = GL.glCreateProgram()
 
         # We're going to build up a list of inputs.
-        program_uniforms = set()
-        program_attributes = set()
+        program_uniforms = []
+        self.__program_attributes = []
         self.__attribute_types = {}
 
         # Compile all of the source files and attach the resulting
@@ -79,8 +79,8 @@ class ShaderProgram(object):
         for (filename, shader_type) in self.__list_shader_files(shader_dir):
             (file_uniforms, file_attributes, attribute_types) = \
                 self.__parse_uniforms_and_attributes(filename)
-            program_uniforms.update(file_uniforms);
-            program_attributes.update(file_attributes);
+            program_uniforms += file_uniforms
+            self.__program_attributes += file_attributes
             self.__attribute_types.update(attribute_types)
             shader = GL.glCreateShader(shader_type)
             GL.glShaderSource(shader, open(filename, 'r').read())
@@ -90,14 +90,14 @@ class ShaderProgram(object):
             GL.glAttachShader(self.__shader_program, shader)
 
         # Assign locations to vertex attributes. We'll bind them in the program later...
-        self.__attrib_locations = dict((k, v) for (v, k) in enumerate(program_attributes))
+        self.__attrib_locations = dict((k, v) for (v, k) in enumerate(self.__program_attributes))
 
         # Uniform locations will be determined by OpenGL, we'll get them later.
         self.__uniform_locations = {}
 
         # Now we can bind all of the vertex attributes to their
         # assigned locations.
-        for attrib in program_attributes:
+        for attrib in self.__program_attributes:
             GL.glBindAttribLocation(self.__shader_program,
                                     self.__attrib_locations[attrib],
                                     attrib)
@@ -116,7 +116,7 @@ class ShaderProgram(object):
     def create_vertex_buffers(self):
         """ Create a set of vertex buffers compatible with the shader. """
         buffer_formats = []
-        for name in self.__attribute_types:
+        for name in self.__program_attributes:
             size, data_type = self.__attribute_types[name]
             buffer_formats.append((name, size, data_type))
         return VertexData(self, buffer_formats)
@@ -124,8 +124,8 @@ class ShaderProgram(object):
     def __parse_uniforms_and_attributes(self, filename):
         """ Given a shader source file, return the names of attribute and
         uniform inputs. """
-        uniforms = set()
-        attributes = set()
+        uniforms = []
+        attributes = []
         attribute_types = {}
         stream = open(filename, 'r')
         for line in stream:
@@ -141,7 +141,8 @@ class ShaderProgram(object):
                 data_type = match.group(2)
                 variable_name = match.group(3)
                 if storage_type == "attribute":
-                    attributes.add(variable_name)
+                    assert not variable_name in attributes
+                    attributes.append(variable_name)
                     data_dims = 0
                     data_array_type = None
                     if data_type == "float":
@@ -160,7 +161,8 @@ class ShaderProgram(object):
                         raise Exception("Unknown attribute data type: %s" % data_type)
                     attribute_types[variable_name] = (data_dims, data_array_type)
                 elif storage_type == "uniform":
-                    uniforms.add(variable_name)
+                    assert not variable_name in uniforms
+                    uniforms.append(variable_name)
         return (uniforms, attributes, attribute_types)
 
     def __list_shader_files(self, dirname):
@@ -705,35 +707,48 @@ class VertexData(object):
             [pynk.lib.NK_VERTEX_COLOR, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["colour"]*4],
             [pynk.lib.NK_VERTEX_ATTRIBUTE_COUNT, pynk.lib.NK_FORMAT_COUNT, 0] # NK_VERTEX_LAYOUT_END
         ])
+        print "CONVERT:"
+        print vertex_layout[0].offset;
+        print vertex_layout[1].offset;
+        print vertex_layout[2].offset;
+        print vertex_layout[3].offset;
         # Note: cffi zero initialises by default
         #NK_MEMSET(&config, 0, sizeof(config));
         config.vertex_layout = vertex_layout;
-        config.vertex_size = self.__size
-        config.vertex_alignment = 0
+        config.vertex_size = self.__size*4
+        config.vertex_alignment = 1
         #config.null = dev->null;
         config.circle_segment_count = 22
         config.curve_segment_count = 22
         config.arc_segment_count = 22
         config.global_alpha = 1.0
-        #config.shape_AA = AA;
-        #config.line_AA = AA;
+        config.shape_AA = pynk.lib.NK_ANTI_ALIASING_ON;
+        config.line_AA = pynk.lib.NK_ANTI_ALIASING_ON;
 
         # Get the buffer data.
-        return # Next line crashes.
-        pynk.lib.nk_convert(nuklear.ctx, cmds, vbuf, ebuf, config)
+        print "BEFORE: "
+        print cmds.size, cmds.needed
+        print vbuf.size, vbuf.needed
+        print ebuf.size, ebuf.needed
+        result = pynk.lib.nk_convert(nuklear.ctx, cmds, vbuf, ebuf, config)
+        print "Result: ", result
+        print "AFTER: "
+        print cmds.size, cmds.needed
+        print vbuf.size, vbuf.needed
+        print ebuf.size, ebuf.needed
 
-        # Copy the data over to our buffers.
-        array = numpy.frombuffer(pynk.ffi.buffer(pynk.lib.nk_buffer_memory(vbuf), vbuf.size), "f")
-        elements = numpy.frombuffer(pynk.ffi.buffer(pynk.lib.nk_buffer_memory(ebuf), ebuf.size), 'i')
+        # Reference the data in numpy format.
+        #array = numpy.frombuffer(pynk.ffi.buffer(pynk.lib.nk_buffer_memory(vbuf), vbuf.needed), "f", vbuf.needed/4)
+        #elements = numpy.frombuffer(pynk.ffi.buffer(pynk.lib.nk_buffer_memory(ebuf), ebuf.needed), 'u2', ebuf.needed/2)
 
-        if len(array) > len(self.__array):
-            self.__array.resize(len(array), refcheck=False) # NOTE: See comment above.
-        self.__array[:len(array)] = array[:]
-        if len(elements) > len(self.__element_array):
-            self.__element_array.resize(len(elements), refcheck=False) # NOTE: See comment above.
-        self.__element_array[:len(elements)] = elements
-        self.__n = len(array)
-        self.__max = self.__n
+        #if len(array) > len(self.__array):
+        #    self.__array.resize(len(array), refcheck=False) # NOTE: See comment above.
+        #self.__array[:len(array)] = array[:]
+        #if len(elements) > len(self.__element_array):
+        #    self.__element_array.resize(len(elements), refcheck=False) # NOTE: See comment above.
+        #self.__element_array[:len(elements)] = elements
+        #self.__n = len(array)
+        #self.__max = self.__n
 
         # Free the buffers.
         pynk.lib.nk_buffer_free(cmds)
