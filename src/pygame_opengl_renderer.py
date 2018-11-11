@@ -633,7 +633,7 @@ class VertexData(object):
 
     def draw_elements(self, primitive_type, num_elements, offset):
         """ Draw elements. """
-        GL.glDrawElements(primitive_type, num_elements, GL.GL_UNSIGNED_SHORT, offset)
+        GL.glDrawElements(primitive_type, num_elements, GL.GL_UNSIGNED_SHORT, self.__element_array+(offset*2))
 
     def reset(self):
         """ Reset the vertex data so it can be re-used. """
@@ -1114,21 +1114,21 @@ class PygameOpenGLRenderer(Renderer):
 
         # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
         # Render the GUI.
-        if False and self.__nuklear:
+        if self.__nuklear:
             with Bind(self.__nuklear_shader,
                       self.__nuklear_buffer):
                 offset = 0
-                cmd = pynk.lib.nk__begin(self.__nuklear.ctx)
+                cmd = pynk.lib.nk__draw_begin(self.__nuklear.ctx, self.__nuklear_buffer.cmds)
                 while cmd:
-                    if cmd.elem_count == 0: continue
-                    GL.glBindTexture(GL.GL_TEXTURE_2D, cmd.texture.id)
-                    GL.glScissor(cmd.clip_rect.x,
-                                 screen_height - (cmd.clip_rect.y + cmd.clip_rect.h),
-                                 cmd.clip_rect.w,
-                                 cmd.clip_rect.h)
-                    self.__nuklear_buffer.draw_elements(GL.GL_TRIANGLES, cmd.elem_count, offset)
-                    offset += cmd.elem_count
-                    cmd = lib.nk__next(self.__nuklear.ctx, cmd)
+                    if cmd.elem_count > 0:
+                        GL.glBindTexture(GL.GL_TEXTURE_2D, cmd.texture.id)
+                        GL.glScissor(int(cmd.clip_rect.x),
+                                     int(self.__screen_size[1] - (cmd.clip_rect.y + cmd.clip_rect.h)),
+                                     int(cmd.clip_rect.w),
+                                     int(cmd.clip_rect.h))
+                        self.__nuklear_buffer.draw_elements(GL.GL_TRIANGLES, cmd.elem_count, offset)
+                        offset += cmd.elem_count
+                    cmd = pynk.lib.nk__draw_next(cmd, self.__nuklear_buffer.cmds, self.__nuklear.ctx)
                 GL.glBindTexture(GL.GL_TEXTURE_2D, 0)
                 GL.glScissor(0, 0, *self.__view.size)
 

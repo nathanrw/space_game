@@ -220,7 +220,8 @@ class Game(object):
             "res/fonts/xolonium/Xolonium-Regular.ttf",
             12
         )
-        self.nkpygame = pynk.nkpygame.NkPygame(font)
+        nkfont = pynk.nkpygame.NkPygameFont(font)
+        self.nkpygame = pynk.nkpygame.NkPygame(nkfont)
         self.nkpygame.setup()
 
         # Run the game loop.
