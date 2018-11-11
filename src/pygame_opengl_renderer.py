@@ -616,6 +616,17 @@ class VertexData(object):
                                      self.__sizes[name], GL.GL_FLOAT, False, self.__size*4, self.__vbo+self.__offsets[name]*4)
         GL.glBindVertexArray(0)
 
+        # Note: these need to persist between frames so we allocate them as
+        # members. Note that this only makes sense when drawing the gui! need
+        # to refactor.
+        # See https://github.com/vurtun/nuklear/commit/1caba3a5c9850b29416bd87ef33c79b0382cf065
+        self.cmds = pynk.ffi.new("struct nk_buffer*")
+        self.vbuf = pynk.ffi.new("struct nk_buffer*")
+        self.ebuf = pynk.ffi.new("struct nk_buffer*")
+        pynk.lib.nk_buffer_init_default(self.cmds)
+        pynk.lib.nk_buffer_init_default(self.vbuf)
+        pynk.lib.nk_buffer_init_default(self.ebuf)
+
     def draw(self, primitive_type):
         """ Draw the vertices. """
         GL.glDrawArrays(primitive_type, 0, len(self))
@@ -687,31 +698,14 @@ class VertexData(object):
     def add_nuklear(self, nuklear):
         """ Convert nuklear vertex data. """
 
-        # Output buffer for nuklear commands
-        cmds = pynk.ffi.new("struct nk_buffer*")
-        pynk.lib.nk_buffer_init_default(cmds)
-
-        # Output vertex buffer data.
-        vbuf = pynk.ffi.new("struct nk_buffer*")
-        pynk.lib.nk_buffer_init_default(vbuf)
-
-        # Output element buffer data.
-        ebuf = pynk.ffi.new("struct nk_buffer*")
-        pynk.lib.nk_buffer_init_default(ebuf)
-
         # Specify vertex format.
         config = pynk.ffi.new("struct nk_convert_config*")
         vertex_layout = pynk.ffi.new("struct nk_draw_vertex_layout_element[]", [
             [pynk.lib.NK_VERTEX_POSITION, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["position"]*4],
             [pynk.lib.NK_VERTEX_TEXCOORD, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["texcoord"]*4],
-            [pynk.lib.NK_VERTEX_COLOR, pynk.lib.NK_FORMAT_FLOAT, self.__offsets["colour"]*4],
+            [pynk.lib.NK_VERTEX_COLOR, pynk.lib.NK_FORMAT_R32G32B32A32_FLOAT, self.__offsets["colour"]*4],
             [pynk.lib.NK_VERTEX_ATTRIBUTE_COUNT, pynk.lib.NK_FORMAT_COUNT, 0] # NK_VERTEX_LAYOUT_END
         ])
-        print "CONVERT:"
-        print vertex_layout[0].offset;
-        print vertex_layout[1].offset;
-        print vertex_layout[2].offset;
-        print vertex_layout[3].offset;
         # Note: cffi zero initialises by default
         #NK_MEMSET(&config, 0, sizeof(config));
         config.vertex_layout = vertex_layout;
@@ -726,34 +720,21 @@ class VertexData(object):
         config.line_AA = pynk.lib.NK_ANTI_ALIASING_ON;
 
         # Get the buffer data.
-        print "BEFORE: "
-        print cmds.size, cmds.needed
-        print vbuf.size, vbuf.needed
-        print ebuf.size, ebuf.needed
-        result = pynk.lib.nk_convert(nuklear.ctx, cmds, vbuf, ebuf, config)
-        print "Result: ", result
-        print "AFTER: "
-        print cmds.size, cmds.needed
-        print vbuf.size, vbuf.needed
-        print ebuf.size, ebuf.needed
+        result = pynk.lib.nk_convert(nuklear.ctx, self.cmds, self.vbuf, self.ebuf, config)
+        assert result == pynk.lib.NK_CONVERT_SUCCESS
 
         # Reference the data in numpy format.
-        #array = numpy.frombuffer(pynk.ffi.buffer(pynk.lib.nk_buffer_memory(vbuf), vbuf.needed), "f", vbuf.needed/4)
-        #elements = numpy.frombuffer(pynk.ffi.buffer(pynk.lib.nk_buffer_memory(ebuf), ebuf.needed), 'u2', ebuf.needed/2)
+        array = numpy.frombuffer(pynk.ffi.buffer(pynk.lib.nk_buffer_memory(self.vbuf), self.vbuf.needed), "f", self.vbuf.needed/4)
+        elements = numpy.frombuffer(pynk.ffi.buffer(pynk.lib.nk_buffer_memory(self.ebuf), self.ebuf.needed), 'u2', self.ebuf.needed/2)
 
-        #if len(array) > len(self.__array):
-        #    self.__array.resize(len(array), refcheck=False) # NOTE: See comment above.
-        #self.__array[:len(array)] = array[:]
-        #if len(elements) > len(self.__element_array):
-        #    self.__element_array.resize(len(elements), refcheck=False) # NOTE: See comment above.
-        #self.__element_array[:len(elements)] = elements
-        #self.__n = len(array)
-        #self.__max = self.__n
-
-        # Free the buffers.
-        pynk.lib.nk_buffer_free(cmds)
-        pynk.lib.nk_buffer_free(vbuf)
-        pynk.lib.nk_buffer_free(ebuf)
+        if len(array) > len(self.__array):
+            self.__array.resize(len(array), refcheck=False) # NOTE: See comment above on refcheck.
+        self.__array[:len(array)] = array[:]
+        if len(elements) > len(self.__element_array):
+            self.__element_array.resize(len(elements), refcheck=False) # NOTE: See comment above on refcheck.
+        self.__element_array[:len(elements)] = elements
+        self.__n = len(array)
+        self.__max = self.__n
 
     def begin(self):
         """ Setup the vertex attributes for rendering. """
@@ -1133,7 +1114,7 @@ class PygameOpenGLRenderer(Renderer):
 
         # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
         # Render the GUI.
-        if self.__nuklear:
+        if False and self.__nuklear:
             with Bind(self.__nuklear_shader,
                       self.__nuklear_buffer):
                 offset = 0
@@ -1147,7 +1128,7 @@ class PygameOpenGLRenderer(Renderer):
                                  cmd.clip_rect.h)
                     self.__nuklear_buffer.draw_elements(GL.GL_TRIANGLES, cmd.elem_count, offset)
                     offset += cmd.elem_count
-                    cmd = lib.nk__next(self.__nuklear.ctx, nuklear_command)
+                    cmd = lib.nk__next(self.__nuklear.ctx, cmd)
                 GL.glBindTexture(GL.GL_TEXTURE_2D, 0)
                 GL.glScissor(0, 0, *self.__view.size)
 
