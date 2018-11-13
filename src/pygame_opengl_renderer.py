@@ -733,7 +733,7 @@ class VertexData(object):
         if len(elements) > len(self.__element_array):
             self.__element_array.resize(len(elements), refcheck=False) # NOTE: See comment above on refcheck.
         self.__element_array[:len(elements)] = elements
-        self.__n = len(array)
+        self.__n = len(array)/self.__size
         self.__max = self.__n
 
     def begin(self):
@@ -759,7 +759,7 @@ class VertexData(object):
 
     def print_out(self):
         """ Print out the structure of the buffer.  This is useful for debugging. """
-        space = 20
+        space = 25
         for name in self.__offsets:
             print (name + " " * (space - len(name))),
         print ("")
@@ -768,12 +768,18 @@ class VertexData(object):
                 offset = self.__offsets[name]
                 components = ""
                 for j in xrange(self.__sizes[name]):
-                    components += str(round(self.__array[i*self.__size+offset+j], 2)) + ", "
+                    index = i * self.__size+offset+j
+                    components += str(round(self.__array[index], 2)) + ", "
                 components = components[:-2]
                 components = components + " " * (space-len(components))
                 print (components),
             print ("")
         print ("")
+        print "index"
+        for i in range (0, len(self.__element_array)/3):
+            for j in xrange(3):
+                print self.__element_array[i*3+j],
+            print ""
 
     def __len__(self):
         """ Return the number of vertices. """
@@ -1117,6 +1123,10 @@ class PygameOpenGLRenderer(Renderer):
         if self.__nuklear:
             with Bind(self.__nuklear_shader,
                       self.__nuklear_buffer):
+                self.__nuklear_buffer.print_out()
+                GL.glUniform1i(self.__nuklear_shader.get_uniform_location("texture_page"), -1)
+                GL.glUniform2f(self.__nuklear_shader.get_uniform_location("view_size"),
+                               *self.__view.size)
                 offset = 0
                 cmd = pynk.lib.nk__draw_begin(self.__nuklear.ctx, self.__nuklear_buffer.cmds)
                 while cmd:
