@@ -607,7 +607,7 @@ class VertexData(object):
         self.__array = numpy.zeros(default_size * self.__size, 'f')
         self.__vbo = OpenGL.arrays.vbo.VBO(self.__array)
         self.__vbo.bind()
-        self.__element_array = numpy.zeros(0, 'i')
+        self.__element_array = numpy.zeros(0, 'u2')
         self.__elements_buffer = OpenGL.arrays.vbo.VBO(self.__element_array, target=GL.GL_ELEMENT_ARRAY_BUFFER)
         self.__elements_buffer.bind()
         for (name, size, data_type) in attribute_formats:
@@ -633,7 +633,7 @@ class VertexData(object):
 
     def draw_elements(self, primitive_type, num_elements, offset):
         """ Draw elements. """
-        GL.glDrawElements(primitive_type, num_elements, GL.GL_UNSIGNED_SHORT, self.__element_array+(offset*2))
+        GL.glDrawElements(primitive_type, num_elements, GL.GL_UNSIGNED_SHORT, self.__elements_buffer+offset*2)
 
     def reset(self):
         """ Reset the vertex data so it can be re-used. """
@@ -1123,7 +1123,6 @@ class PygameOpenGLRenderer(Renderer):
         if self.__nuklear:
             with Bind(self.__nuklear_shader,
                       self.__nuklear_buffer):
-                self.__nuklear_buffer.print_out()
                 GL.glUniform1i(self.__nuklear_shader.get_uniform_location("texture_page"), -1)
                 GL.glUniform2f(self.__nuklear_shader.get_uniform_location("view_size"),
                                *self.__view.size)
