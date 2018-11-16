@@ -41,7 +41,7 @@ class PygameRenderer(Renderer):
 
     def load_compatible_gui_font(self, filename, size):
         """ Load a font for the GUI. """
-        return pynk.nkpygame.NkPygameFont(load_compatible_font(filename, size))
+        return pynk.nkpygame.NkPygameFont(self.load_compatible_font(filename, size))
 
     def compatible_image_from_text(self, text, font, colour):
         """ Create an image by rendering a text string. """
