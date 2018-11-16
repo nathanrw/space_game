@@ -2,6 +2,8 @@ import pygame
 
 from .renderer import *
 
+import pynk.nkpygame
+
 class PygameRenderer(Renderer):
     """ A pygame software renderer. """
 
@@ -36,6 +38,10 @@ class PygameRenderer(Renderer):
     def load_compatible_font(self, filename, size):
         """ Load a pygame font. """
         return pygame.font.Font(filename, size)
+
+    def load_compatible_gui_font(self, filename, size):
+        """ Load a font for the GUI. """
+        return pynk.nkpygame.NkPygameFont(load_compatible_font(filename, size))
 
     def compatible_image_from_text(self, text, font, colour):
         """ Create an image by rendering a text string. """

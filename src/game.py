@@ -216,11 +216,10 @@ class Game(object):
         self.drawing.set_background("res/images/857-tileable-classic-nebula-space-patterns/6.jpg")
 
         # Make the GUI
-        font = self.resource_loader.load_font(
+        nkfont = self.renderer.load_compatible_gui_font(
             "res/fonts/xolonium/Xolonium-Regular.ttf",
             12
         )
-        nkfont = pynk.nkpygame.NkPygameFont(font)
         self.nkpygame = pynk.nkpygame.NkPygame(nkfont)
         self.nkpygame.setup()
 

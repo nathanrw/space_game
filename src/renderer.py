@@ -157,6 +157,11 @@ class Renderer(object):
         pass
 
     @abc.abstractmethod
+    def load_compatible_gui_font(self, filename, size):
+        """ Load a font that can be use by the GUI. """
+        pass
+
+    @abc.abstractmethod
     def compatible_image_from_text(self, text, font, colour):
         """ Create an image by rendering a text string. """
         pass

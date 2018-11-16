@@ -37,7 +37,9 @@ import os
 import os.path
 import numpy
 import pynk
+import pynk.nkpygame
 import re
+import unicodedata
 
 from pymunk import Vec2d
 
@@ -409,7 +411,7 @@ class TextureArray(object):
         # Dimensions of the texture array.
         self.__width = 1024
         self.__height = 1024
-        self.__depth = 20
+        self.__depth = 30
         self.__scratch_depth = 2
 
         # Allocate the texture array.
@@ -965,6 +967,90 @@ class TextureUnitBinding(object):
         self.__texture.end()
         GL.glActiveTexture(GL.GL_TEXTURE0)
 
+class FontAtlas(object):
+    """ Loads glyphs for a font into a texture array. """
+    class Glyph(object):
+        def __init__(self, ustring, font, texture_array):
+            assert len(ustring) == 1
+            self.glyph = ustring
+            self.texture = texture_array.load_image(font.render(ustring, True, (255, 255, 255)));
+            self.minx, self.maxx, self.miny, self.maxy, self.advance = font.metrics(ustring)[0]
+    def __init__(self, texture_array, pygame_font):
+        self.__first_page = -1
+        self.__atlas = {}
+        for codepoint in range(32, 0x01FF):
+            ustring = unichr(codepoint)
+            try:
+                name = unicodedata.name(ustring)
+            except ValueError:
+                continue
+            glyph = FontAtlas.Glyph(ustring, pygame_font, texture_array)
+            if self.__first_page < 0:
+                self.__first_page = glyph.texture.get_level()
+            self.__atlas[ustring] = glyph
+    def lookup_uchar(self, ustring):
+        assert len(ustring) == 1
+        return self.__atlas[ustring]
+    def lookup_codepoint(self, codepoint):
+        return self.lookup_uchar(unichr(codepoint))
+    def first_page_index(self):
+        return self.__first_page
+
+class NkAtlasFont(pynk.nkpygame.NkPygameFont):
+    """ Font interface through which nuklear can query our font atlas for
+    texture coordinates. """
+
+    def __init__(self, font, atlas):
+        pynk.nkpygame.NkPygameFont.__init__(self, font)
+        self.__atlas = atlas
+
+    def query_glyph(self, height, glyph, codepoint, next_codepoint):
+        """ Obtain texture coordinates for a glyph.  This is not necessary for
+        pygame software rendering - it will only be called if nk_convert() VBO
+        output is being used. """
+
+        # struct nk_user_font_glyph {
+        #     struct nk_vec2 uv[2];
+        #     /* texture coordinates */
+        #     struct nk_vec2 offset;
+        #     /* offset between top left and glyph */
+        #     float width, height;
+        #     /* size of the glyph  */
+        #     float xadvance;
+        #     /* offset to the next glyph */
+        # };
+
+        try:
+            atlas_glyph = self.__atlas.lookup_codepoint(codepoint)
+        except KeyError:
+            glyph.uv[0].x = 0
+            glyph.uv[0].y = 0
+            glyph.uv[1].x = 0
+            glyph.uv[1].y = 0
+            glyph.offset.x = 0
+            glyph.offset.y = 0
+            glyph.width = 0
+            glyph.height = 0
+            glyph.xadvance = 0;
+            return
+
+        a = atlas_glyph.texture.get_texcoord(0)
+        b = atlas_glyph.texture.get_texcoord(2)
+        glyph.uv[0].x = a[0]
+        glyph.uv[0].y = a[1]
+        glyph.uv[1].x = b[0]
+        glyph.uv[1].y = b[1]
+        glyph.offset.x = 0
+        glyph.offset.y = 0
+        glyph.width = atlas_glyph.texture.get_width()
+        glyph.height = atlas_glyph.texture.get_height()
+        glyph.xadvance = atlas_glyph.advance
+
+    def get_texture_id(self):
+        """ Obtain a texture id for font rendering.  If VBO output via
+        nk_convert() is not being used, then this is not necessary. """
+        return self.__atlas.first_page_index() + 1 # Note: see post_render().
+
 class PygameOpenGLRenderer(Renderer):
     """ A hardware accelerated renderer using pygame to create an OpenGL
     context and load bitmaps etc."""
@@ -982,6 +1068,8 @@ class PygameOpenGLRenderer(Renderer):
         self.__command_buffers = None
         self.__view = None
         self.__nuklear = None
+        self.__font_atlas_lookup = {} # Font to atlas
+        self.__font_atlases = {} # dims to atlas
 
     def initialise(self):
         """ Initialise the pygame display. """
@@ -1123,14 +1211,15 @@ class PygameOpenGLRenderer(Renderer):
         if self.__nuklear:
             with Bind(self.__nuklear_shader,
                       self.__nuklear_buffer):
-                GL.glUniform1i(self.__nuklear_shader.get_uniform_location("texture_page"), -1)
                 GL.glUniform2f(self.__nuklear_shader.get_uniform_location("view_size"),
                                *self.__view.size)
                 offset = 0
                 cmd = pynk.lib.nk__draw_begin(self.__nuklear.ctx, self.__nuklear_buffer.cmds)
                 while cmd:
                     if cmd.elem_count > 0:
-                        GL.glBindTexture(GL.GL_TEXTURE_2D, cmd.texture.id)
+                        # Note: smuggling texture page in as texture ID, which is 0 for unspecified.
+                        texture_page = -1 if cmd.texture.id == 0 else cmd.texture.id - 1
+                        GL.glUniform1i(self.__nuklear_shader.get_uniform_location("texture_page"), texture_page)
                         GL.glScissor(int(cmd.clip_rect.x),
                                      int(self.__screen_size[1] - (cmd.clip_rect.y + cmd.clip_rect.h)),
                                      int(cmd.clip_rect.w),
@@ -1162,7 +1251,15 @@ class PygameOpenGLRenderer(Renderer):
 
     def load_compatible_font(self, filename, size):
         """ Load a pygame font. """
-        return pygame.font.Font(filename, size)
+        font = pygame.font.Font(filename, size)
+        return font
+
+    def load_compatible_gui_font(self, filename, size):
+        """ Load a font that can be rendered on the GUI. """
+        font = self.load_compatible_font(filename, size)
+        atlas = FontAtlas(self.__texture_array, font)
+        nkfont = NkAtlasFont(font, atlas)
+        return nkfont
 
     def compatible_image_from_text(self, text, font, colour):
         """ Create an image by rendering a text string. """
