@@ -176,6 +176,22 @@ class Game(object):
         self.entity_manager.register_component_system(systems.TurretSystem())
         self.entity_manager.register_component_system(systems.TurretsSystem())
         self.entity_manager.register_component_system(systems.WeaponSystem())
+        self.entity_manager.register_component_system(systems.SolarSystem())
+        
+        # Add a planet.
+        star = self.entity_manager.create_entity_with(components.CelestialBody,
+                                                      components.Star)
+        star_ct = star.get_component(components.CelestialBody)
+        star_ct.name = "Betelgeuse"
+        star_ct.orbit_radius = 0
+        star_ct.radius = 100000
+        
+        planet = self.entity_manager.create_entity_with(components.CelestialBody,
+                                                        components.Planet)
+        planet_ct = planet.get_component(components.CelestialBody)
+        planet_ct.name = "Planet X"
+        planet_ct.orbit_radius = 1000000
+        planet_ct.radius = 10000
 
         # Preload certain images.
         self.resource_loader.preload()
@@ -194,6 +210,7 @@ class Game(object):
         # Make the player
         player = self.entity_manager.create_entity("player.txt")
         player.name = "Player"
+        systems.teleport(player, utils.Vec2d(1000000, 0))
         camera.get_component(components.Tracking).tracked.entity = player
 
         # Create a view to pass to the input handling - this lets it map between

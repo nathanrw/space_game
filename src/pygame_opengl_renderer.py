@@ -864,11 +864,12 @@ class CommandBuffer(object):
                                           **kwargs)
             i += 1
 
-    def __get_circle_points(self, position, radius):
+    def __get_circle_points(self, position, radius, **kwargs):
         """ Get points for a polygonised circle. """
         points = []
         circumference = 2*math.pi*radius
-        npoi = max(int(math.sqrt(circumference)), 6)
+        scale_factor = kwargs.get("scale_factor", 1.0)
+        npoi = max(int(math.sqrt(circumference * scale_factor)), 6)
         for i in range(0, npoi):
             angle = i/float(npoi) * math.pi * 2
             point = position + radius * Vec2d(math.cos(angle), math.sin(angle))
@@ -877,11 +878,11 @@ class CommandBuffer(object):
 
     def add_circle(self, position, radius, **kwargs):
         """ Emit a circular polygon. """
-        self.add_polygon(self.__get_circle_points(position, radius), **kwargs)
+        self.add_polygon(self.__get_circle_points(position, radius, **kwargs), **kwargs)
 
     def add_circle_lines(self, position, radius, **kwargs):
         """ Emit a loop of line segments. """
-        points = self.__get_circle_points(position, radius)
+        points = self.__get_circle_points(position, radius, **kwargs)
         points.append(points[0])
         self.add_lines(points, **kwargs)
 
@@ -1283,8 +1284,8 @@ class PygameOpenGLRenderer(Renderer):
         (image_width, image_height) = background_image.get_size()
         (screen_width, screen_height) = self.screen_size()
         pos = self.__view.position
-        x = int(pos.x)
-        y = int(pos.y)
+        x = int(pos.x / 10000.0)
+        y = int(pos.y / 10000.0)
         start_i = -(x%image_width)
         start_j = -(y%image_width)
         for i in range(start_i, screen_width, image_width):
@@ -1333,10 +1334,13 @@ class PygameOpenGLRenderer(Renderer):
         if "width" in kwargs:
             width = kwargs["width"]
         buffer = self.__command_buffers.get_buffer(coords, level, GL.GL_TRIANGLES)
+        scale_factor = 1.0 
+        if coords == Renderer.COORDS_WORLD:
+            scale_factor = self.__view.zoom
         if width == 0:
-            buffer.add_circle(position, radius, **kwargs)
+            buffer.add_circle(position, radius, scale_factor=scale_factor, **kwargs)
         else:
-            buffer.add_circle_lines(position, radius, **kwargs)
+            buffer.add_circle_lines(position, radius, scale_factor=scale_factor, **kwargs)
 
     def render_text(self, font, text, position, **kwargs):
         """ Render some text. """

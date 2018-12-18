@@ -964,3 +964,17 @@ class TurretsSystem(ComponentSystem):
             joint.entity_b.entity = turret_entity
             joint.entity_b_local_point = Vec2d(0, 0)
             joint_entity.add_component(joint)
+
+            
+class SolarSystem(ComponentSystem):
+    """ Manages the procession of the celestial spheres. """
+
+    def __init__(self):
+        """ Constructor. """
+        ComponentSystem.__init__(self, [CelestialBody])
+
+    def update(self, dt):
+        """ Update the system. """
+        for entity in self.entities():
+            celestial_body = entity.get_component(CelestialBody)
+            celestial_body.parameter += dt

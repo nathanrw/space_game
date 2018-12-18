@@ -23,6 +23,7 @@ generally used to initialise the fields of the component.  The fields define the
 current state of the component, and these are updated by processing systems.
 """
 
+import math
 
 from .ecs import Component, EntityRef, EntityRefList
 from .utils import Timer, Vec2d
@@ -269,3 +270,30 @@ class Player(Component):
     """ An entity with this component is controlled by the player. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
+        
+        
+class CelestialBody(Component):
+    """ A celestial sphere. """
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.radius = config.get_or_default("radius", 10000)
+        self.name = config.get_or_default("name", "Unknown Celestial Body")
+        self.orbit_radius = config.get_or_default("orbit_radius", 1000000)
+        self.parameter = config.get_or_default("start_parameter", 0)
+    @property
+    def position(self):
+        return Vec2d(math.cos(self.parameter / 1000.0)*self.orbit_radius, 
+                     math.sin(self.parameter / 1000.0)*self.orbit_radius)
+                     
+
+class Star(Component):
+    """ A star. """
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        
+        
+class Planet(Component):
+    """ A planet. """
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        

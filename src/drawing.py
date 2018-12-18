@@ -6,8 +6,10 @@ import random
 
 from .physics import Physics
 from .components import Body, Thrusters, Thruster, Hitpoints, Text, Shields, \
-                        AnimationComponent, Weapon, Power, Camera
+                        AnimationComponent, Weapon, Power, Camera, CelestialBody, \
+                        Planet, Star
 from .renderer import Renderer, View
+from .systems import get_team
 from .ecs import EntityRef
 from .utils import Vec2d, Polygon
 
@@ -33,7 +35,13 @@ class CameraView(View):
     @property
     def zoom(self):
         """ Get the zoom level. """
-        return math.pow(math.e, self.__camera_component.zoom / 2.0)
+        zoom_damping_factor = 2.0 # Arbitrary number chosen to slow down zoom.
+        return math.pow(math.e, self.zoom_level / zoom_damping_factor)
+        
+    @property
+    def zoom_level(self):
+        """ Get the integer zoom level. """
+        return self.__camera_component.zoom
 
     @property
     def __camera_component(self):
@@ -65,12 +73,60 @@ class Drawing(object):
         self.__renderer.add_job_background(self.__background_image)
 
         # Draw the things we can draw.
-        self.__draw_animations(camera)
-        self.__draw_thrusters(camera)
-        self.__draw_shields(camera)
-        self.__draw_lasers(camera)
-        self.__draw_hitpoints(camera)
+        zoom_map_threshold = -6
+        self.__draw_planets(camera)
+        if camera.zoom_level > zoom_map_threshold:
+            self.__draw_animations(camera)
+            self.__draw_thrusters(camera)
+            self.__draw_shields(camera)
+            self.__draw_lasers(camera)
+            self.__draw_hitpoints(camera)
+        else:
+            self.__draw_map(camera)
         self.__draw_text(camera)
+        
+    def __draw_planets(self, camera):
+        """ Draw celestial bodies. """
+        entities = self.__entity_manager.query(CelestialBody)
+        for entity in entities:
+            body = entity.get_component(CelestialBody)
+            planet = entity.get_component(Planet)
+            star = entity.get_component(Star)
+            colour = (255, 255, 255)
+            brightness = 0.5
+            if star is not None:
+                brightness = 2
+                colour = (255, 255, 200)
+            if planet is not None:
+                colour = (100, 100, 20)
+            self.__renderer.add_job_circle(
+                body.position,
+                body.radius,
+                colour=colour,
+                width=0,
+                brightness=brightness,
+            )
+        
+    def __draw_map(self, camera):
+        """ Draw map icons for entities that are too small to see. """
+        entities = self.__entity_manager.query(Body)
+        for entity in entities:
+            body = entity.get_component(Body)
+            colour = (255, 255, 255)
+            team = get_team(entity)
+            if team == "player":
+                colour = (100, 255, 100)
+            elif team == "enemy":
+                colour = (255, 100, 100)
+            self.__renderer.add_job_circle(
+                camera.world_to_screen(body.position),
+                5,
+                colour=colour,
+                width=0,
+                brightness=0.2,
+                coords=Renderer.COORDS_SCREEN,
+                level=Renderer.LEVEL_FORE,
+            )
 
     def __draw_lasers(self, camera):
         """ Draw laser beams. """
