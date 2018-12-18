@@ -1,6 +1,7 @@
 """ Draw the game using a Renderer. """
 
 from pygame import Rect
+import math
 import random
 
 from .physics import Physics
@@ -32,13 +33,7 @@ class CameraView(View):
     @property
     def zoom(self):
         """ Get the zoom level. """
-        return self.__camera_component.zoom
-
-    @zoom.setter
-    def zoom(self, value):
-        """ Set the zoom level. """
-        if value > 0:
-            self.__camera_component.zoom = value
+        return math.pow(math.e, self.__camera_component.zoom / 2.0)
 
     @property
     def __camera_component(self):

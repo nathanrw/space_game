@@ -261,7 +261,7 @@ class Camera(Component):
         self.vertical_shake = 0
         self.horizontal_shake = 0
         self.tracking = EntityRef(None, Body)
-        self.zoom = 1
+        self.zoom = 0
         self.screen_diagonal = (Vec2d(renderer.screen_size())/2).length
 
 

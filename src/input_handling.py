@@ -609,8 +609,6 @@ class InputHandling(object):
             GUIElementDebugInfo(self.game_services, self.__actions, self.__view)
         ]
 
-        self.__zoom_increment = 0.03
-
         self.__shooting = False
 
     def print_keybindings(self):
@@ -642,16 +640,14 @@ class InputHandling(object):
         """ Zoom the camera in."""
         cameras = self.game_services.get_entity_manager().query(Camera)
         for camera in cameras:
-            camera.get_component(Camera).zoom += self.__zoom_increment
+            camera.get_component(Camera).zoom += 1
 
     def zoom_out(self):
         """ Zoom the camera out. """
         cameras = self.game_services.get_entity_manager().query(Camera)
         for camera in cameras:
             c = camera.get_component(Camera)
-            c.zoom -= self.__zoom_increment
-            if c.zoom <= self.__zoom_increment:
-                c.zoom = self.__zoom_increment
+            c.zoom -= 1
 
 
     def move(self, direction):
