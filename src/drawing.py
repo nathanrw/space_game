@@ -59,7 +59,6 @@ class Drawing(object):
         self.__renderer = game_services.get_renderer()
         self.__resource_loader = game_services.get_resource_loader()
         self.__background_image = None
-        self.__font = None
         self.__game_services = game_services
 
     def set_background(self, image_name):
@@ -74,8 +73,8 @@ class Drawing(object):
 
         # Draw the things we can draw.
         zoom_map_threshold = -6
-        self.__draw_planets(camera)
         if camera.zoom_level > zoom_map_threshold:
+            self.__draw_planets(camera)
             self.__draw_animations(camera)
             self.__draw_thrusters(camera)
             self.__draw_shields(camera)
@@ -109,8 +108,8 @@ class Drawing(object):
         
     def __draw_map(self, camera):
         """ Draw map icons for entities that are too small to see. """
-        entities = self.__entity_manager.query(Body)
-        for entity in entities:
+        body_entities = self.__entity_manager.query(Body)
+        for entity in body_entities:
             body = entity.get_component(Body)
             colour = (255, 255, 255)
             team = get_team(entity)
@@ -127,7 +126,61 @@ class Drawing(object):
                 coords=Renderer.COORDS_SCREEN,
                 level=Renderer.LEVEL_FORE,
             )
-
+        planet_entities = self.__entity_manager.query(CelestialBody)
+        for entity in planet_entities:
+            body = entity.get_component(CelestialBody)
+            planet = entity.get_component(Planet)
+            star = entity.get_component(Star)
+            colour = (255, 255, 255)
+            brightness = 0.5
+            radius = 5
+            if star is not None:
+                brightness = 2
+                colour = (255, 255, 200)
+                radius = 10
+            if planet is not None:
+                colour = (100, 100, 20)
+            self.__renderer.add_job_circle(
+                camera.world_to_screen(body.position),
+                radius,
+                colour=colour,
+                width=0,
+                brightness=0.2,
+                coords=Renderer.COORDS_SCREEN,
+                level=Renderer.LEVEL_FORE,
+            )
+            length = camera.length_to_screen(body.orbit_radius, Renderer.COORDS_WORLD)
+            if length > 0:
+                self.__renderer.add_job_circle(
+                    camera.world_to_screen(Vec2d(0, 0)),
+                    camera.length_to_screen(body.orbit_radius, Renderer.COORDS_WORLD),
+                    colour=(10, 10, 60),
+                    width=2,
+                    brightness=0.2,
+                    coords=Renderer.COORDS_SCREEN,
+                    level=Renderer.LEVEL_BACK
+                )
+            if not "label_image" in body.cache:
+                font = self.__resource_loader.load_font(
+                    "res/fonts/xolonium/Xolonium-Regular.ttf", #  Fix
+                    14
+                )
+                body.cache["label_image"] = self.__renderer.compatible_image_from_text(
+                  body.name,
+                  font,
+                  (255, 255, 255)
+                )
+            image = body.cache["label_image"]
+            image_size = image.get_size()
+            pos = camera.world_to_screen(body.position)
+            pos[0] -= image_size[0] / 2
+            pos[1] += image_size[1]
+            self.__renderer.add_job_image(
+                pos,
+                image,
+                coords=Renderer.COORDS_SCREEN,
+                brightness=0.25
+            )
     def __draw_lasers(self, camera):
         """ Draw laser beams. """
         entities = self.__entity_manager.query(Weapon)

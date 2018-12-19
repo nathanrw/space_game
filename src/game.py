@@ -179,19 +179,7 @@ class Game(object):
         self.entity_manager.register_component_system(systems.SolarSystem())
         
         # Add a planet.
-        star = self.entity_manager.create_entity_with(components.CelestialBody,
-                                                      components.Star)
-        star_ct = star.get_component(components.CelestialBody)
-        star_ct.name = "Betelgeuse"
-        star_ct.orbit_radius = 0
-        star_ct.radius = 100000
-        
-        planet = self.entity_manager.create_entity_with(components.CelestialBody,
-                                                        components.Planet)
-        planet_ct = planet.get_component(components.CelestialBody)
-        planet_ct.name = "Planet X"
-        planet_ct.orbit_radius = 1000000
-        planet_ct.radius = 10000
+        self.__create_planets()
 
         # Preload certain images.
         self.resource_loader.preload()
@@ -210,7 +198,7 @@ class Game(object):
         # Make the player
         player = self.entity_manager.create_entity("player.txt")
         player.name = "Player"
-        systems.teleport(player, utils.Vec2d(1000000, 0))
+        systems.teleport(player, utils.Vec2d(100000, 0))
         camera.get_component(components.Tracking).tracked.entity = player
 
         # Create a view to pass to the input handling - this lets it map between
@@ -331,6 +319,25 @@ class Game(object):
     def step(self):
         """ Schedule a step. """
         self.want_step = True
+        
+    def __create_planets(self):
+        def create_body(extra, name, radius, orbit_radius, parameter):
+            ent = self.entity_manager.create_entity_with(components.CelestialBody,
+                                                         extra)
+            cb = ent.get_component(components.CelestialBody)
+            cb.name = name
+            cb.radius = radius
+            cb.orbit_radius = orbit_radius
+            cb.parameter = parameter
+        create_body(components.Star, "The Sun", 20000, 0, 0)
+        create_body(components.Planet, "Mercury", 1000, 100000, 0)
+        create_body(components.Planet, "Venus", 2000, 200000, 10000)
+        create_body(components.Planet, "The Earth", 5000, 400000, 20000)
+        create_body(components.Planet, "Mars", 3000, 1000000, 0)
+        create_body(components.Planet, "Jupiter", 10000, 5000000, 70000)
+        #create_body(components.Planet, "Saturn", 10000, 10000000, 70000)
+        #create_body(components.Planet, "Uranus", 10000, 50000000, 70000)
+        #create_body(components.Planet, "Neptune", 10000, 100000000, 70000)
 
 
 class DamageCollisionHandler(physics.CollisionHandler):

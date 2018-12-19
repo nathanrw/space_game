@@ -866,10 +866,12 @@ class CommandBuffer(object):
 
     def __get_circle_points(self, position, radius, **kwargs):
         """ Get points for a polygonised circle. """
+        if radius == 0:
+            return []
         points = []
         circumference = 2*math.pi*radius
-        scale_factor = kwargs.get("scale_factor", 1.0)
-        npoi = max(int(math.sqrt(circumference * scale_factor)), 6)
+        scale_factor = min(1.0, kwargs.get("scale_factor", 1.0))
+        npoi = min(max(int(math.sqrt(circumference * scale_factor)), 6), 64)
         for i in range(0, npoi):
             angle = i/float(npoi) * math.pi * 2
             point = position + radius * Vec2d(math.cos(angle), math.sin(angle))

@@ -280,11 +280,18 @@ class CelestialBody(Component):
         self.name = config.get_or_default("name", "Unknown Celestial Body")
         self.orbit_radius = config.get_or_default("orbit_radius", 1000000)
         self.parameter = config.get_or_default("start_parameter", 0)
+        self.cache = {}
     @property
     def position(self):
         return Vec2d(math.cos(self.parameter / 1000.0)*self.orbit_radius, 
                      math.sin(self.parameter / 1000.0)*self.orbit_radius)
                      
+    def __getstate__(self):
+        """ We override __getstate__ to get rid of cached data that we can't pickle."""
+        ret = self.__dict__.copy()
+        assert "cache" in ret
+        ret["cache"] = {}
+        return ret
 
 class Star(Component):
     """ A star. """
