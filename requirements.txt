@@ -2,6 +2,7 @@ pygame
 pymunk
 scipy
 pyYAML
+ply
 pcpp
 pynk
 pytest
