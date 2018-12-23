@@ -3,6 +3,6 @@ pymunk
 scipy
 pyYAML
 ply
-git+https://github.com/nathanrw/pcpp/tarball/master#egg=pcpp-1.0.1
+pcpp
 pynk
 pytest
