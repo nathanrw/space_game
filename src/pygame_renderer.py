@@ -2,7 +2,13 @@ import pygame
 
 from .renderer import *
 
-import pynk.nkpygame
+try:
+    import pynk.nkpygame
+except:
+    # Note: this lets us run the unit tests for now, as I am having 
+    # trouble getting pynk to install in the travis environment. This 
+    # should be removed when that is fixed.
+    print "Failed to import pynk. GUI rendering won't work."
 
 class PygameRenderer(Renderer):
     """ A pygame software renderer. """
