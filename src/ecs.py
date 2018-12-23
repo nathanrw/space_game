@@ -318,8 +318,8 @@ class ComponentStore(object):
 
     def remove(self, entity, component_type, systems):
         """ Remove a component from an entity. """
-        self.__ensure_store_exists(component.__class__)
-        store = self.__component_stores[component.__class]
+        self.__ensure_store_exists(component_type)
+        store = self.__component_stores[component_type]
         if entity in store:
 
             # Notify observers.
