@@ -2,12 +2,13 @@ import unittest
 from ..resource import *
 from testing import *
 
+
 class ResourceLoaderTest(unittest.TestCase):
     def test_preload(self):
         def do_test(game_services):
             rl = game_services.get_resource_loader()
             rl.minimise_image_loading = True
-            rl.preload(game_services.get_screen())
+            rl.preload()
         run_pygame_test(do_test)
     def test_load_font(self):
         def do_test(game_services):
@@ -40,6 +41,7 @@ class ResourceLoaderTest(unittest.TestCase):
             assert cfg == cfg2
         run_pygame_test(do_test)
 
+
 class AnimationTest(unittest.TestCase):
     def test_max_bounds(self):
         class SurfMock(object):
@@ -56,43 +58,3 @@ class AnimationTest(unittest.TestCase):
         size = anim.get_max_bounds()
         self.assertEquals(size.width, 22)
         self.assertEquals(size.height, 22)
-    def test_draw(self):
-        def do_test(game_services):
-            anim = game_services.get_resource_loader().load_animation("enemy_destroyer")
-            self.assertEquals(len(anim.frames), 1)
-
-            game_services.get_screen().fill((0,0,0))
-            anim.draw(Vec2d(0, 0), game_services.get_camera())
-            pygame.display.update()
-
-            anim.orientation = 20
-            game_services.get_screen().fill((0,0,0))
-            anim.draw(Vec2d(0, 0), game_services.get_camera())
-            pygame.display.update()
-
-            anim.orientation = 80
-            game_services.get_screen().fill((0,0,0))
-            anim.draw(Vec2d(0, 0), game_services.get_camera())
-            pygame.display.update()
-
-            anim.orientation = 90
-            game_services.get_screen().fill((0,0,0))
-            anim.draw(Vec2d(0, 0), game_services.get_camera())
-            pygame.display.update()
-
-            anim.orientation = 180
-            game_services.get_screen().fill((0,0,0))
-            anim.draw(Vec2d(0, 0), game_services.get_camera())
-            pygame.display.update()
-
-            anim.orientation = 270
-            game_services.get_screen().fill((0,0,0))
-            anim.draw(Vec2d(0, 0), game_services.get_camera())
-            pygame.display.update()
-
-            anim.orientation = 350
-            game_services.get_screen().fill((0,0,0))
-            anim.draw(Vec2d(0, 0), game_services.get_camera())
-            pygame.display.update()
-
-        run_pygame_test(do_test)

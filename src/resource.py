@@ -21,6 +21,7 @@ from .config import Config
 from .loading_screen import LoadingScreen
 from .utils import ordered_load, fromwin, Timer
 
+import math
 import pygame
 import os
 

@@ -5,57 +5,50 @@ import pygame
 from ..ecs import GameServices, Entity, EntityManager
 from ..resource import ResourceLoader
 from ..config import Config
-from ..components import Camera
+from ..pygame_renderer import PygameRenderer
 
-class MockGameServices(GameServices):
-    """ Mock game services implementation. """
-    def __init__(self):
-        self.screen = None
-        self.player = None
-        self.camera = None
-        self.entity_manager = None
-        self.resource_loader = None
-        self.on_end_game = None
-    def get_screen(self):
-        """ Get the main drawing surface. """
-        return self.screen
-    def get_player(self):
-        """ Get the player's entity. """
-        return self.player
-    def get_camera(self):
-        """ Get the camera. """
-        return self.camera
-    def get_entity_manager(self):
-        """ Get the entity manager. """
-        return self.entity_manager
-    def get_resource_loader(self):
-        """ Get the object that can load images and so on. """
-        return self.resource_loader
-    def end_game(self):
-        """ Tidy up and exit the program cleanly. """
-        if self.on_end_game is not None:
-            self.on_end_game
 
 # We only want to initialise pygame once, and then have subsequent tests
 # re-use it. This is because if you keep turning it off and on again, it
 # segfaults.
-global_screen = None
+global_renderer = None
 
-def run_pygame_test(test_func, size=(640,480)):
+
+class MockGameServices(GameServices):
+    """ Mock game services implementation. """
+    def __init__(self):
+        self.entity_manager = None
+        self.resource_loader = ResourceLoader()
+        
+        global global_renderer
+        if global_renderer is None:
+            pygame.init()
+            global_renderer = PygameRenderer((640, 480), Config(), data_path="../../res/")
+            global_renderer.initialise()
+            
+        self.renderer = global_renderer
+        self.resource_loader.set_renderer(self.renderer)
+        
+    def get_renderer(self):
+        return self.renderer
+
+    def get_entity_manager(self):
+        """ Return the entity manager. """
+        return self.entity_manager
+
+    def get_resource_loader(self):
+        """ Get the resource loader. """
+        return self.resource_loader
+
+
+def run_pygame_test(test_func):
     """ Run a pygame test. This is a minimal test without an entity manager,
-    but with a camera (because much drawing relies on there being one.) """
-    global global_screen
-    if global_screen is None:
-        pygame.init()
-        global_screen = pygame.display.set_mode(size)
+    but with a renderer.  """
     game_services = MockGameServices()
-    game_services.screen = global_screen
-    game_services.camera = Camera(Entity(game_services), game_services, Config())
-    game_services.resource_loader = ResourceLoader()
     test_func(game_services)
 
+    
 def create_entman_testing_services():
     game_services = MockGameServices()
-    game_services.resource_loader = ResourceLoader()
     game_services.entity_manager = EntityManager(game_services)
     return game_services
