@@ -1,7 +1,7 @@
 language: python
 os:
   - linux
-  - windows
+#  - windows # not supported by travis
 python:
   - "2.7"
 install:
