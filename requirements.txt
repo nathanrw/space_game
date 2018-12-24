@@ -2,4 +2,4 @@ pygame
 pymunk
 scipy
 pyYAML
-#pynk>=0.4
+pynk>=0.4.1
