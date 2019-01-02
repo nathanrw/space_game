@@ -106,7 +106,7 @@ class PygameRenderer(Renderer):
                              colour,
                              view.point_to_screen(p0, coords),
                              view.point_to_screen(p1, coords),
-                             view.length_to_screen(width, coords))
+                             max(1, int(view.length_to_screen(width, coords))))
         self.__add_job((level, coords), do_it)
 
     def render_lines(self, points, **kwargs):
@@ -139,11 +139,17 @@ class PygameRenderer(Renderer):
         def do_it(view):
             pos = view.point_to_screen(position, coords)
             width = self.__get_or_default(kwargs, "width", 0)
+            scaled_width = int(view.length_to_screen(width, coords))
+            scaled_radius = max(1, int(view.length_to_screen(radius, coords)))
+            if scaled_width > scaled_radius:
+                scaled_width = 0
+            if scaled_radius <= 0:
+                return
             pygame.draw.circle(self.__surface,
                                colour,
                                (int(pos[0]), int(pos[1])),
-                               max(1, int(view.length_to_screen(radius, coords))),
-                               int(view.length_to_screen(width, coords)))
+                               scaled_radius,
+                               scaled_width)
         self.__add_job((level, coords), do_it)
 
     def render_text(self, font, text, position, **kwargs):
