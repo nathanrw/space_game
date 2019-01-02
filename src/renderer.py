@@ -176,10 +176,6 @@ class Renderer(object):
         """ Get the screen dimensions as a rect. """
         pass
 
-    def add_job_background(self, background_image, **kwargs):
-        """ Queue a job to render a background image. """
-        self.render_background(background_image, **kwargs)
-
     def add_job_rect(self, rect, **kwargs):
         """ Queue a job to render a rectangle. """
         self.__set_defaults(kwargs,
@@ -258,11 +254,6 @@ class Renderer(object):
         for key in kwargs:
             if not key in got_kwargs:
                 got_kwargs[key] = kwargs[key]
-
-    @abc.abstractmethod
-    def render_background(self, background_image, **kwargs):
-        """ Render a scrolling background. """
-        pass
 
     @abc.abstractmethod
     def render_rect(self, rect, **kwargs):

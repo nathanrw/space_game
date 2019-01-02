@@ -69,7 +69,7 @@ class Drawing(object):
         """ Draw the drawables in order of layer. """
 
         # Draw the background
-        self.__renderer.add_job_background(self.__background_image)
+        self.__draw_background(camera)
 
         # Draw the things we can draw.
         zoom_map_threshold = -6
@@ -83,7 +83,25 @@ class Drawing(object):
         else:
             self.__draw_map(camera)
         self.__draw_text(camera)
-        
+
+    def __draw_background(self, the_view):
+        """ Draw the background. """
+        (image_width, image_height) = self.__background_image.get_size()
+        (screen_width, screen_height) = the_view.size
+        pos = the_view.position
+        x = int(pos.x / 1000.0)
+        y = int(pos.y / 1000.0)
+        start_i = -(x%image_width)
+        start_j = -(y%image_width)
+        for i in range(start_i, screen_width, image_width):
+            for j in range(start_j, screen_height, image_height):
+                self.__renderer.add_job_image(
+                    (i, j),
+                    self.__background_image,
+                    coords=Renderer.COORDS_SCREEN,
+                    level=Renderer.LEVEL_BACK_FAR
+                )
+
     def __draw_planets(self, camera):
         """ Draw celestial bodies. """
         entities = self.__entity_manager.query(CelestialBody)

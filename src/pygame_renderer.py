@@ -67,22 +67,6 @@ class PygameRenderer(Renderer):
                 job(self.__view)
         self.__jobs = {}
 
-    def render_background(self, background_image, **kwargs):
-        """ Render scrolling background. """
-        def do_it(the_view):
-            screen = self.__surface
-            (image_width, image_height) = background_image.get_size()
-            (screen_width, screen_height) = screen.get_size()
-            pos = the_view.position
-            x = int(pos.x)
-            y = int(pos.y)
-            start_i = -(x%image_width)
-            start_j = -(y%image_width)
-            for i in range(start_i, screen_width, image_width):
-                for j in range(start_j, screen_height, image_height):
-                    screen.blit(background_image, (i, j))
-        self.__add_job((Renderer.COORDS_SCREEN, Renderer.LEVEL_BACK_FAR), do_it)
-
     def render_rect(self, rect, **kwargs):
         """ Render rectangle. """
         (coords, level) = self.__parse_kwargs(kwargs)
@@ -139,10 +123,13 @@ class PygameRenderer(Renderer):
         def do_it(view):
             pos = view.point_to_screen(position, coords)
             width = self.__get_or_default(kwargs, "width", 0)
-            scaled_width = int(view.length_to_screen(width, coords))
+            scaled_width = view.length_to_screen(width, coords)
+            if scaled_width > 0 and scaled_width < 1:
+                scaled_width = 1
+            scaled_width = int(scaled_width)
             scaled_radius = max(1, int(view.length_to_screen(radius, coords)))
-            if scaled_width > scaled_radius:
-                scaled_width = 0
+            if scaled_width > scaled_radius and scaled_width > 0:
+                scaled_width = 1
             if scaled_radius <= 0:
                 return
             pygame.draw.circle(self.__surface,

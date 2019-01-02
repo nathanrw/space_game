@@ -1276,27 +1276,6 @@ class PygameOpenGLRenderer(Renderer):
         """ Get the display size. """
         return self.__surface.get_rect()
 
-    def render_background(self, background_image, **kwargs):
-        """ Render scrolling background. """
-        (coords, level) = self.__parse_kwargs(kwargs)
-        buffer = self.__command_buffers.get_buffer(Renderer.COORDS_SCREEN,
-                                                   Renderer.LEVEL_BACK_FAR,
-                                                   GL.GL_TRIANGLES)
-        """ Render scrolling background. """
-        (image_width, image_height) = background_image.get_size()
-        (screen_width, screen_height) = self.screen_size()
-        pos = self.__view.position
-        x = int(pos.x / 10000.0)
-        y = int(pos.y / 10000.0)
-        start_i = -(x%image_width)
-        start_j = -(y%image_width)
-        for i in range(start_i, screen_width, image_width):
-            for j in range(start_j, screen_height, image_height):
-                buffer.add_quad((i+image_width/2.0, j+image_width/2.0),
-                                (image_width, image_height),
-                                texref=background_image,
-                                **kwargs)
-
     def render_rect(self, rect, **kwargs):
         """ Render rectangle. """
         width = kwargs.get("width", 0)

@@ -44,9 +44,6 @@ class LoadingScreen(object):
         bar_rect.top += self.title.get_height() / 2
         brightness = 0.2 * (float(self.progress)/self.total)
 
-        # Draw the background image
-        self.renderer.add_job_background(self.background)
-
         # Draw the title image above the loading bar.
         self.renderer.add_job_image(Vec2d(bar_rect.center[0], bar_rect.top)
                                     - Vec2d(self.title.get_width() / 2, self.title.get_height() + 10), self.title,
