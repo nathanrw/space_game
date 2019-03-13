@@ -35,6 +35,18 @@ class LoadingScreen(object):
         # Prepare the renderer.
         self.renderer.pre_render(self.view)
 
+        # Draw the background.
+        (image_width, image_height) = self.background.get_size()
+        (screen_width, screen_height) = self.view.size
+        for i in range(0, screen_width, image_width):
+            for j in range(0, screen_height, image_height):
+                self.renderer.add_job_image(
+                    (i, j),
+                    self.background,
+                    coords=Renderer.COORDS_SCREEN,
+                    level=Renderer.LEVEL_BACK_FAR
+                )
+
         # Define the geometry of the loading bar.
         screen_rect = self.renderer.screen_rect()
         bar_rect = pygame.Rect((0, 0), (0, 0))
