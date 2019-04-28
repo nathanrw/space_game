@@ -18,7 +18,7 @@ import collections
 import inspect
 
 from .physics import Physics
-from .components import AnimationComponent, Thrusters, Player, Camera, Turrets, Turret
+from .components import AnimationComponent, Body, Dockable, Thrusters, Player, Camera, Turrets, Turret
 from .direction_providers import DirectionProviderScreen
 from .ecs import EntityRef, EntityRefList
 from .resource import Animation
@@ -192,6 +192,8 @@ class Actions(object):
         self.SHOW_KEYS = FuncAction("Show keys",
                                     lambda: handler.print_keybindings())
         self.SHOOT = ShootAction("Shoot", handler)
+        self.DOCK = FuncAction("Dock", lambda: handler.dock())
+        self.UNDOCK = FuncAction("Undock", lambda: handler.undock())
 
 
 class KeyMap(object):
@@ -330,6 +332,7 @@ class InputContextFlight(InputContext):
                 pygame.K_d: actions.MOVE_RIGHT,
                 pygame.K_q: actions.ROTATE_CLOCKWISE,
                 pygame.K_e: actions.ROTATE_ANTICLOCKWISE,
+                pygame.K_f: actions.DOCK,
                 pygame.K_t: actions.ZOOM_IN,
                 pygame.K_g: actions.ZOOM_OUT,
                 pygame.K_ESCAPE: actions.QUIT,
@@ -476,6 +479,30 @@ class GUIElementMenu(GUIElement):
         return ret
 
 
+class GUIElementDockingMenu(GUIElement):
+    """ A dialog to display when the ship is docked. """
+
+    def process(self, nkpygame):
+        """ Display the docking dialog. """
+        ret = InputResponse()
+        players = self.game_services.get_entity_manager().query(Player)
+        if len(players) == 0: return ret
+        player = players[0].get_component(Player)
+        docked_with = player.docked_with.entity
+        if docked_with is None: return ret
+        dockable = docked_with.get_component(Dockable)
+        w, h = self.view.size
+        rect = pynk.lib.nk_rect(10, 10, w-20, h-20)
+        if pynk.lib.nk_begin(nkpygame.ctx, "Docked with: " + dockable.title, rect, pynk.lib.NK_WINDOW_TITLE):
+            pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1)
+            pynk.lib.nk_label(nkpygame.ctx, dockable.description, pynk.lib.NK_TEXT_LEFT)
+            pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1)
+            if pynk.lib.nk_button_label(nkpygame.ctx, "Undock"):
+                ret = self.actions.UNDOCK.execute(True)
+        pynk.lib.nk_end(nkpygame.ctx)
+        return ret
+
+
 class GUIElementInfoTooltip(GUIElement):
     """ An info tooltip for entities. """
 
@@ -606,7 +633,8 @@ class InputHandling(object):
         self.__gui_elements = [
             GUIElementMenu(self.game_services, self.__actions, self.__view),
             GUIElementInfoTooltip(self.game_services, self.__actions, self.__view),
-            GUIElementDebugInfo(self.game_services, self.__actions, self.__view)
+            GUIElementDebugInfo(self.game_services, self.__actions, self.__view),
+            GUIElementDockingMenu(self.game_services, self.__actions, self.__view)
         ]
 
         self.__shooting = False
@@ -691,3 +719,27 @@ class InputHandling(object):
         """ Keep aiming at the given point. """
         if self.__shooting:
             self.start_shooting(point)
+
+    def dock(self):
+        """ Dock with the nearest dockable thing. """
+        players = self.game_services.get_entity_manager().query(Player)
+        for player_ent in players:
+            player = player_ent.get_component(Player)
+            physics = self.game_services.get_entity_manager().get_system(Physics)
+            is_dockable = lambda body: body.entity.get_component(Dockable) is not None
+            player_body = player_ent.get_component(Body)
+            if player_body is None: continue
+            closest_body = physics.closest_body_with(player_body.position, is_dockable)
+            if closest_body is None: continue
+            distance = (player_body.position - closest_body.position).length
+            if distance - player_body.size - closest_body.size - 10 <= 0:
+                player.docked_with.entity = closest_body.entity
+                self.__in_menu = True
+
+    def undock(self):
+        """ Undock if the player is docked. """
+        players = self.game_services.get_entity_manager().query(Player)
+        for player_ent in players:
+            player = player_ent.get_component(Player)
+            player.docked_with.entity = None
+            self.__in_menu = False

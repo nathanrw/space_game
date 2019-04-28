@@ -192,6 +192,13 @@ class EntityManager(object):
             if o.is_garbage:
                 self.__entities.remove(o)
 
+    def create_component(self, entity, component_type, data=Config()):
+        if not isinstance(data, Config):
+            data = Config(data)
+        component = component_type(entity, self.__game_services, data)
+        entity.add_component(component)
+        return component
+
     def create_entity_with(self, *types):
         """ Create a new entity with a given list of components. """
         entity = self.create_entity()
@@ -436,6 +443,7 @@ class Component(object):
         """ Initialise the component. """
         self.__entity = entity
         self.__config = config
+        self.cache = {}
 
     @property
     def entity(self):
@@ -450,6 +458,13 @@ class Component(object):
     def is_garbage(self):
         """ Is our entity dead? """
         return self.entity.is_garbage
+
+    def __getstate__(self):
+        """ We override __getstate__ to get rid of cached data that we can't pickle."""
+        ret = self.__dict__.copy()
+        assert "cache" in ret
+        ret["cache"] = {}
+        return ret
 
 
 class EntityRef(object):

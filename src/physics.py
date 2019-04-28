@@ -44,7 +44,10 @@ class Physics(ComponentSystem):
             )
 
             # Initialise body and shape.
-            self.body = pymunk.Body(float(body_component.mass), moment)
+            body_type = pymunk.Body.DYNAMIC
+            if body_component.kinematic:
+                body_type = pymunk.Body.KINEMATIC
+            self.body = pymunk.Body(float(body_component.mass), moment, body_type)
             self.shape = pymunk.Circle(self.body, float(body_component.size))
             self.shape.friction = 0.8
 
@@ -68,7 +71,8 @@ class Physics(ComponentSystem):
             pymunk_body.body.position = body_component.position
             pymunk_body.body.velocity = body_component.velocity
             #pymunk_body.shape.radius = body_component.size
-            pymunk_body.body.mass = body_component.mass
+            if not body_component.kinematic:
+                pymunk_body.body.mass = body_component.mass
             if body_component.is_collideable:
                 pymunk_body.shape.collision_type = 1
             else:

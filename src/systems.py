@@ -971,10 +971,35 @@ class SolarSystem(ComponentSystem):
 
     def __init__(self):
         """ Constructor. """
-        ComponentSystem.__init__(self, [CelestialBody])
+        ComponentSystem.__init__(self, [CelestialBody, Body])
 
     def update(self, dt):
         """ Update the system. """
         for entity in self.entities():
-            celestial_body = entity.get_component(CelestialBody)
-            celestial_body.parameter += dt
+            body = entity.get_component(Body)
+            orbit_radius = body.position.length
+            if orbit_radius == 0:
+                continue
+            orbit_speed = math.sqrt(orbit_radius)
+            new_direction = body.position.normalized().perpendicular()
+            body.velocity = new_direction * orbit_speed
+
+
+class PlayerSystem(ComponentSystem):
+    """ Manages the player ship. """
+
+    def __init__(self):
+        """ Constructor """
+        ComponentSystem.__init__(self, [Player, Body])
+
+    def update(self, dt):
+        """ Update the player ship. """
+
+        # Maintain velocity with docked object.
+        for entity in self.entities():
+            player = entity.get_component(Player)
+            body = entity.get_component(Body)
+            if player.docked_with.entity is None: continue
+            docked_body = player.docked_with.entity.get_component(Body)
+            if docked_body is None: continue
+            body.velocity = docked_body.velocity

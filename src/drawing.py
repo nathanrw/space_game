@@ -7,7 +7,7 @@ import random
 from .physics import Physics
 from .components import Body, Thrusters, Thruster, Hitpoints, Text, Shields, \
                         AnimationComponent, Weapon, Power, Camera, CelestialBody, \
-                        Planet, Star
+                        Planet, Star, Dockable, Player
 from .renderer import Renderer, View
 from .systems import get_team
 from .ecs import EntityRef
@@ -60,6 +60,7 @@ class Drawing(object):
         self.__resource_loader = game_services.get_resource_loader()
         self.__background_image = None
         self.__game_services = game_services
+        self.__text_cache = {}
 
     def set_background(self, image_name):
         """ Load a background image. """
@@ -80,6 +81,7 @@ class Drawing(object):
             self.__draw_shields(camera)
             self.__draw_lasers(camera)
             self.__draw_hitpoints(camera)
+            self.__draw_dock_icon(camera)
         else:
             self.__draw_map(camera)
         self.__draw_text(camera)
@@ -102,11 +104,51 @@ class Drawing(object):
                     level=Renderer.LEVEL_BACK_FAR
                 )
 
+    def __draw_dock_icon(self, camera):
+        """ Draw a docking indicator. """
+        dockable_entities = self.__entity_manager.query(Dockable, Body)
+        player_entities = self.__entity_manager.query(Player, Body)
+        player = player_entities[0]
+        player_body = player.get_component(Body)
+        for entity in dockable_entities:
+            dockable_body = entity.get_component(Body)
+            distance = (player_body.position - dockable_body.position).length
+            separation = distance - player_body.size - dockable_body.size - 10
+            if separation <= 0:
+                self.__draw_static_text(camera, player_body.position, "Dockable object in range")
+                return
+
+    def __draw_static_text(self, camera, position, text):
+        """ Draw a text string that doesn't change very often. It will be cached
+        for the lifetime of the program. """
+        if not text in self.__text_cache:
+            font = self.__resource_loader.load_font(
+                "res/fonts/xolonium/Xolonium-Regular.ttf",  # Fix
+                14
+            )
+            self.__text_cache[text] = self.__renderer.compatible_image_from_text(
+                text,
+                font,
+                (255, 255, 255)
+            )
+        image = self.__text_cache[text]
+        image_size = image.get_size()
+        pos = camera.world_to_screen(position)
+        pos[0] -= image_size[0] / 2
+        pos[1] += image_size[1]
+        self.__renderer.add_job_image(
+            pos,
+            image,
+            coords=Renderer.COORDS_SCREEN,
+            brightness=0.25
+        )
+
     def __draw_planets(self, camera):
         """ Draw celestial bodies. """
-        entities = self.__entity_manager.query(CelestialBody)
+        entities = self.__entity_manager.query(CelestialBody, Body)
         for entity in entities:
-            body = entity.get_component(CelestialBody)
+            celestial_body = entity.get_component(CelestialBody)
+            body = entity.get_component(Body)
             planet = entity.get_component(Planet)
             star = entity.get_component(Star)
             colour = (255, 255, 255)
@@ -118,7 +160,7 @@ class Drawing(object):
                 colour = (100, 100, 20)
             self.__renderer.add_job_circle(
                 body.position,
-                body.radius,
+                body.size,
                 colour=colour,
                 width=0,
                 brightness=brightness,
@@ -129,6 +171,8 @@ class Drawing(object):
         body_entities = self.__entity_manager.query(Body)
         for entity in body_entities:
             body = entity.get_component(Body)
+            if entity.get_component(CelestialBody) is not None:
+                continue
             colour = (255, 255, 255)
             team = get_team(entity)
             if team == "player":
@@ -144,9 +188,10 @@ class Drawing(object):
                 coords=Renderer.COORDS_SCREEN,
                 level=Renderer.LEVEL_FORE,
             )
-        planet_entities = self.__entity_manager.query(CelestialBody)
+        planet_entities = self.__entity_manager.query(CelestialBody, Body)
         for entity in planet_entities:
-            body = entity.get_component(CelestialBody)
+            celestial_body = entity.get_component(CelestialBody)
+            body = entity.get_component(Body)
             planet = entity.get_component(Planet)
             star = entity.get_component(Star)
             colour = (255, 255, 255)
@@ -167,28 +212,29 @@ class Drawing(object):
                 coords=Renderer.COORDS_SCREEN,
                 level=Renderer.LEVEL_FORE,
             )
-            length = camera.length_to_screen(body.orbit_radius, Renderer.COORDS_WORLD)
+            orbit_radius = body.position.length
+            length = camera.length_to_screen(orbit_radius, Renderer.COORDS_WORLD)
             if length > 0:
                 self.__renderer.add_job_circle(
                     camera.world_to_screen(Vec2d(0, 0)),
-                    camera.length_to_screen(body.orbit_radius, Renderer.COORDS_WORLD),
+                    camera.length_to_screen(orbit_radius, Renderer.COORDS_WORLD),
                     colour=(10, 10, 60),
                     width=2,
                     brightness=0.2,
                     coords=Renderer.COORDS_SCREEN,
                     level=Renderer.LEVEL_BACK
                 )
-            if not "label_image" in body.cache:
+            if not "label_image" in celestial_body.cache:
                 font = self.__resource_loader.load_font(
                     "res/fonts/xolonium/Xolonium-Regular.ttf", #  Fix
                     14
                 )
-                body.cache["label_image"] = self.__renderer.compatible_image_from_text(
-                  body.name,
+                celestial_body.cache["label_image"] = self.__renderer.compatible_image_from_text(
+                  celestial_body.name,
                   font,
                   (255, 255, 255)
                 )
-            image = body.cache["label_image"]
+            image = celestial_body.cache["label_image"]
             image_size = image.get_size()
             pos = camera.world_to_screen(body.position)
             pos[0] -= image_size[0] / 2
@@ -199,6 +245,7 @@ class Drawing(object):
                 coords=Renderer.COORDS_SCREEN,
                 brightness=0.25
             )
+
     def __draw_lasers(self, camera):
         """ Draw laser beams. """
         entities = self.__entity_manager.query(Weapon)
@@ -350,24 +397,25 @@ class Drawing(object):
             component = entity.get_component(Text)
 
             # Cache an image of the rendered text.
-            if component.image is None:
+            if not "image" in component.cache:
                 font = self.__resource_loader.load_font(
                     component.font_name,
                     component.large_font_size
                 )
-                component.image = self.__renderer.compatible_image_from_text(
+                component.cache["image"] = self.__renderer.compatible_image_from_text(
                     component.text,
                     font,
                     component.colour
                 )
+            image = component.cache["image"]
 
             # Render the text.
             if component.visible:
                 pos = Vec2d(self.__renderer.screen_rect().center) \
-                        - Vec2d(component.image.get_size()) / 2
+                        - Vec2d(image.get_size()) / 2
                 self.__renderer.add_job_image(
                     pos,
-                    component.image,
+                    image,
                     coords=Renderer.COORDS_SCREEN,
                     brightness=0.25
                 )
@@ -376,28 +424,29 @@ class Drawing(object):
             if component.blink:
 
                 # Cache an image of the rendered 'warning' string.
-                if component.warning is None:
+                if not "warning" in component.cache:
                     small_font = self.__resource_loader.load_font(
                         component.font_name,
                         component.small_font_size
                     )
-                    component.warning = self.__renderer.compatible_image_from_text(
+                    component.cache["warning"] = self.__renderer.compatible_image_from_text(
                         "WARNING",
                         small_font,
                         component.colour
                     )
+                warning = component.cache["warning"]
 
                 # Get positions of the 'WARNING' strips
                 pos = Vec2d(self.__renderer.screen_rect().center) \
-                      - Vec2d(component.image.get_size()) / 2
-                y0 = int(pos.y-component.warning.get_height()-10)
-                y1 = int(pos.y+component.image.get_height()+10)
+                      - Vec2d(image.get_size()) / 2
+                y0 = int(pos.y-warning.get_height()-10)
+                y1 = int(pos.y+image.get_height()+10)
 
                 # Draw a row of 'warnings' at the top and bottom.
                 for (forwards, y) in ((True, y0), (False, y1)):
 
                     # Draw a row of 'WARNING's.
-                    (image_width, image_height) = component.warning.get_size()
+                    (image_width, image_height) = warning.get_size()
                     (screen_width, screen_height) = self.__renderer.screen_size()
                     x = component.offset
                     if not forwards:
@@ -406,7 +455,7 @@ class Drawing(object):
                     for i in range(int(start_i), screen_width, image_width + component.padding):
                         self.__renderer.add_job_image(
                             (i, y),
-                            component.warning,
+                            warning,
                             coords=Renderer.COORDS_SCREEN,
                             brightness=0.25
                         )
@@ -423,7 +472,7 @@ class Drawing(object):
                     )
 
                     # Draw the bottom bar.
-                    rect.top=y+component.warning.get_height()+5
+                    rect.top=y+warning.get_height()+5
                     self.__renderer.add_job_rect(
                         rect,
                         colour=component.colour,
