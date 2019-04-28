@@ -494,8 +494,8 @@ class GUIElementDockingMenu(GUIElement):
         w, h = self.view.size
         rect = pynk.lib.nk_rect(10, 10, w-20, h-20)
         if pynk.lib.nk_begin(nkpygame.ctx, "Docked with: " + dockable.title, rect, pynk.lib.NK_WINDOW_TITLE):
-            pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1)
-            pynk.lib.nk_label(nkpygame.ctx, dockable.description, pynk.lib.NK_TEXT_LEFT)
+            pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, h - 115, 1)
+            pynk.lib.nk_label_wrap(nkpygame.ctx, dockable.description)
             pynk.lib.nk_layout_row_dynamic(nkpygame.ctx, 0, 1)
             if pynk.lib.nk_button_label(nkpygame.ctx, "Undock"):
                 ret = self.actions.UNDOCK.execute(True)

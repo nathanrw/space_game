@@ -16,6 +16,7 @@ import drawing
 import ecs
 import input_handling
 import physics
+import planets
 import resource
 import systems
 import utils
@@ -181,12 +182,12 @@ class Game(object):
         self.entity_manager.register_component_system(systems.PlayerSystem())
         
         # Add a planet.
-        self.__create_planet("The Sun", 20000, 0, True)
-        mercury = self.__create_planet("Mercury", 1000, 100000, False, "The smallest planet.")
-        self.__create_planet("Venus", 2000, 200000, False, "A hellhole.")
-        self.__create_planet("The Earth", 5000, 400000, False, "Marginally better than Venus.")
-        self.__create_planet("Mars", 3000, 1000000, 0, "A dull, red desert.")
-        self.__create_planet("Jupiter", 10000, 5000000, False, "Huge and radioactive.")
+        sun = planets.create_planet(self.entity_manager, planets.SUN_DEF)
+        mercury = planets.create_planet(self.entity_manager, planets.MERCURY_DEF)
+        venus = planets.create_planet(self.entity_manager, planets.VENUS_DEF)
+        earth = planets.create_planet(self.entity_manager, planets.EARTH_DEF)
+        mars = planets.create_planet(self.entity_manager, planets.MARS_DEF)
+        jupiter = planets.create_planet(self.entity_manager, planets.JUPITER_DEF)
 
         # Preload certain images.
         self.resource_loader.preload()
@@ -327,58 +328,6 @@ class Game(object):
     def step(self):
         """ Schedule a step. """
         self.want_step = True
-
-    def __create_planet(
-            self,
-            name,
-            radius,
-            orbit_radius,
-            is_star,
-            description=""
-    ):
-        """
-        Create a planet or star.
-        :param name: name of the planet
-        :param radius: radis of planet
-        :param orbit_radius: orbital radius around (0, 0)
-        :param is_star: is it a star? Otherwise a planet.
-        :param description: description, if it's dockable.
-        :return: the planet entity
-        """
-        entity = self.entity_manager.create_entity()
-
-        # Add star / planet tag
-        if is_star:
-            self.entity_manager.create_component(entity, components.Star)
-        else:
-            self.entity_manager.create_component(entity, components.Planet)
-
-        # Add celestial body component.
-        celestial_body = self.entity_manager.create_component(
-            entity,
-            components.CelestialBody,
-            {"name": name}
-        )
-
-        # Create physics body. The celestial body system will drive this by
-        # setting the velocity, so make it a kinematic body.
-        body_data = {
-            "size": radius,
-            "kinematic": True,
-            "is_collideable": False
-        }
-        body = self.entity_manager.create_component(entity, components.Body, body_data)
-        body.position = utils.Vec2d(0, orbit_radius)
-
-        # If it's dockable, add the component.
-        if description != "":
-            self.entity_manager.create_component(
-                entity,
-                components.Dockable,
-                {"title": name, "description": description}
-            )
-
-        return entity
 
 
 class DamageCollisionHandler(physics.CollisionHandler):
