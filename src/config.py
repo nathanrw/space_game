@@ -135,8 +135,13 @@ class Config(object):
             for key in self.__data:
                 yield key
 
+    def get(self, key, default):
+        """ Same as get_or_default() for API compatibility with dict. """
+        return self.get_or_default(key, default)
+
     def get_or_default(self, key, default):
         """ Get some data out. """
+        # Note: this should be deprecated in favour of get().
         ret = self.__get(key)
         if ret is not None:
             return ret

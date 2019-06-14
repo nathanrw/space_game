@@ -29,32 +29,40 @@ from .ecs import Component, EntityRef, EntityRefList
 from .utils import Timer, Vec2d
 
 
-class Joint(Component):
-    """ A joint between two bodies. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.entity_a = EntityRef(None, Body)
-        self.entity_a_local_point = Vec2d(0, 0)
-        self.entity_b = EntityRef(None, Body)
-        self.entity_b_local_point = Vec2d(0, 0)
-
-
 class Body(Component):
     """ A physical body. """
+
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-        self.mass = config.get_or_default("mass", 1)
-        self.size = config.get_or_default("size", 5)
-        self.is_collideable = config.get_or_default("is_collideable", True)
-        self.position = Vec2d(0, 0)
-        self.velocity = Vec2d(0, 0)
-        self.angular_velocity = 0
-        self.orientation = 0
-        self.kinematic = config.get_or_default("kinematic", False)
+        self.physics_body = None
 
-        # List of (force, position) vectors. These impulses will be applied on
-        # the next update to the physics simulation.
-        self.impulses = []
+    @property
+    def mass(self):
+        return self.physics_body.body.mass
+
+    @property
+    def size(self):
+        return self.physics_body.shape.radius
+
+    @property
+    def is_collideable(self):
+        return self.physics_body.shape.collision_type == 1
+
+    @property
+    def position(self):
+        return self.physics_body.body.position
+
+    @property
+    def velocity(self):
+        return self.physics_body.body.velocity
+
+    @property
+    def orientation(self):
+        return math.degrees(self.physics_body.body.angle)
+
+    @property
+    def angular_velocity(self):
+        return math.degrees(self.physics_body.body.angular_velocity)
 
 
 class Tracking(Component):

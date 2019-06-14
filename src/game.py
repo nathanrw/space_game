@@ -249,9 +249,6 @@ class Game(object):
                 self.entity_manager.load(open("space_game.save", "r"))
                 self.want_load = False
 
-            ## Create any queued objects
-            self.entity_manager.create_queued_objects()
-
             # If a pause has been scheduled then pause the game.
             if self.want_pause:
                 self.want_pause = False

@@ -9,9 +9,7 @@ Entities live in an 'entity manager'. This is the central database that
 associates entities with components.
 
 Entity creation and component addition are done by calling methods on the
-entity manager. This doesn't affect the current state of the entity manager
-until the end of the current frame - this avoids adding items to the entity
-manager in the middle of an update(),
+entity manager.
 
 If a config is passed into create_entity(), then components can be instantiated
 dynamically. Components types are read from the 'components' map in the config,
@@ -124,7 +122,6 @@ class EntityManager(object):
 
         # Currently existing objects and queue of objects to create.
         self.__entities = []
-        self.__new_entities = []
 
         # Map from component concrete type to component store.
         self.__component_store = ComponentStore()
@@ -153,19 +150,11 @@ class EntityManager(object):
         """ Is the simulation paused? """
         return self.__paused
 
-    def create_queued_objects(self):
-        """ Create objects that have been queued. """
-
-        # Move new entities to the working set.
-        self.__entities += self.__new_entities
-        del self.__new_entities[:]
-
     def save(self, output_file):
         """ Save the state of the entity manager. """
         self.__garbage_collect()
         output = {
             "entities" : self.__entities,
-            "new_entities" : self.__new_entities,
             "components" : self.__component_store
         }
         pickle.dump(output, output_file)
@@ -175,12 +164,10 @@ class EntityManager(object):
         try:
             old_state = pickle.load(input_file)
             entities = old_state["entities"]
-            new_entities = old_state["new_entities"]
-            for e in (entities + new_entities):
+            for e in entities:
                 e.just_unpickled(self.__game_services)
             components = old_state["components"]
             self.__entities = entities
-            self.__new_entities = new_entities
             self.__component_store = components
         except:
             bail()
@@ -237,8 +224,8 @@ class EntityManager(object):
             component = component_type(obj, self.__game_services, component_config)
             obj.add_component(component)
 
-        # Add the object to the creation queue, and return it to the caller.
-        self.__new_entities.append(obj)
+        # Add the entity to the list of entities that exist.
+        self.__entities.append(obj)
 
         return obj
 
@@ -274,18 +261,6 @@ class EntityManager(object):
 
     def query(self, type1, *types):
         """ Get all entities with a particular set of components. """
-
-        # Get the matching entities.
-        matches = self.__component_store.query_entities(type1, *types)
-
-        # Don't expose entities that don't technically exist yet.
-        return filter(lambda x: x not in self.__new_entities, matches)
-
-    def query_include_queued(self, type1, *types):
-        """ Get all entities with a particular set of components. 
-        
-        This includes entities that are queued for creation. """
-
         return self.__component_store.query_entities(type1, *types)
 
     def get_system(self, system_type):
@@ -397,6 +372,10 @@ class ComponentSystem(object):
     def game_services(self):
         return self.__game_services
 
+    def ecs(self):
+        """ Get the ECS """
+        return self.game_services.get_entity_manager()
+
     def entities(self):
         """ Get the entities managed by this system. """
         return self.__game_services.get_entity_manager().query(*self.__types)
@@ -458,6 +437,10 @@ class Component(object):
     def is_garbage(self):
         """ Is our entity dead? """
         return self.entity.is_garbage
+
+    def ecs(self):
+        """ Get the ECS """
+        return self.entity.ecs()
 
     def __getstate__(self):
         """ We override __getstate__ to get rid of cached data that we can't pickle."""
