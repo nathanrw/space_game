@@ -45,6 +45,15 @@ You can run with profiling enabled like so:
     ./run.py --profile
 
 which will spit out a file called 'profile_results' in the current working 
-directory. You can view the results with
+directory. You can view the results with a script like so:
 
-    ./bin/print_profile_results
+```Python
+#!/usr/bin/env python2
+
+import pstats
+
+p = pstats.Stats("profile_results")
+p.strip_dirs()
+p.sort_stats("cumtime")
+p.print_stats()
+```
