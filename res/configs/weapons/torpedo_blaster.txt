@@ -1,4 +1,0 @@
-components:
-  src.components.Weapon:
-    shots_per_second: 25
-derive_from: weapons/red_blaster.txt

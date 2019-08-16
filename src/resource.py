@@ -17,13 +17,13 @@ this will display a loading screen via the injected renderer and read
 all resources in the 'res' tree.
 """
 
-from .config import Config
 from .loading_screen import LoadingScreen
-from .utils import ordered_load, fromwin, Timer
+from .utils import Timer
 
 import math
 import pygame
 import os
+import yaml
 
 class ResourceLoader(object):
     """ A resource loader - loads and caches resources which can be requested by the game. """
@@ -35,7 +35,6 @@ class ResourceLoader(object):
         self.__images = {}
         self.__animations = {}
         self.__fonts = {}
-        self.__configs = {}
         self.__sounds = {}
 
     def set_renderer(self, renderer):
@@ -52,22 +51,14 @@ class ResourceLoader(object):
         # List all animation frames.
         anims = self.__list_animations()
 
-        # List all config files.
-        configs = self.__list_configs()
-
         # Number of steps.
-        count = len(anims) + len(configs)
+        count = len(anims)
         assert count > 0
         loading = LoadingScreen(count, self.__renderer)
 
         # Read in the frames.
         for anim in anims:
             self.load_animation(anim)
-            loading.increment()
-
-        # Read in the configs.
-        for config in configs:
-            self.load_config_file(config)
             loading.increment()
 
         # The renderer might like to return us proxy objects and initialise
@@ -82,7 +73,6 @@ class ResourceLoader(object):
 
     def load_image(self, filename):
         """ Load an image from the file system. """
-        filename = fromwin(filename)
         if not filename in self.__images:
             self.__images[filename] = self.__renderer.load_compatible_image(filename)
             print( "Loaded image: %s" % filename )
@@ -98,41 +88,11 @@ class ResourceLoader(object):
                 anims.append(anim_name)
         return anims
 
-    def __list_configs(self, rel_dir=None):
-        """ List all available configs. """
-        configs = []
-        dirname = "res/configs"
-        if rel_dir is not None:
-            dirname = os.path.join(dirname, rel_dir)
-
-        for config_or_dir in os.listdir(dirname):
-
-            # Get the name of the config or subdir relative to the configs
-            # directory.
-            rel_name = config_or_dir
-            if rel_dir is not None:
-                rel_name = os.path.join(rel_dir, rel_name)
-
-            # Get the actual filename of the config / dir
-            config_or_dir_path = os.path.join(dirname, config_or_dir)
-
-            # If it's a config file, yield the relative name. Otherwise, walk
-            # the directory.
-            if os.path.isfile(config_or_dir_path):
-                fname, ext = os.path.splitext(config_or_dir_path)
-                if ext.lower() == ".txt":
-                    configs.append(rel_name)
-            elif os.path.isdir(config_or_dir_path):
-                configs += self.__list_configs(rel_name)
-
-        # Return the list we built.
-        return configs
-
     def __load_animation_definition(self, name):
         """ Load the definition of an animation, included the names of all
         frames. """
         fname = os.path.join(os.path.join("res/anims", name), "anim.txt")
-        anim = ordered_load(open(fname))
+        anim = yaml.load(open(fname))
         anim["frames"] = []
         for i in range(anim["num_frames"]):
             # If we want to load faster disable loading too many anims...
@@ -153,20 +113,6 @@ class ResourceLoader(object):
             print( "Loaded animation: %s" % filename )
         (frames, period) = self.__animations[filename]
         return Animation(frames, period)
-
-    def load_config_file(self, filename):
-        """ Read in a configuration file. """
-        if not filename in self.__configs:
-            c = Config()
-            c.load(filename)
-            self.__configs[filename] = c
-        return self.__configs[filename]
-
-    def load_config_file_from(self, filename):
-        """ Load a config from a path, not relative to the res dir. """
-        c = Config()
-        c.load_from(filename)
-        return c
 
     def load_sound(self, filename):
         """ Load a sound. """

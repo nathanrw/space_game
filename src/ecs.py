@@ -11,25 +11,6 @@ associates entities with components.
 Entity creation and component addition are done by calling methods on the
 entity manager.
 
-If a config is passed into create_entity(), then components can be instantiated
-dynamically. Components types are read from the 'components' map in the config,
-each component entry is passed into the created component as its config. For
-instance:
-
-    components:
-      src.components.Team:
-        team: player
-      src.physics.Body:
-        mass: 100
-        size: 35
-
-specifies an entity with two components, a Body and a Team.  The team defaults
-to the 'player' team, and the body has a default mass and size.  If we do
-
-    entity = ecs.create_entity("my_config.txt")
-
-then the Team defaults to 'player'.
-
 Entity processing 'systems' can be registered with the entity manager. A system
 operates on a subset of the entities in the manager, determined by a query.
 Systems can be update()ed, allowing them to make changes to the entities they
@@ -41,8 +22,7 @@ into each component.
 
 import pickle
 
-from .config import Config
-from .utils import lookup_type, bail
+from .utils import bail
 
 class GameInfo(object):
     """ Information about the running game. """
@@ -179,9 +159,7 @@ class EntityManager(object):
             if o.is_garbage:
                 self.__entities.remove(o)
 
-    def create_component(self, entity, component_type, data=Config()):
-        if not isinstance(data, Config):
-            data = Config(data)
+    def create_component(self, entity, component_type, data={}):
         component = component_type(entity, self.__game_services, data)
         entity.add_component(component)
         return component
@@ -190,43 +168,16 @@ class EntityManager(object):
         """ Create a new entity with a given list of components. """
         entity = self.create_entity()
         for t in types:
-            component = t(entity, self.__game_services, Config())
+            component = t(entity, self.__game_services, {})
             entity.add_component(component)
         return entity
 
-    def create_entity(self, config_name=None):
-        """ Add a new object. It is initialised, but not added to the game
-        right away: that gets done at a certain point in the game loop."""
-
-        loader = self.__game_services.get_resource_loader()
-
-        # load the config if specified.
-        config = None
-        if config_name is not None:
-            if isinstance(config_name, Config):
-                config = config_name
-            else:
-                config = loader.load_config_file(config_name)
-        else:
-            config = Config()
-
-        # Instantiate the object.
+    def create_entity(self):
+        """ Add a new entity. """
         obj = Entity(self.__game_services)
-        obj.name = config.name.title()
         obj.id = self.__next_id
         self.__next_id += 1
-
-        # Add components specified in the config.
-        components = config.get_or_default("components", Config())
-        for component in components:
-            component_config = components[component]
-            component_type = lookup_type(component)
-            component = component_type(obj, self.__game_services, component_config)
-            obj.add_component(component)
-
-        # Add the entity to the list of entities that exist.
         self.__entities.append(obj)
-
         return obj
 
     def register_component_system(self, system):

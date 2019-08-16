@@ -8,9 +8,10 @@ import os
 import sys
 import pynk
 import pynk.nkpygame
+import yaml
 
 # Local imports.
-import config
+import assemblages
 import components
 import drawing
 import ecs
@@ -19,7 +20,6 @@ import physics
 import planets
 import resource
 import systems
-import utils
 
 
 class SpaceGameServices(ecs.GameServices):
@@ -97,16 +97,20 @@ class Game(object):
         self.resource_loader = resource.ResourceLoader()
 
         # The configuration.
-        if os.path.isfile("./config.txt"):
-            self.config = self.resource_loader.load_config_file_from("./config.txt")
-        else:
-            self.config = self.resource_loader.load_config_file("base_config.txt")
+        if os.path.isfile("./config.yml"):
+            self.config = yaml.load("./config.yml")
 
         # Create the renderer.
-        renderer_name = self.config.get_or_default("renderer", "src.pygame_renderer.PygameRenderer")
-        renderer_class = utils.lookup_type(renderer_name)
-        screen_size = (self.config.get_or_default("screen_width", 1024),
-                       self.config.get_or_default("screen_height", 768))
+        renderer_name = self.config.get("renderer", "src.pygame_renderer.PygameRenderer")
+        renderer_class = None
+        if renderer_name == "src.pygame_renderer.PygameRenderer":
+            import pygame_renderer
+            renderer_class = pygame_renderer.PygameRenderer
+        else:
+            import pygame_opengl_renderer
+            renderer_class = pygame_opengl_renderer.PygameOpenGLRenderer
+        screen_size = (self.config.get("screen_width", 1024),
+                       self.config.get("screen_height", 768))
         self.renderer = renderer_class(screen_size, self.config, data_path="./res")
 
         # The resource loaded needs a renderer to load images etc.
@@ -123,7 +127,7 @@ class Game(object):
 
         # Configure the resource loader.
         self.resource_loader.set_minimise_image_loading(
-            self.config.get_or_default("minimise_image_loading", False)
+            self.config.get("minimise_image_loading", False)
         )
 
         # The drawing visitor.
@@ -193,21 +197,20 @@ class Game(object):
         self.resource_loader.preload()
 
         # Make the camera.
-        camera = self.entity_manager.create_entity_with(components.Camera,
-                                                             components.Body,
-                                                             components.Tracking,
-                                                             components.FollowsTracked)
-        camera.get_component(components.FollowsTracked).follow_type = "instant"
-        camera.name = "Camera"
+        camera = assemblages.create_camera(self.game_services)
 
         # Draw debug info if requested.
-        self.game_services.debug_level = self.config.get_or_default("debug", 0)
+        self.game_services.debug_level = self.config.get("debug", 0)
 
         # Make the player
-        player = self.entity_manager.create_entity("player.txt")
+        player = assemblages.create_player(self.game_services)
         player.name = "Player"
         mercury_body = mercury.get_component(components.Body)
-        systems.teleport(player, mercury_body.position, mercury_body.velocity)
+        self.entity_manager.get_system(physics.Physics).teleport(
+            player,
+            mercury_body.position,
+            mercury_body.velocity
+        )
         camera.get_component(components.Tracking).tracked.entity = player
 
         # Create a view to pass to the input handling - this lets it map between
@@ -218,7 +221,7 @@ class Game(object):
         self.input_handling = input_handling.InputHandling(view, self.game_services)
 
         # Create the wave spawner.
-        if not self.config.get_or_default("peaceful_mode", False):
+        if not self.config.get("peaceful_mode", False):
             self.entity_manager.register_component_system(systems.WaveSpawnerSystem())
 
         # Make it so that bullets can damage things.

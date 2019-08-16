@@ -33,13 +33,6 @@ class ResourceLoaderTest(unittest.TestCase):
             anim2 = rl.load_animation("enemy_ship")
             assert anim.frames == anim2.frames
         run_pygame_test(do_test)
-    def test_load_config_file(self):
-        def do_test(game_services):
-            rl = game_services.get_resource_loader()
-            cfg = rl.load_config_file("base_config.txt")
-            cfg2 = rl.load_config_file("base_config.txt")
-            assert cfg == cfg2
-        run_pygame_test(do_test)
 
 
 class AnimationTest(unittest.TestCase):

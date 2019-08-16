@@ -88,7 +88,117 @@ def create_player(game_services):
 
 
 def create_turret(game_services):
+    """
+        # The component entity needs to have a Body or this won't work.
+        body = component.entity.get_component(Body)
+        assert body is not None
+
+        # Load the turrets.
+        turret_cfgs = component.config.get("turrets", [])
+        for cfg in turret_cfgs:
+
+            # Load the weapon fitted to the turret.
+            weapon_config = self.game_services.get_resource_loader().load_config_file(cfg["weapon_config"])
+            turret_config = self.game_services.get_resource_loader().load_config_file(cfg["turret_config"])
+
+            # Create the turret entity.
+            turret_entity = component.entity.ecs().create_entity(turret_config)
+
+            # Get the turret component and attach the weapon entity.
+            turret = turret_entity.get_component(Turret)
+            assert turret is not None
+            turret.weapon.entity = component.entity.ecs().create_entity(weapon_config)
+            turret.position = Vec2d(cfg.get("position", (0, 0)))
+            weapon = turret.weapon.entity.get_component(Weapon)
+            assert weapon is not None
+            weapon.owner.entity = turret_entity
+
+            # Set the level so that turrets display on top of ships.
+            anim = turret_entity.get_component(AnimationComponent)
+            if anim is not None:
+                anim.level = Renderer.LEVEL_MID_NEAR
+
+            # Add the backreference and add to our list of turrets.
+            turret.attached_to.entity = component.entity
+            component.turrets.add_ref_to(turret_entity)
+
+            # Set the turret's team.
+            setup_team(component.entity, turret_entity)
+
+            physics = component.entity.ecs().get_system(Physics)
+
+            # Match position and velocity.
+            physics.teleport(
+                turret_entity,
+                to_position=physics.local_to_world(body.entity, turret.position),
+                to_velocity=body.velocity
+            )
+
+            # Pin the bodies together.
+            physics.create_joint(
+                component.entity,
+                turret.position,
+                turret_entity,
+                Vec2d(0, 0)
+            )
+    :param game_services:
+    :return:
+    """
     raise NotImplementedError("Not done yet")
+
+
+"""
+Weapons:
+
+components:
+  src.components.Weapon:
+    bullet_config: bullets/green_bullet.txt
+    shots_per_second: 4
+derive_from: weapons/red_blaster.txt
+
+
+
+components:
+  src.components.Weapon:
+    type: beam
+    range: 5000
+    radius: 6
+    damage: 30
+    power_usage: 20
+
+
+
+
+components:
+  src.components.Weapon:
+    bullet_config: bullets/red_bullet.txt
+    bullet_speed: 2000
+    shots_per_second: 10
+    spread: 10
+    shot_sound: 143609__d-w__weapons-synth-blast-03.wav
+
+
+
+components:
+  src.components.Weapon:
+    shots_per_second: 25
+derive_from: weapons/red_blaster.txt
+
+
+
+components:
+  src.components.Weapon:
+    bullet_config: bullets/torpedo_bullet.txt
+    bullet_speed: 1000
+    shots_per_second: 1
+    spread: 1
+derive_from: weapons/red_blaster.txt
+
+
+
+
+
+"""
 
 
 def create_laser_weapon(game_services):
@@ -96,6 +206,94 @@ def create_laser_weapon(game_services):
 
 
 def add_turrets(entity, turret_specs):
+    raise NotImplementedError("Not done yet.")
+
+
+
+"""
+components:
+  src.components.DamageOnContact:
+    damage: 1
+  src.components.ExplodesOnDeath:
+    explosion_config: explosions/green_explosion.txt
+    sound: 234082__211redman112__lasgun-impact.ogg
+  src.components.KillOnTimer:
+    lifetime: 2
+  src.components.AnimationComponent:
+    anim_name: pewpew_green
+    brightness: 0.5
+  src.physics.Body:
+    mass: 1
+    size: 3
+
+
+derive_from: bullets/base_bullet.txt
+
+
+derive_from: bullets/base_bullet.txt
+
+components:
+
+  # A red laser.
+  src.components.AnimationComponent:
+    anim_name: pewpew_red
+
+  # A red explosion.
+  src.components.ExplodesOnDeath:
+    explosion_config: explosions/red_explosion.txt
+
+
+
+# A bullet that shoots more bullets!
+
+derive_from: bullets/base_bullet.txt
+
+components:
+
+  # Does more damage than a regular bullet.
+  src.components.DamageOnContact:
+    damage: 5
+
+  # A torpedo explodes, naturally!
+  src.components.ExplodesOnDeath:
+    explosion_config: explosions/big_explosion.txt
+
+  # A torpedo has a team (it shoots and follows the opposite team.)
+  src.components.Team: {}
+
+  # A torpedo follows a target.
+  src.components.Tracking: {}
+
+  # A torpedo seeks out its target.
+  src.components.FollowsTracked:
+    acceleration: 3000
+    desired_distance_to_player: 0.1
+
+  # A torpedo is driven by thrusters.
+  src.components.Thrusters:
+    max_thrust: 100000
+
+  # A torpedo has a small blaster turrent on board!
+  src.components.Turrets:
+    hardpoints:
+    - weapon_config: enemies/torpedo_turret.txt
+      x: 0
+      y: 0
+
+  # Make it look like a torpedo
+  src.components.AnimationComponent:
+    anim_name: rocket
+    brightness: 0
+
+  # Set the mass and size.
+  src.physics.Body:
+    mass: 10
+    size: 10
+
+"""
+
+
+def create_bullet(game_services, **kwargs):
     raise NotImplementedError("Not done yet.")
 
 
@@ -129,3 +327,223 @@ def standard_thruster_layout(w, h, thrust):
     return [ ThrusterSpec(position=l[0],
                           orientation=l[1],
                           max_thrust=l[2]) for l in layout ]
+
+
+"""
+
+Enemies
+
+
+components:
+
+  src.physics.Body:
+    mass: 100
+    size: 20
+
+  src.components.Team:
+    team: enemy
+
+  src.components.ExplodesOnDeath:
+    explosion_config: explosions/big_explosion.txt
+    sound: boom1.wav
+
+  src.components.Tracking: {}
+
+  src.components.Hitpoints:
+    hp: 1
+
+  src.components.AnimationComponent:
+    anim_name: enemy_fighter
+
+
+
+derive_from: enemies/base_enemy.txt
+
+components:
+
+  src.components.Thrusters:
+    max_thrust: 50000
+
+  src.components.FollowsTracked:
+    acceleration: 1000
+    desired_distance_to_player: 500
+
+
+
+
+derive_from: enemies/base_flying_enemy.txt
+
+components:
+
+  src.components.Hitpoints:
+    hp: 100
+
+  src.components.LaunchesFighters:
+    fighter_config: enemies/fighter.txt
+    num_fighters: 2
+    spawn_period: 10
+    takeoff_speed: 700
+    takeoff_spread: 30
+
+  src.components.AnimationComponent:
+    anim_name: carrier-closed
+
+  src.physics.Body:
+    mass: 100
+    size: 100
+
+  # The ship is powered.
+  src.components.Power:
+    capacity: 100
+    recharge_rate: 10
+
+  # The ship is shielded.
+  src.components.Shields:
+    hp: 50
+    recharge_rate: 10
+    
+    
+    
+    
+
+derive_from: enemies/base_flying_enemy.txt
+
+components:
+
+  src.components.Hitpoints:
+    hp: 40
+
+  src.components.Turrets:
+    turrets:
+      - weapon_config: weapons/green_blaster.txt
+        turret_config: enemies/turret.txt
+        position: [-15, 0]
+      - weapon_config: weapons/green_blaster.txt
+        turret_config: enemies/turret.txt
+        position: [15, 0]
+
+  src.components.AnimationComponent:
+    anim_name: enemy_destroyer
+
+  src.physics.Body:
+    mass: 100
+    size: 40
+
+  # The ship is powered.
+  src.components.Power:
+    capacity: 100
+    recharge_rate: 10
+
+  # The ship is shielded.
+  src.components.Shields:
+    hp: 50
+    recharge_rate: 50
+
+
+
+
+derive_from: enemies/base_flying_enemy.txt
+
+components:
+
+  # The ship has turrets.
+  src.components.Turrets:
+    turrets:
+      - weapon_config: weapons/green_blaster.txt
+        turret_config: enemies/turret.txt
+        position: [0, -20]
+
+
+
+
+
+derive_from: enemies/turret.txt
+
+
+
+
+
+components:
+
+  src.components.AnimationComponent:
+    anim_name: enemy_turret
+
+  src.physics.Body:
+    mass: 1
+    size: 1
+
+  src.components.Turret: {}
+
+  src.components.Power:
+    capacity: 100
+    recharge_rate: 10
+
+  src.components.Team: {}
+
+  src.components.Tracking: {}
+
+
+
+
+"""
+
+
+
+def create_destroyer(game_services, **kwargs):
+    raise NotImplementedError("Not done yet.")
+
+def create_carrier(game_services, **kwargs):
+    raise NotImplementedError("Not done yet.")
+
+def create_endgame_message(game_services, **kwargs):
+    """
+    components:
+  src.components.KillOnTimer:
+    lifetime: 10
+  src.components.Text:
+    text: Hello, World!
+    font_colour:
+      blue: 255
+      green: 255
+      red: 255
+    font_name: res/fonts/nasdaqer/NASDAQER.ttf
+    font_size: 62
+
+    :param game_services:
+    :param kwargs:
+    :return:
+    """
+    raise NotImplementedError("Not done yet.")
+
+def create_update_message(game_services, **kwargs):
+    """
+    components:
+  src.components.KillOnTimer:
+    lifetime: 4
+  src.components.Text:
+    text: Hello, World!
+    blink: 1
+    font_colour:
+      blue: 255
+      green: 255
+      red: 255
+    font_name: res/fonts/nasdaqer/NASDAQER.ttf
+    font_size: 62
+
+    :param game_services:
+    :param kwargs:
+    :return:
+    """
+    raise NotImplementedError("Not done yet.")
+
+def create_camera(game_services):
+    ecs = game_services.get_entity_manager()
+    camera = ecs.create_entity_with(
+        components.Camera,
+        components.Body,
+        components.Tracking,
+        components.FollowsTracked
+    )
+    camera.get_component(components.FollowsTracked).follow_type = "instant"
+    camera.name = "Camera"
+    return camera

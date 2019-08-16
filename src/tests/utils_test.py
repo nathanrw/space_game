@@ -77,10 +77,6 @@ class TimerTest(unittest.TestCase):
         t0.randomise()
         assert 0 <= t0.timer and t0.timer <= t0.period
 
-class fromwin_Test(unittest.TestCase):
-    def test_fromwin(self):
-        self.assertEquals(fromwin("wibble/wobble"), "wibble/wobble")
-        self.assertEquals(fromwin("wibble\\wobble"), "wibble/wobble")
 
 if __name__ == '__main__':
     unittest.main()

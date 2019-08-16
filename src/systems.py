@@ -30,12 +30,11 @@ Some rules are implemented as free functions, since they are needed in multiple
 places.
 """
 
-from config import Config
 from ecs import ComponentSystem
 from components import *
 from physics import Physics
 from direction_providers import *
-from renderer import Renderer
+import assemblages
 
 import random
 import numpy
@@ -107,7 +106,7 @@ def handle_damage_collision(dmg, hp):
     # explosion. If that's the case it should be travelling at the same
     # speed as the thing we hit. So match velocities before our entity is
     # killed.
-    if dmg.config.get_or_default("destroy_on_hit", True):
+    if dmg.config.get("destroy_on_hit", True):
         b1 = dmg.entity.get_component(Body)
         b2 = hp.entity.get_component(Body)
         if b1 is not None and b2 is not None:
@@ -127,18 +126,20 @@ def do_explosion(entity):
     if explodes is not None and body is not None:
 
         # Create the explosion.
-        explosion = entity.ecs().create_entity(
-            explodes.config["explosion_config"])
+        explosion = assemblages.create_explosion(
+            entity.game_services(),
+            anim_name=explodes.config["explosion_name"]
+        )
         physics = entity.ecs().get_system(Physics)
         physics.teleport(explosion, body.position, body.velocity)
 
         # Shake the camera.
         cs = entity.ecs().get_system(CameraSystem)
-        shake_factor = explodes.config.get_or_default("shake_factor", 1)
+        shake_factor = explodes.config.get("shake_factor", 1)
         cs.apply_shake(shake_factor, body.position)
 
         # Play a sound.
-        sound = explodes.config.get_or_none("sound")
+        sound = explodes.config.get("sound")
         if sound is not None:
             cs.play_sound(sound, body.position)
 
@@ -291,13 +292,14 @@ class WeaponSystem(ComponentSystem):
             bullet_velocity = body.velocity+muzzle_velocity
 
             # Play a sound.
-            shot_sound = weapon.config.get_or_none("shot_sound")
+            shot_sound = weapon.config.get("shot_sound")
             if shot_sound is not None:
                 cs = self.ecs().get_system(CameraSystem)
                 cs.play_sound(shot_sound, body.position)
 
             # Create the bullet.
-            bullet_entity = weapon.entity.ecs().create_entity(weapon.config["bullet_config"])
+            bullet_assemblage = weapon.config["bullet_assemblage"]
+            bullet_entity = bullet_assemblage(weapon.entity.game_services())
 
             # Set the position.
             bullet_orientation = shooting_at_dir.normalized().get_angle_degrees()+90
@@ -356,7 +358,8 @@ class LaunchesFightersSystem(ComponentSystem):
                     direction.rotate_degrees(spread*random.random()-spread/2.0)
 
                     # Launch!
-                    child = self.ecs().create_entity(launcher.config["fighter_config"])
+                    fighter_assemblage = launcher.config["fighter_assemblage"]
+                    child = fighter_assemblage(self.game_services())
                     launcher.launched.add_ref_to(child)
                     setup_team(entity, child)
                     physics = self.ecs().get_system(Physics)
@@ -456,7 +459,7 @@ class AnimSystem(ComponentSystem):
         for e in self.entities():
             c = e.get_component(AnimationComponent)
             if c.anim.tick(dt):
-                if c.config.get_or_default("kill_on_finish", 0):
+                if c.config.get("kill_on_finish", 0):
                     e.kill()
                 else:
                     c.anim.reset()
@@ -491,19 +494,6 @@ class ThrustersSystem(ComponentSystem):
     def __init__(self):
         """ Constructor. """
         ComponentSystem.__init__(self, [Body, Thrusters])
-
-    def on_component_add(self, component):
-        """ When thrusters are added to an entity we need to create the actual
-        thrusters themselves, which are specified in the config. """
-        if component.__class__ == Thrusters:
-            thruster_cfgs = component.config.get_or_default("thrusters", [])
-            for cfg in thruster_cfgs:
-                thruster_ent = component.entity.ecs().create_entity()
-                thruster = Thruster(thruster_ent, self.game_services, cfg)
-                thruster.attached_to.entity = component.entity
-                thruster_ent.add_component(thruster)
-                thruster_ent.name = "Thruster"
-                component.thrusters.add_ref_to(thruster_ent)
 
     def update(self, dt):
         """ Update the entities. """
@@ -663,11 +653,8 @@ class WaveSpawnerSystem(ComponentSystem):
                 self.game_services.end_game()
         elif self.player_is_dead() or self.max_waves():
             self.done = True
-            txt = "GAME OVER"
-            if self.max_waves():
-                txt = "VICTORY"
-            message = self.ecs().create_entity("endgame_message.txt")
-            message.get_component(Text).text = txt
+            txt = "GAME OVER" if not self.max_waves() else "VICTORY"
+            message = assemblages.create_endgame_message(self.game_services(), text=txt)
 
         # If the wave is dead and we're not yet preparing (which displays a timed message) then
         # start preparing a wave.
@@ -692,13 +679,13 @@ class WaveSpawnerSystem(ComponentSystem):
         player_body = player.get_component(Body)
         self.wave += 1
         for i in range(self.wave-1):
-            enemy_type = random.choice(("enemies/destroyer.txt",
-                                        "enemies/carrier.txt"))
+            enemy_type = random.choice((assemblages.create_destroyer,
+                                        assemblages.create_carrier))
             rnd = random.random()
             x = 1 - rnd*2
             y = 1 - (1-rnd)*2
             enemy_position = player_body.position + Vec2d(x, y)*500
-            entity = self.ecs().create_entity(enemy_type)
+            entity = enemy_type(self.game_services)
             entity.get_component(Team).team = "enemy"
             physics = self.ecs().get_system(Physics)
             physics.teleport(entity, enemy_position)
@@ -710,8 +697,8 @@ class WaveSpawnerSystem(ComponentSystem):
 
     def prepare_for_wave(self):
         """ Prepare for a wave. """
-        self.message = self.ecs().create_entity("update_message.txt")
-        self.message.get_component(Text).text = "WAVE %s PREPARING" % self.wave
+        text = "WAVE %s PREPARING" % self.wave
+        self.message = assemblages.create_update_message(self.game_services(), text=text)
 
     def prepared_to_spawn(self):
         """ Check whether the wave is ready. """
@@ -845,63 +832,6 @@ class TurretsSystem(ComponentSystem):
     def update(self, dt):
         """ Update the system. """
         pass
-
-    def on_component_add(self, component):
-        """ When the turrets component is added we need to create the turrets
-        themselves which are specified in the config"""
-
-        # The component entity needs to have a Body or this won't work.
-        body = component.entity.get_component(Body)
-        assert body is not None
-
-        # Load the turrets.
-        turret_cfgs = component.config.get_or_default("turrets", [])
-        for cfg in turret_cfgs:
-
-            # Load the weapon fitted to the turret.
-            weapon_config = self.game_services.get_resource_loader().load_config_file(cfg["weapon_config"])
-            turret_config = self.game_services.get_resource_loader().load_config_file(cfg["turret_config"])
-
-            # Create the turret entity.
-            turret_entity = component.entity.ecs().create_entity(turret_config)
-
-            # Get the turret component and attach the weapon entity.
-            turret = turret_entity.get_component(Turret)
-            assert turret is not None
-            turret.weapon.entity = component.entity.ecs().create_entity(weapon_config)
-            turret.position = Vec2d(cfg.get_or_default("position", (0, 0)))
-            weapon = turret.weapon.entity.get_component(Weapon)
-            assert weapon is not None
-            weapon.owner.entity = turret_entity
-
-            # Set the level so that turrets display on top of ships.
-            anim = turret_entity.get_component(AnimationComponent)
-            if anim is not None:
-                anim.level = Renderer.LEVEL_MID_NEAR
-
-            # Add the backreference and add to our list of turrets.
-            turret.attached_to.entity = component.entity
-            component.turrets.add_ref_to(turret_entity)
-
-            # Set the turret's team.
-            setup_team(component.entity, turret_entity)
-
-            physics = component.entity.ecs().get_system(Physics)
-
-            # Match position and velocity.
-            physics.teleport(
-                turret_entity,
-                to_position=physics.local_to_world(body.entity, turret.position),
-                to_velocity=body.velocity
-            )
-
-            # Pin the bodies together.
-            physics.create_joint(
-                component.entity,
-                turret.position,
-                turret_entity,
-                Vec2d(0, 0)
-            )
 
             
 class SolarSystem(ComponentSystem):

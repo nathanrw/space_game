@@ -1,6 +1,0 @@
-components:
-  src.components.AnimationComponent:
-    kill_on_finish: 1
-    brightness: 10
-  src.physics.Body:
-    is_collideable: 0

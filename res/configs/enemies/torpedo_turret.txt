@@ -1,2 +1,0 @@
-
-derive_from: enemies/turret.txt

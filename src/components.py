@@ -70,14 +70,14 @@ class Tracking(Component):
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
         self.tracked = EntityRef(None, Body)
-        self.track_type = config.get_or_default("track_type", "team")
+        self.track_type = config.get("track_type", "team")
 
 
 class FollowsTracked(Component):
     """ Follows the Tracked entity. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-        self.follow_type = config.get_or_default("follow_type", "accelerate")
+        self.follow_type = config.get("follow_type", "accelerate")
 
 
 class Weapon(Component):
@@ -87,7 +87,7 @@ class Weapon(Component):
         self.owner = EntityRef(None)
         self.shooting_at = None
         self.shot_timer = 0
-        self.weapon_type = self.config.get_or_default("type", "projectile_thrower")
+        self.weapon_type = self.config.get("type", "projectile_thrower")
         self.impact_point = None
         self.impact_normal = None
 
@@ -128,7 +128,7 @@ class Power(Component):
         self.power = self.capacity
         self.recharge_rate = config["recharge_rate"]
         self.overloaded = False
-        self.overload_timer = Timer(config.get_or_default("overload_time", 5))
+        self.overload_timer = Timer(config.get("overload_time", 5))
 
 
 class Shields(Component):
@@ -139,7 +139,7 @@ class Shields(Component):
         self.max_hp = self.config["hp"] # Rendundant, but code uses this.
         self.recharge_rate = config["recharge_rate"]
         self.overloaded = False
-        self.overload_timer = Timer(config.get_or_default("overload_time", 5))
+        self.overload_timer = Timer(config.get("overload_time", 5))
 
 
 class DamageOnContact(Component):
@@ -151,7 +151,7 @@ class Team(Component):
     """ The entity is on a team. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-        self.team = config.get_or_none("team")
+        self.team = config.get("team")
         self.parent = EntityRef(None, Team)
 
 
@@ -159,19 +159,19 @@ class Text(Component):
     """ The entity contains text. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-        self.text = config.get_or_default("text", "Hello, world!")
+        self.text = config.get("text", "Hello, world!")
         self.visible = True
         self.offset = 0
         self.scroll_speed = 300
         self.padding = 20
         self.colour = (255, 255, 255)
         self.font_name = self.config["font_name"]
-        self.small_font_size = config.get_or_default("small_font_size", 14)
-        self.large_font_size = config.get_or_default("font_size", 32)
-        colour = self.config.get_or_default("font_colour", {"red":255, "green":255, "blue":255})
+        self.small_font_size = config.get("small_font_size", 14)
+        self.large_font_size = config.get("font_size", 32)
+        colour = self.config.get("font_colour", {"red":255, "green":255, "blue":255})
         self.font_colour = (colour["red"], colour["green"], colour["blue"])
-        self.blink = self.config.get_or_default("blink", 0)
-        self.blink_period = self.config.get_or_default("blink_period", 1)
+        self.blink = self.config.get("blink", 0)
+        self.blink_period = self.config.get("blink_period", 1)
         self.blink_timer = Timer(self.blink_period)
 
 
@@ -193,9 +193,9 @@ class Thruster(Component):
     """ The logical definition of a thruster on a Body. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-        self.position = Vec2d(config.get_or_default("position", (0, 0)))
-        self.direction = Vec2d(config.get_or_default("orientation", (0, 1)))
-        self.max_thrust = config.get_or_default("max_thrust", 0)
+        self.position = Vec2d(config.get("position", (0, 0)))
+        self.direction = Vec2d(config.get("orientation", (0, 1)))
+        self.max_thrust = config.get("max_thrust", 0)
         self.thrust = 0
         self.attached_to = EntityRef(None, Thrusters)
 
@@ -217,9 +217,9 @@ class Turret(Component):
         self.position = Vec2d(0, 0)
         self.attached_to = EntityRef(None, Turrets)
         self.weapon = EntityRef(None, Weapon)
-        self.fire_timer = Timer(config.get_or_default("fire_period", 1))
+        self.fire_timer = Timer(config.get("fire_period", 1))
         self.fire_timer.advance_to_fraction(0.8)
-        self.burst_timer = Timer(config.get_or_default("burst_period", 1))
+        self.burst_timer = Timer(config.get("burst_period", 1))
         self.can_shoot = False
         self.shooting_at = None
 
@@ -257,7 +257,7 @@ class CelestialBody(Component):
     """ A celestial sphere. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-        self.name = config.get_or_default("name", "Unknown Celestial Body")
+        self.name = config.get("name", "Unknown Celestial Body")
 
 
 class Star(Component):
@@ -276,5 +276,5 @@ class Dockable(Component):
     """ A dockable entity. """
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
-        self.title = config.get_or_default("title", "Docked")
-        self.description = config.get_or_default("description", "An object in space.")
+        self.title = config.get("title", "Docked")
+        self.description = config.get("description", "An object in space.")

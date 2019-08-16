@@ -1,5 +1,0 @@
-derive_from: explosions/base_explosion.txt
-
-components:
-  src.components.AnimationComponent:
-    anim_name: red_explosion

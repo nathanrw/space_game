@@ -5,7 +5,6 @@ import os
 
 from ..ecs import GameServices, Entity, EntityManager
 from ..resource import ResourceLoader
-from ..config import Config
 from ..pygame_renderer import PygameRenderer
 
 
@@ -25,7 +24,7 @@ class MockGameServices(GameServices):
         if global_renderer is None:
             os.environ["SDL_VIDEODRIVER"] = "dummy"
             pygame.init()
-            global_renderer = PygameRenderer((640, 480), Config(), data_path="../../res/")
+            global_renderer = PygameRenderer((640, 480), {}, data_path="../../res/")
             global_renderer.initialise()
             
         self.renderer = global_renderer

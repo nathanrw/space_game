@@ -1,7 +1,0 @@
-components:
-  src.components.Weapon:
-    bullet_config: bullets/red_bullet.txt
-    bullet_speed: 2000
-    shots_per_second: 10
-    spread: 10
-    shot_sound: 143609__d-w__weapons-synth-blast-03.wav
