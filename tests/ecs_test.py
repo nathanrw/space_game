@@ -1,6 +1,8 @@
 import unittest
 from testing import *
 
+from sge.ecs import ComponentSystem, Component
+
 
 class MockSystem(ComponentSystem):
     def __init__(self):
@@ -67,17 +69,6 @@ class EntityManagerTest(unittest.TestCase):
         self.assertEquals(entity.game_services, game_services)
         assert not entity.is_garbage
 
-    def test_create_entity_from_config(self):
-        """ Should create an entity with the specified components. """
-        game_services = create_entman_testing_services()
-        entman = game_services.get_entity_manager()
-        config = Config({"components": { "src.tests.ecs_test.MockComponent": {}}})
-        entity = entman.create_entity(config)
-        entman.create_queued_objects()
-        component = entman.get_component_of_type(entity, MockComponent)
-        assert component is not None
-        assert isinstance(component, MockComponent)
-
     def test_register_component_system(self):
         """ Should register the component system and set it up. """
 
@@ -115,7 +106,7 @@ class EntityManagerTest(unittest.TestCase):
         game_services = create_entman_testing_services()
         entman = game_services.get_entity_manager()
         entity = entman.create_entity()
-        component = MockComponent(entity, game_services, Config())
+        component = MockComponent(entity, game_services, {})
         entman.add_component(component)
 
         assert entman.get_component_of_type(entity, MockComponent) == component
@@ -125,7 +116,7 @@ class EntityManagerTest(unittest.TestCase):
         game_services = create_entman_testing_services()
         entman = game_services.get_entity_manager()
         entity = entman.create_entity()
-        component = MockComponent(entity, game_services, Config())
+        component = MockComponent(entity, game_services, {})
         entman.add_component(component)
         entman.create_queued_objects() # Wont work otherwise!
         entman.remove_component_by_concrete_type(entity, MockComponent)
@@ -137,7 +128,7 @@ class EntityManagerTest(unittest.TestCase):
         entman = game_services.get_entity_manager()
         entity = entman.create_entity()
         assert entman.get_component_of_type(entity, MockComponent) == None
-        component = MockComponent(entity, game_services, Config())
+        component = MockComponent(entity, game_services, {})
         entman.add_component(component)
         assert entman.get_component_of_type(entity, MockComponent) == component
 
@@ -161,7 +152,7 @@ class ComponentSystemTest(unittest.TestCase):
                 self.game_services = create_entman_testing_services()
                 self.entman = self.game_services.get_entity_manager()
                 self.entity = self.entman.create_entity()
-                self.component = MockComponent(self.entity, self.game_services, Config())
+                self.component = MockComponent(self.entity, self.game_services, {})
                 self.system = MockSystem()
                 self.entman.register_component_system(self.system)
                 self.entman.add_component(self.component)
@@ -183,7 +174,7 @@ class ComponentTest(unittest.TestCase):
                 self.game_services = create_entman_testing_services()
                 self.entman = self.game_services.get_entity_manager()
                 self.entity = self.entman.create_entity()
-                self.component = MockComponent(self.entity, self.game_services, Config())
+                self.component = MockComponent(self.entity, self.game_services, {})
                 self.system = MockSystem()
                 self.entman.register_component_system(self.system)
         return Ret()
@@ -205,7 +196,7 @@ class EntityTest(unittest.TestCase):
                 self.game_services = create_entman_testing_services()
                 self.entman = self.game_services.get_entity_manager()
                 self.entity = self.entman.create_entity()
-                self.component = MockComponent(self.entity, self.game_services, Config())
+                self.component = MockComponent(self.entity, self.game_services, {})
                 self.system = MockSystem()
                 self.entman.register_component_system(self.system)
         return Ret()

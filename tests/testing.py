@@ -3,9 +3,9 @@
 import pygame
 import os
 
-from src import GameServices, EntityManager
-from src import ResourceLoader
-from src import PygameRenderer
+from sge.ecs import GameServices, EntityManager
+from sge.resource import ResourceLoader
+from sge.renderers.pygame import PygameRenderer
 
 
 # We only want to initialise pygame once, and then have subsequent tests

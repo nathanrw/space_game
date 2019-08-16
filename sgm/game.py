@@ -17,7 +17,8 @@ import drawing
 import input_handling
 import planets
 from loading_screen import LoadingScreen
-from sge import resource, physics, ecs
+from sge import physics
+from sge import ecs, resource
 import systems
 
 
@@ -103,11 +104,11 @@ class Game(object):
         renderer_name = self.config.get("renderer", "src.pygame_renderer.PygameRenderer")
         renderer_class = None
         if renderer_name == "pygame":
-            from sge.renderers import pygame_renderer
-            renderer_class = pygame_renderer.PygameRenderer
+            from sge.renderers import pygame
+            renderer_class = pygame.PygameRenderer
         elif renderer_name == "opengl" or True: # default
-            from sge.renderers import pygame_opengl_renderer
-            renderer_class = pygame_opengl_renderer.PygameOpenGLRenderer
+            from sge.renderers import opengl
+            renderer_class = opengl.PygameOpenGLRenderer
         screen_size = (self.config.get("screen_width", 1024),
                        self.config.get("screen_height", 768))
         self.renderer = renderer_class(screen_size, self.config, data_path="./res")

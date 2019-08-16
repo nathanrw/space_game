@@ -30,11 +30,11 @@ Some rules are implemented as free functions, since they are needed in multiple
 places.
 """
 
-from src.sge.ecs import ComponentSystem
-from components import *
-from src.sge.physics import Physics
-from direction_providers import *
-import assemblages
+from sge.ecs import ComponentSystem
+from sgm.components import *
+from sgm.physics import Physics
+from sgm.direction_providers import *
+import sgm.assemblages as assemblages
 
 import random
 import numpy
@@ -126,10 +126,7 @@ def do_explosion(entity):
     if explodes is not None and body is not None:
 
         # Create the explosion.
-        explosion = assemblages.create_explosion(
-            entity.game_services(),
-            anim_name=explodes.config["explosion_name"]
-        )
+        explosion = explodes.config["explosion_assemblage"]()
         physics = entity.ecs().get_system(Physics)
         physics.teleport(explosion, body.position, body.velocity)
 

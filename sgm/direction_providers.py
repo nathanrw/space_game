@@ -2,9 +2,9 @@
 Implementations conform to the ecs data model so they can be stored in
 components. """
 
-from src.sge.physics import Vec2d
-from src.sge.ecs import EntityRef
-from .components import Body
+from sge.utils import Vec2d
+from sge.ecs import EntityRef
+from sgm.components import Body
 
 
 class DirectionProvider(object):

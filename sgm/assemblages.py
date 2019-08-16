@@ -5,7 +5,7 @@ An assemblage is a function f(game_services) which produces an entity configured
 with a particular assemblage of components.
 """
 
-import components
+import sgm.components as components
 
 from sge.utils import Vec2d
 
@@ -26,6 +26,14 @@ class TurretSpec(object):
 
 def create_big_explosion(game_services):
     return create_explosion(game_services, anim_name="big_explosion")
+
+
+def create_green_explosion(game_services):
+    return create_explosion(game_services, anim_name="green_explosion")
+
+
+def create_red_explosion(game_services):
+    return create_explosion(game_services, anim_name="red_explosion")
 
 
 def create_explosion(game_services, **kwargs):
@@ -147,154 +155,172 @@ def create_turret(game_services):
     raise NotImplementedError("Not done yet")
 
 
-"""
-Weapons:
 
-components:
-  src.components.Weapon:
-    bullet_config: bullets/green_bullet.txt
-    shots_per_second: 4
-derive_from: weapons/red_blaster.txt
-
-
-
-components:
-  src.components.Weapon:
-    type: beam
-    range: 5000
-    radius: 6
-    damage: 30
-    power_usage: 20
-
-
-
-
-components:
-  src.components.Weapon:
-    bullet_config: bullets/red_bullet.txt
-    bullet_speed: 2000
-    shots_per_second: 10
-    spread: 10
-    shot_sound: 143609__d-w__weapons-synth-blast-03.wav
-
-
-
-components:
-  src.components.Weapon:
-    shots_per_second: 25
-derive_from: weapons/red_blaster.txt
-
-
-
-components:
-  src.components.Weapon:
-    bullet_config: bullets/torpedo_bullet.txt
-    bullet_speed: 1000
-    shots_per_second: 1
-    spread: 1
-derive_from: weapons/red_blaster.txt
-
-
-
-
-
-"""
 
 
 def create_laser_weapon(game_services):
-    raise NotImplementedError("Not done yet")
+    ecs = game_services.get_entity_manager()
+    entity = ecs.create_entity()
+    weapon = ecs.create_component(entity, components.Weapon, {
+        "type": "beam",
+        "range": 5000,
+        "radius": 6,
+        "damage": 30,
+        "power_usage": 20
+    })
+    return entity
+
+
+def create_red_blaster_weapon(game_services):
+    ecs = game_services.get_entity_manager()
+    entity = ecs.create_entity()
+    weapon = ecs.create_component(entity, components.Weapon, {
+        "type": "projectile_thrower",
+        "bullet_assemblage": create_red_bullet,
+        "bullet_speed": 2000,
+        "shots_per_second": 10,
+        "spread": 10,
+        "shot_sound": "143609__d-w__weapons-synth-blast-03.wav"
+    })
+    return entity
+
+
+def create_green_blaster_weapon(game_services):
+    ecs = game_services.get_entity_manager()
+    entity = ecs.create_entity()
+    weapon = ecs.create_component(entity, components.Weapon, {
+        "type": "projectile_thrower",
+        "bullet_assemblage": create_green_bullet,
+        "bullet_speed": 2000,
+        "shots_per_second": 4,
+        "spread": 10,
+        "shot_sound": "143609__d-w__weapons-synth-blast-03.wav"
+    })
+    return entity
+
+
+def create_rapid_red_blaster_weapon(game_services):
+    ecs = game_services.get_entity_manager()
+    entity = ecs.create_entity()
+    weapon = ecs.create_component(entity, components.Weapon, {
+        "type": "projectile_thrower",
+        "bullet_assemblage": create_red_bullet,
+        "bullet_speed": 2000,
+        "shots_per_second": 24,
+        "spread": 10,
+        "shot_sound": "143609__d-w__weapons-synth-blast-03.wav"
+    })
+    return entity
+
+
+def create_torpedo_weapon(game_services):
+    ecs = game_services.get_entity_manager()
+    entity = ecs.create_entity()
+    weapon = ecs.create_component(entity, components.Weapon, {
+        "type": "projectile_thrower",
+        "bullet_assemblage": create_torpedo_bullet,
+        "bullet_speed": 1000,
+        "shots_per_second": 1,
+        "spread": 1,
+        "shot_sound": "143609__d-w__weapons-synth-blast-03.wav"
+    })
+    return entity
 
 
 def add_turrets(entity, turret_specs):
     raise NotImplementedError("Not done yet.")
 
 
-
-"""
-components:
-  src.components.DamageOnContact:
-    damage: 1
-  src.components.ExplodesOnDeath:
-    explosion_config: explosions/green_explosion.txt
-    sound: 234082__211redman112__lasgun-impact.ogg
-  src.components.KillOnTimer:
-    lifetime: 2
-  src.components.AnimationComponent:
-    anim_name: pewpew_green
-    brightness: 0.5
-  src.physics.Body:
-    mass: 1
-    size: 3
-
-
-derive_from: bullets/base_bullet.txt
-
-
-derive_from: bullets/base_bullet.txt
-
-components:
-
-  # A red laser.
-  src.components.AnimationComponent:
-    anim_name: pewpew_red
-
-  # A red explosion.
-  src.components.ExplodesOnDeath:
-    explosion_config: explosions/red_explosion.txt
+def create_red_bullet(game_services):
+    ecs = game_services.get_entity_manager()
+    entity = ecs.create_entity()
+    doc = ecs.create_component(entity, components.DamageOnContact, {
+        "damage": 1
+    })
+    eod = ecs.create_component(entity, components.ExplodesOnDeath, {
+        "explosion_assemblage": create_red_explosion,
+        "sound": "234082__211redman112__lasgun-impact.ogg"
+    })
+    kot = ecs.create_component(entity, components.KillOnTimer, {
+        "lifetime": 2
+    })
+    anim = ecs.create_component(entity, components.AnimationComponent, {
+        "anim_name": "pewpew_red",
+        "brightness": 0.5
+    })
+    body = ecs.create_component(entity, components.Body, {
+        "mass": 1,
+        "size": 3
+    })
+    return entity
 
 
-
-# A bullet that shoots more bullets!
-
-derive_from: bullets/base_bullet.txt
-
-components:
-
-  # Does more damage than a regular bullet.
-  src.components.DamageOnContact:
-    damage: 5
-
-  # A torpedo explodes, naturally!
-  src.components.ExplodesOnDeath:
-    explosion_config: explosions/big_explosion.txt
-
-  # A torpedo has a team (it shoots and follows the opposite team.)
-  src.components.Team: {}
-
-  # A torpedo follows a target.
-  src.components.Tracking: {}
-
-  # A torpedo seeks out its target.
-  src.components.FollowsTracked:
-    acceleration: 3000
-    desired_distance_to_player: 0.1
-
-  # A torpedo is driven by thrusters.
-  src.components.Thrusters:
-    max_thrust: 100000
-
-  # A torpedo has a small blaster turrent on board!
-  src.components.Turrets:
-    hardpoints:
-    - weapon_config: enemies/torpedo_turret.txt
-      x: 0
-      y: 0
-
-  # Make it look like a torpedo
-  src.components.AnimationComponent:
-    anim_name: rocket
-    brightness: 0
-
-  # Set the mass and size.
-  src.physics.Body:
-    mass: 10
-    size: 10
-
-"""
+def create_green_bullet(game_services):
+    ecs = game_services.get_entity_manager()
+    entity = ecs.create_entity()
+    doc = ecs.create_component(entity, components.DamageOnContact, {
+        "damage": 1
+    })
+    eod = ecs.create_component(entity, components.ExplodesOnDeath, {
+        "explosion_assemblage": create_green_explosion,
+        "sound": "234082__211redman112__lasgun-impact.ogg"
+    })
+    kot = ecs.create_component(entity, components.KillOnTimer, {
+        "lifetime": 2
+    })
+    anim = ecs.create_component(entity, components.AnimationComponent, {
+        "anim_name": "pewpew_green",
+        "brightness": 0.5
+    })
+    body = ecs.create_component(entity, components.Body, {
+        "mass": 1,
+        "size": 3
+    })
+    return entity
 
 
-def create_bullet(game_services, **kwargs):
-    raise NotImplementedError("Not done yet.")
+def create_torpedo_bullet(game_services):
+    ecs = game_services.get_entity_manager()
+    entity = ecs.create_entity()
+    doc = ecs.create_component(entity, components.DamageOnContact, {
+        "damage": 5
+    })
+    eod = ecs.create_component(entity, components.ExplodesOnDeath, {
+        "explosion_assemblage": create_big_explosion,
+        "sound": "234082__211redman112__lasgun-impact.ogg"
+    })
+    kot = ecs.create_component(entity, components.KillOnTimer, {
+        "lifetime": 2
+    })
+    anim = ecs.create_component(entity, components.AnimationComponent, {
+        "anim_name": "rocket",
+        "brightness": 0
+    })
+    body = ecs.create_component(entity, components.Body, {
+        "mass": 10,
+        "size": 10
+    })
+    team = ecs.create_component(entity, components.Team, {})
+    tracking = ecs.create_component(entity, components.Tracking, {})
+    follows = ecs.create_component(entity, components.FollowsTracked, {
+        "acceleration": 3000,
+        "desired_distance_to_player": 0.1
+    })
+    turrets = ecs.create_component(entity, components.Turrets)
+    add_turrets(
+        entity,
+        [
+            TurretSpec(weapon_assemblage=create_rapid_red_blaster_weapon,
+                       turret_assemblage=create_turret,
+                       position=(0, 0))
+        ]
+    )
+    thrusters = ecs.create_component(entity, components.Thrusters)
+    add_thrusters(
+        entity,
+        standard_thruster_layout(40, 40, 50000)
+    )
+    return entity
 
 
 def add_thrusters(entity, thruster_specs):
@@ -492,49 +518,44 @@ components:
 def create_destroyer(game_services, **kwargs):
     raise NotImplementedError("Not done yet.")
 
+
 def create_carrier(game_services, **kwargs):
     raise NotImplementedError("Not done yet.")
 
-def create_endgame_message(game_services, **kwargs):
-    """
-    components:
-  src.components.KillOnTimer:
-    lifetime: 10
-  src.components.Text:
-    text: Hello, World!
-    font_colour:
-      blue: 255
-      green: 255
-      red: 255
-    font_name: res/fonts/nasdaqer/NASDAQER.ttf
-    font_size: 62
 
-    :param game_services:
-    :param kwargs:
-    :return:
-    """
-    raise NotImplementedError("Not done yet.")
+def create_endgame_message(game_services, **kwargs):
+    return create_message(game_services, blink=False, lifetime=10, **kwargs)
+
 
 def create_update_message(game_services, **kwargs):
-    """
-    components:
-  src.components.KillOnTimer:
-    lifetime: 4
-  src.components.Text:
-    text: Hello, World!
-    blink: 1
-    font_colour:
-      blue: 255
-      green: 255
-      red: 255
-    font_name: res/fonts/nasdaqer/NASDAQER.ttf
-    font_size: 62
+    return create_message(game_services, blink=True, lifetime=4, **kwargs)
 
-    :param game_services:
-    :param kwargs:
-    :return:
-    """
-    raise NotImplementedError("Not done yet.")
+
+def create_message(game_services, **kwargs):
+    ecs = game_services.get_entity_manager()
+    entity = ecs.create_entity()
+    kill_on_timer = ecs.create_component(
+        entity,
+        components.KillOnTimer,
+        {"lifetime": kwargs.get("lifetime", 4)}
+    )
+    text = ecs.create_component(
+        entity,
+        components.Text,
+        {
+            "text": kwargs.get("text", "Hello, World!"),
+            "blink": kwargs.get("blink", False),
+            "font_colour": {
+                "blue": 255,
+                "green": 255,
+                "red": 255
+            },
+            "font_name": "res/fonts/nasdaqer/NASDAQER.ttf",
+            "font_size": 62
+        }
+    )
+    return entity
+
 
 def create_camera(game_services):
     ecs = game_services.get_entity_manager()

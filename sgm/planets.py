@@ -4,7 +4,7 @@ Definition of planets.
 
 
 import components
-from src.sge import utils
+from sge import utils
 
 
 class PlanetDef(object):

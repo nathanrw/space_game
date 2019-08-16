@@ -16,12 +16,12 @@ import pygame
 import pynk
 import inspect
 
-from src.sge.physics import Physics
+from sge import Physics
 from .components import AnimationComponent, Body, Dockable, Thrusters, Player, Camera, Turrets, Turret
 from .direction_providers import DirectionProviderScreen
-from src.sge.ecs import EntityRef, EntityRefList
-from src.sge.resource import Animation
-from src.sge.utils import Timer
+from sge.ecs import EntityRef, EntityRefList
+from sge.resource import Animation
+from sge.utils import Timer
 
 class InputResponse(object):
     """ The result of executing an Action.  This is bubbled back up to the

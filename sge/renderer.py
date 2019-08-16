@@ -1,10 +1,22 @@
+"""
+renderer.py - interface to a rendering implementation
+
+This module provides an interface to a renderer which knows how to draw various
+kinds of things e.g. circles, polygons, a nuklear GUI, etc.
+
+Renderer implementations live in the sge.renderers package.
+"""
+
 import abc
 
 from pygame import Rect
+
 from sge.utils import Vec2d
 
+
 class View(object):
-    """ A view. """
+    """ A view - defines a camera rectangle and local coordinate system, a
+    viewpoing from which to render. """
 
     def __init__(self, renderer):
         """ Constructor. """
@@ -87,7 +99,24 @@ class View(object):
 
 
 class Renderer(object):
-    """ An abstract render that knows how to draw things. """
+    """
+    An abstract renderer.
+
+    A renderer implementation implements the capabability to draw various
+    primitives.  The representation of certain primitives, such as fonts and
+    images, is also delegated to the renderer, and it provides the capability
+    to load them.
+
+    To initialise a renderer, the program must call initialise().
+
+    An application uses a renderer to do drawing by submitting jobs. Drawing
+    must be done in the following sequence:
+
+        my_renderer.pre_render(view) # 'view' is a View implementation
+        # dispatch jobs e.g. my_renderer.add_job_rect(...)
+        my_renderer.post_render() # Finish rendering
+        my_renderer.flip_buffers() # Update the display
+    """
 
     # The renderer is an abstract base class.
     __metaclass__ = abc.ABCMeta
