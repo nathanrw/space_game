@@ -1,7 +1,7 @@
 import abc
 
 from pygame import Rect
-from pymunk.vec2d import Vec2d
+from sge.utils import Vec2d
 
 class View(object):
     """ A view. """

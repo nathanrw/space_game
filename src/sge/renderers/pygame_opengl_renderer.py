@@ -41,9 +41,7 @@ import pynk.nkpygame
 import re
 import unicodedata
 
-from pymunk import Vec2d
-
-from .renderer import *
+from sge.renderer import *
 
 class ShaderProgram(object):
     """ Manages an OpenGL shader program.

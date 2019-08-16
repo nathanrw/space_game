@@ -7,7 +7,7 @@ with a particular assemblage of components.
 
 import components
 
-from .utils import Vec2d
+from sge.utils import Vec2d
 
 
 class ThrusterSpec(object):

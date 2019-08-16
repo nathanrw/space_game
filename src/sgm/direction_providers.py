@@ -2,8 +2,8 @@
 Implementations conform to the ecs data model so they can be stored in
 components. """
 
-from .physics import Vec2d
-from .ecs import EntityRef
+from src.sge.physics import Vec2d
+from src.sge.ecs import EntityRef
 from .components import Body
 
 

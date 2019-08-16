@@ -17,8 +17,7 @@ this will display a loading screen via the injected renderer and read
 all resources in the 'res' tree.
 """
 
-from .loading_screen import LoadingScreen
-from .utils import Timer
+from sge.utils import Timer
 
 import math
 import pygame
@@ -45,7 +44,7 @@ class ResourceLoader(object):
         """ Minimise image loading. """
         self.__minimise_image_loading = yes
 
-    def preload(self):
+    def preload(self, loading_screen_factory):
         """ Preload certain resources to reduce game stutter. """
 
         # List all animation frames.
@@ -54,7 +53,7 @@ class ResourceLoader(object):
         # Number of steps.
         count = len(anims)
         assert count > 0
-        loading = LoadingScreen(count, self.__renderer)
+        loading = loading_screen_factory(count, self.__renderer)
 
         # Read in the frames.
         for anim in anims:

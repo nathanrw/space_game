@@ -9,9 +9,9 @@ periodically to keep them in sync.
 """
 
 
-from .ecs import ComponentSystem, Component
-from .utils import Vec2d
-from .components import Body
+from sge.ecs import ComponentSystem
+from sge.utils import Vec2d
+from sgm.components import Body
 
 import pymunk
 import math

@@ -30,9 +30,9 @@ Some rules are implemented as free functions, since they are needed in multiple
 places.
 """
 
-from ecs import ComponentSystem
+from src.sge.ecs import ComponentSystem
 from components import *
-from physics import Physics
+from src.sge.physics import Physics
 from direction_providers import *
 import assemblages
 

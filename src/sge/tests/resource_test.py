@@ -1,5 +1,4 @@
 import unittest
-from ..resource import *
 from testing import *
 
 

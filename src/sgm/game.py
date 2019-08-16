@@ -14,11 +14,10 @@ import yaml
 import assemblages
 import components
 import drawing
-import ecs
 import input_handling
-import physics
 import planets
-import resource
+from loading_screen import LoadingScreen
+from sge import resource, physics, ecs
 import systems
 
 
@@ -103,11 +102,11 @@ class Game(object):
         # Create the renderer.
         renderer_name = self.config.get("renderer", "src.pygame_renderer.PygameRenderer")
         renderer_class = None
-        if renderer_name == "src.pygame_renderer.PygameRenderer":
-            import pygame_renderer
+        if renderer_name == "pygame":
+            from sge.renderers import pygame_renderer
             renderer_class = pygame_renderer.PygameRenderer
-        else:
-            import pygame_opengl_renderer
+        elif renderer_name == "opengl" or True: # default
+            from sge.renderers import pygame_opengl_renderer
             renderer_class = pygame_opengl_renderer.PygameOpenGLRenderer
         screen_size = (self.config.get("screen_width", 1024),
                        self.config.get("screen_height", 768))
@@ -168,10 +167,13 @@ class Game(object):
 
         # Create the game systems.
         self.entity_manager.register_component_system(physics.Physics())
-        self.entity_manager.register_component_system(systems.FollowsTrackedSystem())
+        self.entity_manager.register_component_system(
+            systems.FollowsTrackedSystem())
         self.entity_manager.register_component_system(systems.TrackingSystem())
-        self.entity_manager.register_component_system(systems.LaunchesFightersSystem())
-        self.entity_manager.register_component_system(systems.KillOnTimerSystem())
+        self.entity_manager.register_component_system(
+            systems.LaunchesFightersSystem())
+        self.entity_manager.register_component_system(
+            systems.KillOnTimerSystem())
         self.entity_manager.register_component_system(systems.PowerSystem())
         self.entity_manager.register_component_system(systems.ShieldSystem())
         self.entity_manager.register_component_system(systems.TextSystem())
@@ -194,7 +196,7 @@ class Game(object):
         jupiter = planets.create_planet(self.entity_manager, planets.JUPITER_DEF)
 
         # Preload certain images.
-        self.resource_loader.preload()
+        self.resource_loader.preload(LoadingScreen)
 
         # Make the camera.
         camera = assemblages.create_camera(self.game_services)
@@ -222,7 +224,8 @@ class Game(object):
 
         # Create the wave spawner.
         if not self.config.get("peaceful_mode", False):
-            self.entity_manager.register_component_system(systems.WaveSpawnerSystem())
+            self.entity_manager.register_component_system(
+                systems.WaveSpawnerSystem())
 
         # Make it so that bullets can damage things.
         self.entity_manager.get_system(physics.Physics).add_collision_handler(

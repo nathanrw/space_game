@@ -1,5 +1,5 @@
 import unittest
-from ..utils import *
+
 
 class TimerTest(unittest.TestCase):
     def test_init(self):

@@ -22,7 +22,7 @@ into each component.
 
 import pickle
 
-from .utils import bail
+from sge.utils import bail
 
 class GameInfo(object):
     """ Information about the running game. """

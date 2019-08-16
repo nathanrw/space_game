@@ -4,14 +4,14 @@ from pygame import Rect
 import math
 import random
 
-from .physics import Physics
+from src.sge.physics import Physics
 from .components import Body, Thrusters, Thruster, Hitpoints, Text, Shields, \
                         AnimationComponent, Weapon, Power, Camera, CelestialBody, \
                         Planet, Star, Dockable, Player
-from .renderer import Renderer, View
+from src.sge.renderer import Renderer, View
 from .systems import get_team
-from .ecs import EntityRef
-from .utils import Vec2d, Polygon
+from src.sge.ecs import EntityRef
+from src.sge.utils import Vec2d, Polygon
 
 class CameraView(View):
     """ A view defined by a camera entity. """

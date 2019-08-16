@@ -25,8 +25,8 @@ current state of the component, and these are updated by processing systems.
 
 import math
 
-from .ecs import Component, EntityRef, EntityRefList
-from .utils import Timer, Vec2d
+from src.sge.ecs import Component, EntityRef, EntityRefList
+from src.sge.utils import Timer, Vec2d
 
 
 class Body(Component):

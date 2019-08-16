@@ -1,5 +1,4 @@
 import unittest
-from ..ecs import *
 from testing import *
 
 

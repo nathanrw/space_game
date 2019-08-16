@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
-import src.game
+import os
 import sys
 import cProfile
 import logging
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+
+import sgm
+
 def main():
     """ Run the game! """
-    game = src.game.Game()
+    game = sgm.game.Game()
     try:
         game.run()
     except KeyboardInterrupt:

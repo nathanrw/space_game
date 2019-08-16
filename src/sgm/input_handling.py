@@ -14,15 +14,14 @@ from pymunk.vec2d import Vec2d
 
 import pygame
 import pynk
-import collections
 import inspect
 
-from .physics import Physics
+from src.sge.physics import Physics
 from .components import AnimationComponent, Body, Dockable, Thrusters, Player, Camera, Turrets, Turret
 from .direction_providers import DirectionProviderScreen
-from .ecs import EntityRef, EntityRefList
-from .resource import Animation
-from .utils import Timer
+from src.sge.ecs import EntityRef, EntityRefList
+from src.sge.resource import Animation
+from src.sge.utils import Timer
 
 class InputResponse(object):
     """ The result of executing an Action.  This is bubbled back up to the

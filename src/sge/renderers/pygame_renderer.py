@@ -1,6 +1,6 @@
 import pygame
 
-from .renderer import *
+from sge.renderer import *
 
 import pynk.nkpygame
 
