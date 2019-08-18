@@ -3,21 +3,23 @@ from pymunk.vec2d import Vec2d
 
 from sge.renderer import Renderer, View
 
+import sys
+
 class LoadingScreen(object):
     """ A loading screen to display while the resources are read in. It assumes
     direct control over the pygame display. The intention is you count your
     resources, construct the loading screen, and then just increment it after
     each resource is read. """
 
-    def __init__(self, total, renderer):
+    def __init__(self, total, renderer, font, background):
         """ Constructor. This actually does the initial draw. """
         self.total = total
         self.progress = 0
         self.renderer = renderer
         self.view = View(renderer)
-        self.font = renderer.load_compatible_font("res/fonts/nasdaqer/NASDAQER.ttf", 72)
+        self.font = font
         self.title = renderer.compatible_image_from_text("SPACE GAME", self.font, (255, 255, 255))
-        self.background = renderer.load_compatible_image("res/images/857-tileable-classic-nebula-space-patterns/6.jpg")
+        self.background = background
         self.__draw()
 
     def increment(self):

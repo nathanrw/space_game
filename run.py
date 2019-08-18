@@ -5,12 +5,23 @@ import sys
 import cProfile
 import logging
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
-
 import sgm
 
 def main():
     """ Run the game! """
+
+    # Change directory into the directory of this file - the
+    # one containng the 'res' tree.  Note that if we've been built via
+    # py2exe, we will actually be in a zip file so account for that.
+    path = os.path.dirname(__file__)
+    if (os.path.basename(path) == "library.zip"):
+        path = os.path.dirname(path)
+    if len(path) > 0:
+        os.chdir(path)
+    if not os.path.isdir("res"):
+        raise Exception("Unable to locate resource tree.")
+    sys.path += ["."]
+
     game = sgm.game.Game()
     try:
         game.run()

@@ -8,13 +8,6 @@ import sys
 from pymunk import Vec2d
 
 
-def fromwin(path):
-    """Paths serialized on windows have \\ in them, so we need to convert
-       them in order to read them on unix. Windows will happily read unix
-       paths so we dont need to worry about going the other way."""
-    return path.replace("\\", "/")
-
-
 def bail():
     """ Bail out, ensuring the pygame windows goes away. """
     pygame.quit()

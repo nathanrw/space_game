@@ -32,134 +32,16 @@ places.
 
 from sge.ecs import ComponentSystem
 from sgm.components import *
+from sgm.components import ExplodesOnDeath, Body, Shields, Hitpoints
 from sgm.physics import Physics
 from sgm.direction_providers import *
-import sgm.assemblages as assemblages
+import sgm.templates as templates
 
 import random
 import numpy
 import scipy.optimize
 
-
-def towards(e1, e2):
-    """ Get a direction from one entity to another. """
-    b1 = e1.get_component(Body)
-    b2 = e2.get_component(Body)
-    if b1 is None or b2 is None:
-        return Vec2d(0, 0)
-    return b2.position - b1.position
-
-
-def get_team(e):
-    """ Get the team of an entity.  If the entity does not have a team then
-    this returns None. """
-    assert e is not None
-    ret = None
-    ct = e.get_component(Team)
-    if ct is not None:
-        if ct.parent.entity is not None:
-            ret = get_team(ct.parent.entity)
-        if ret is None:
-            ret = ct.team
-    return ret
-
-
-def setup_team(e1, e2):
-    """ Put one entity under the team leadership of another. """
-    t1 = e1.get_component(Team)
-    t2 = e2.get_component(Team)
-    if t1 is not None and t2 is not None:
-        t2.parent.entity = e1
-
-
-def on_same_team(e1, e2):
-    """ Are two entities friendly towards one another? """
-    t1 = get_team(e1)
-    t2 = get_team(e2)
-    if t1 is None or t2 is None:
-        return True
-    return t1 == t2
-
-
-def consume_power(e, amount):
-    """ Consume an entity's power. """
-    p = e.get_component(Power)
-    if p is None:
-        return 0
-    elif amount <= p.power:
-        p.power -= amount
-        return amount
-    else:
-        p.overloaded = True
-        return 0
-
-
-def handle_damage_collision(dmg, hp):
-    """ Used to implement the 'damage on contact' behaviour. 
-    
-    'dmg' is a DamageOnContact component
-    
-    'hp' is a Hitpoints component.
-    """
-
-    # If our entity is about to die we might be about to spawn an
-    # explosion. If that's the case it should be travelling at the same
-    # speed as the thing we hit. So match velocities before our entity is
-    # killed.
-    if dmg.config.get("destroy_on_hit", True):
-        b1 = dmg.entity.get_component(Body)
-        b2 = hp.entity.get_component(Body)
-        if b1 is not None and b2 is not None:
-            physics = b1.entity.ecs().get_system(Physics)
-            physics.teleport(b1.entity, to_velocity=b2.velocity)
-        do_explosion(dmg.entity)
-        dmg.entity.kill()
-
-    # Apply the damage.
-    apply_damage_to_entity(dmg.config["damage"], hp.entity)
-
-
-def do_explosion(entity):
-    """ If an entity explodes, create the explosion. """
-    explodes = entity.get_component(ExplodesOnDeath)
-    body = entity.get_component(Body)
-    if explodes is not None and body is not None:
-
-        # Create the explosion.
-        explosion = explodes.config["explosion_assemblage"]()
-        physics = entity.ecs().get_system(Physics)
-        physics.teleport(explosion, body.position, body.velocity)
-
-        # Shake the camera.
-        cs = entity.ecs().get_system(CameraSystem)
-        shake_factor = explodes.config.get("shake_factor", 1)
-        cs.apply_shake(shake_factor, body.position)
-
-        # Play a sound.
-        sound = explodes.config.get("sound")
-        if sound is not None:
-            cs.play_sound(sound, body.position)
-
-
-def apply_damage_to_entity(damage, entity):
-    """ Apply damage to an object we've hit. """
-
-    # Shields can mitigate damage.
-    shields = entity.get_component(Shields)
-    if shields is not None:
-        shields.hp -= damage
-        if shields.hp < 0:
-            damage = -shields.hp
-        else:
-            damage = 0
-
-    # Ok, apply the damage.
-    hitpoints = entity.get_component(Hitpoints)
-    if hitpoints is not None:
-        hitpoints.hp -= damage
-        if hitpoints.hp <= 0:
-            do_explosion(entity)
-            entity.kill()
+from sgm.utils import on_same_team, consume_power, setup_team
 
 
 class FollowsTrackedSystem(ComponentSystem):
@@ -195,7 +77,7 @@ class FollowsTrackedSystem(ComponentSystem):
 
             displacement = that_body.position - this_body.position
             rvel = that_body.velocity - this_body.velocity
-            target_dist = follows.config["desired_distance_to_player"]
+            target_dist = follows.desired_distance_to_player
 
             # distality is a mapping of distance onto the interval [0,1) to
             # interpolate between two components
@@ -208,7 +90,7 @@ class FollowsTrackedSystem(ComponentSystem):
 
 
             # Apply force in the interpolated direction.
-            thrust = this_body.mass * follows.config["acceleration"]
+            thrust = this_body.mass * follows.acceleration
             force = frac * thrust * direction
             physics.apply_force_at_local_point(
                 entity,
@@ -244,7 +126,7 @@ class WeaponSystem(ComponentSystem):
 
     def shoot_beam(self, weapon, dt):
         """ Shoot a beam. """
-        power_consumed = consume_power(weapon.owner.entity, weapon.config["power_usage"] * dt)
+        power_consumed = consume_power(weapon.owner.entity, weapon.power_usage * dt)
         if power_consumed == 0:
             weapon.shooting_at = None
         else:
@@ -253,11 +135,11 @@ class WeaponSystem(ComponentSystem):
                 weapon.owner.entity,
                 Vec2d(0, 0),
                 Vec2d(0, -1),
-                weapon.config["range"],
-                weapon.config["radius"]
+                weapon.range,
+                weapon.radius
             )
             if hit_entity is not None:
-                apply_damage_to_entity(weapon.config["damage"]*dt, hit_entity)
+                apply_damage_to_entity(weapon.damage * dt, hit_entity)
 
     def shoot_bullet(self, weapon, dt):
         """ Shoot a bullet, for projectile thrower type weapons. """
@@ -272,7 +154,7 @@ class WeaponSystem(ComponentSystem):
             shooting_at_dir = weapon.shooting_at.direction()
 
             # Update the timer.
-            weapon.shot_timer += 1.0/weapon.config["shots_per_second"]
+            weapon.shot_timer += 1.0/weapon.shots_per_second
 
             # Can't spawn bullets if there's nowhere to put them!
             if body is None:
@@ -283,20 +165,20 @@ class WeaponSystem(ComponentSystem):
             bullet_position = Vec2d(body.position) + shooting_at_dir * separation
 
             # Work out the muzzle velocity.
-            muzzle_velocity = shooting_at_dir * weapon.config["bullet_speed"]
-            spread = weapon.config["spread"]
+            muzzle_velocity = shooting_at_dir * weapon.bullet_speed
+            spread = weapon.bullet_spread
             muzzle_velocity.rotate_degrees(random.random() * spread - spread)
             bullet_velocity = body.velocity+muzzle_velocity
 
             # Play a sound.
-            shot_sound = weapon.config.get("shot_sound")
+            shot_sound = weapon.shot_sound
             if shot_sound is not None:
                 cs = self.ecs().get_system(CameraSystem)
                 cs.play_sound(shot_sound, body.position)
 
             # Create the bullet.
-            bullet_assemblage = weapon.config["bullet_assemblage"]
-            bullet_entity = bullet_assemblage(weapon.entity.game_services())
+            bullet_template = weapon.bullet_template
+            bullet_entity = bullet_template(weapon.entity.game_services())
 
             # Set the position.
             bullet_orientation = shooting_at_dir.normalized().get_angle_degrees()+90
@@ -349,21 +231,21 @@ class LaunchesFightersSystem(ComponentSystem):
                 continue
             if len(launcher.launched) == 0 and launcher.spawn_timer.tick(dt):
                 launcher.spawn_timer.reset()
-                for i in range(launcher.config["num_fighters"]):
+                for i in range(launcher.num_fighters):
                     direction = Vec2d(0, 1)
-                    spread = launcher.config["takeoff_spread"]
+                    spread = launcher.takeoff_spread
                     direction.rotate_degrees(spread*random.random()-spread/2.0)
 
                     # Launch!
-                    fighter_assemblage = launcher.config["fighter_assemblage"]
-                    child = fighter_assemblage(self.game_services())
+                    fighter_template = launcher.fighter_template
+                    child = fighter_template(self.game_services())
                     launcher.launched.add_ref_to(child)
                     setup_team(entity, child)
                     physics = self.ecs().get_system(Physics)
                     physics.teleport(
                         child,
                         body.position + (body.size + 10) * direction,
-                        body.velocity + direction * launcher.config["takeoff_spread"])
+                        body.velocity + direction * launcher.takeoff_speed)
 
 
 class KillOnTimerSystem(ComponentSystem):
@@ -456,7 +338,7 @@ class AnimSystem(ComponentSystem):
         for e in self.entities():
             c = e.get_component(AnimationComponent)
             if c.anim.tick(dt):
-                if c.config.get("kill_on_finish", 0):
+                if c.kill_on_finish:
                     e.kill()
                 else:
                     c.anim.reset()
@@ -651,7 +533,7 @@ class WaveSpawnerSystem(ComponentSystem):
         elif self.player_is_dead() or self.max_waves():
             self.done = True
             txt = "GAME OVER" if not self.max_waves() else "VICTORY"
-            message = assemblages.create_endgame_message(self.game_services(), text=txt)
+            message = templates.create_endgame_message(self.game_services(), text=txt)
 
         # If the wave is dead and we're not yet preparing (which displays a timed message) then
         # start preparing a wave.
@@ -676,8 +558,8 @@ class WaveSpawnerSystem(ComponentSystem):
         player_body = player.get_component(Body)
         self.wave += 1
         for i in range(self.wave-1):
-            enemy_type = random.choice((assemblages.create_destroyer,
-                                        assemblages.create_carrier))
+            enemy_type = random.choice((templates.ships.create_destroyer,
+                                        templates.ships.create_carrier))
             rnd = random.random()
             x = 1 - rnd*2
             y = 1 - (1-rnd)*2
@@ -695,7 +577,7 @@ class WaveSpawnerSystem(ComponentSystem):
     def prepare_for_wave(self):
         """ Prepare for a wave. """
         text = "WAVE %s PREPARING" % self.wave
-        self.message = assemblages.create_update_message(self.game_services(), text=text)
+        self.message = templates.create_update_message(self.game_services(), text=text)
 
     def prepared_to_spawn(self):
         """ Check whether the wave is ready. """
@@ -870,3 +752,71 @@ class PlayerSystem(ComponentSystem):
             if docked_body is None: continue
             physics = self.ecs.get_system(Physics)
             physics.teleport(entity, to_velocity=docked_body.velocity)
+
+
+def do_explosion(entity):
+    """ If an entity explodes, create the explosion. """
+    explodes = entity.get_component(ExplodesOnDeath)
+    body = entity.get_component(Body)
+    if explodes is not None and body is not None:
+
+        # Create the explosion.
+        explosion = explodes.explosion_template(entity.game_services)
+        physics = entity.ecs().get_system(Physics)
+        physics.teleport(explosion, body.position, body.velocity)
+
+        # Shake the camera.
+        cs = entity.ecs().get_system(CameraSystem)
+        shake_factor = explodes.shake_factor
+        cs.apply_shake(shake_factor, body.position)
+
+        # Play a sound.
+        sound = explodes.sound
+        if sound is not None:
+            cs.play_sound(sound, body.position)
+
+
+def handle_damage_collision(dmg, hp):
+    """ Used to implement the 'damage on contact' behaviour.
+
+    'dmg' is a DamageOnContact component
+
+    'hp' is a Hitpoints component.
+    """
+
+    # If our entity is about to die we might be about to spawn an
+    # explosion. If that's the case it should be travelling at the same
+    # speed as the thing we hit. So match velocities before our entity is
+    # killed.
+    if dmg.destroy_on_hit:
+        b1 = dmg.entity.get_component(Body)
+        b2 = hp.entity.get_component(Body)
+        if b1 is not None and b2 is not None:
+            physics = b1.entity.ecs().get_system(Physics)
+            physics.teleport(b1.entity, to_velocity=b2.velocity)
+        do_explosion(dmg.entity)
+        dmg.entity.kill()
+
+    # Apply the damage.
+    apply_damage_to_entity(dmg.damage, hp.entity)
+
+
+def apply_damage_to_entity(damage, entity):
+    """ Apply damage to an object we've hit. """
+
+    # Shields can mitigate damage.
+    shields = entity.get_component(Shields)
+    if shields is not None:
+        shields.hp -= damage
+        if shields.hp < 0:
+            damage = -shields.hp
+        else:
+            damage = 0
+
+    # Ok, apply the damage.
+    hitpoints = entity.get_component(Hitpoints)
+    if hitpoints is not None:
+        hitpoints.hp -= damage
+        if hitpoints.hp <= 0:
+            do_explosion(entity)
+            entity.kill()

@@ -32,8 +32,10 @@ class ResourceLoader(object):
         self.__renderer = None
         self.__minimise_image_loading = True
         self.__images = {}
+        self.__image_aliases = yaml.load("res/images/aliases.yaml")
         self.__animations = {}
         self.__fonts = {}
+        self.__font_aliases = yaml.load("res/fonts/aliases.yaml")
         self.__sounds = {}
 
     def set_renderer(self, renderer):
@@ -44,7 +46,7 @@ class ResourceLoader(object):
         """ Minimise image loading. """
         self.__minimise_image_loading = yes
 
-    def preload(self, loading_screen_factory):
+    def preload(self, loading_screen_factory, font, background):
         """ Preload certain resources to reduce game stutter. """
 
         # List all animation frames.
@@ -53,7 +55,7 @@ class ResourceLoader(object):
         # Number of steps.
         count = len(anims)
         assert count > 0
-        loading = loading_screen_factory(count, self.__renderer)
+        loading = loading_screen_factory(count, self.__renderer, font, background)
 
         # Read in the frames.
         for anim in anims:
@@ -66,12 +68,24 @@ class ResourceLoader(object):
 
     def load_font(self, filename, size):
         """ Load a font from the file system. """
+        if filename in self.__font_aliases:
+            filename = os.path.join("res/fonts", self.__font_aliases[filename])
         if not (filename, size) in self.__fonts:
             self.__fonts[(filename, size)] = self.__renderer.load_compatible_font(filename, size)
         return self.__fonts[(filename, size)]
 
+    def load_gui_font(self, filename, size):
+        """ Load a font from the file system for use with the GUI. """
+        if filename in self.__font_aliases:
+            filename = os.path.join("res/fonts", self.__font_aliases[filename])
+        if not (filename, size) in self.__fonts:
+            self.__fonts[(filename, size)] = self.__renderer.load_compatible_gui_font(filename, size)
+        return self.__fonts[(filename, size)]
+
     def load_image(self, filename):
         """ Load an image from the file system. """
+        if filename in self.__image_aliases:
+            filename = os.path.join("res/images", self.__image_aliases[filename])
         if not filename in self.__images:
             self.__images[filename] = self.__renderer.load_compatible_image(filename)
             print( "Loaded image: %s" % filename )

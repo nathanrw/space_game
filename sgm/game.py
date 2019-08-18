@@ -11,14 +11,17 @@ import pynk.nkpygame
 import yaml
 
 # Local imports.
-import assemblages
+import templates
 import components
 import drawing
 import input_handling
-import planets
+from sgm.templates import planets
+import sgm.systems
+import sgm.utils
 from loading_screen import LoadingScreen
-from sge import physics
+from sgm import physics
 from sge import ecs, resource
+from sge.utils import bail
 import systems
 
 
@@ -78,18 +81,6 @@ class Game(object):
     def __init__(self):
         """ Initialise the game systems. """
 
-        # Change directory into the directory above this file - the
-        # one containng the 'res' tree.  Note that if we've been built via
-        # py2exe, we will actually be in a zip file so account for that.
-        path = os.path.dirname(os.path.dirname(__file__))
-        if (os.path.basename(path) == "library.zip"):
-            path = os.path.dirname(path)
-        if len(path) > 0:
-            os.chdir( path )
-        if not os.path.isdir("res"):
-            raise Exception("Unable to locate resource tree.")
-        sys.path += ["."]
-
         # Services exposed to the entities.
         self.game_services = SpaceGameServices(self)
 
@@ -97,18 +88,21 @@ class Game(object):
         self.resource_loader = resource.ResourceLoader()
 
         # The configuration.
+        self.config = {}
         if os.path.isfile("./config.yml"):
             self.config = yaml.load("./config.yml")
 
         # Create the renderer.
-        renderer_name = self.config.get("renderer", "src.pygame_renderer.PygameRenderer")
+        renderer_name = self.config.get("renderer", "opengl")
         renderer_class = None
         if renderer_name == "pygame":
             from sge.renderers import pygame
             renderer_class = pygame.PygameRenderer
-        elif renderer_name == "opengl" or True: # default
+        elif renderer_name == "opengl":
             from sge.renderers import opengl
             renderer_class = opengl.PygameOpenGLRenderer
+        else:
+            bail()
         screen_size = (self.config.get("screen_width", 1024),
                        self.config.get("screen_height", 768))
         self.renderer = renderer_class(screen_size, self.config, data_path="./res")
@@ -197,16 +191,18 @@ class Game(object):
         jupiter = planets.create_planet(self.entity_manager, planets.JUPITER_DEF)
 
         # Preload certain images.
-        self.resource_loader.preload(LoadingScreen)
+        loading_background = self.resource_loader.load_image("background-6")
+        loading_font = self.resource_loader.load_font("nasdaqer", 72)
+        self.resource_loader.preload(LoadingScreen, loading_font, loading_background)
 
         # Make the camera.
-        camera = assemblages.create_camera(self.game_services)
+        camera = templates.create_camera(self.game_services)
 
         # Draw debug info if requested.
         self.game_services.debug_level = self.config.get("debug", 0)
 
         # Make the player
-        player = assemblages.create_player(self.game_services)
+        player = templates.create_player(self.game_services)
         player.name = "Player"
         mercury_body = mercury.get_component(components.Body)
         self.entity_manager.get_system(physics.Physics).teleport(
@@ -234,13 +230,10 @@ class Game(object):
         )
 
         # Set the scrolling background.
-        self.drawing.set_background("res/images/857-tileable-classic-nebula-space-patterns/6.jpg")
+        self.drawing.set_background("background-6")
 
         # Make the GUI
-        nkfont = self.renderer.load_compatible_gui_font(
-            "res/fonts/xolonium/Xolonium-Regular.ttf",
-            12
-        )
+        nkfont = self.resource_loader.load_gui_font("xolonium", 12)
         self.nkpygame = pynk.nkpygame.NkPygame(nkfont)
         self.nkpygame.setup()
 
@@ -352,7 +345,7 @@ class DamageCollisionHandler(physics.CollisionHandler):
         """ Apply the logical effect of the collision and return the result. """
 
         # Delegate to the function in 'systems'.
-        systems.handle_damage_collision(dmg, hp)
+        sgm.systems.handle_damage_collision(dmg, hp)
 
         # Return the result ( we handled the collision. )
         return physics.CollisionResult(True, True)

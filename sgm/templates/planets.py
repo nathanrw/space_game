@@ -3,7 +3,7 @@ Definition of planets.
 """
 
 
-import components
+import sgm.components as components
 from sge import utils
 
 
@@ -85,26 +85,25 @@ def create_planet(entity_manager, planet_def):
     # Add celestial body component.
     celestial_body = entity_manager.create_component(
         entity,
-        components.CelestialBody,
-        {"name": planet_def.name}
+        components.CelestialBody
     )
+    celestial_body.name = planet_def.name
 
     # Create physics body. The celestial body system will drive this by
     # setting the velocity, so make it a kinematic body.
-    body_data = {
-        "size": planet_def.radius,
-        "kinematic": True,
-        "is_collideable": False
-    }
-    body = entity_manager.create_component(entity, components.Body, body_data)
+    body = entity_manager.create_component(entity, components.Body)
+    body.size = planet_def.radius
+    body.kinematic = True
+    body.is_collideable = False
     body.position = utils.Vec2d(0, planet_def.orbit_radius)
 
     # If it's dockable, add the component.
     if planet_def.description != "":
-        entity_manager.create_component(
+        dock = entity_manager.create_component(
             entity,
-            components.Dockable,
-            {"title": planet_def.name, "description": planet_def.description}
+            components.Dockable
         )
+        dock.title = planet_def.name
+        dock.description = planet_def.description
 
     return entity

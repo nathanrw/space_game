@@ -4,12 +4,12 @@ from pygame import Rect
 import math
 import random
 
-from sge import Physics
+from sgm.physics import Physics
 from .components import Body, Thrusters, Thruster, Hitpoints, Text, Shields, \
                         AnimationComponent, Weapon, Power, Camera, CelestialBody, \
                         Planet, Star, Dockable, Player
 from sge.renderer import Renderer, View
-from .systems import get_team
+from sgm.utils import get_team
 from sge.ecs import EntityRef
 from sge.utils import Vec2d, Polygon
 
@@ -122,10 +122,7 @@ class Drawing(object):
         """ Draw a text string that doesn't change very often. It will be cached
         for the lifetime of the program. """
         if not text in self.__text_cache:
-            font = self.__resource_loader.load_font(
-                "res/fonts/xolonium/Xolonium-Regular.ttf",  # Fix
-                14
-            )
+            font = self.__resource_loader.load_font("xolonium", 14)
             self.__text_cache[text] = self.__renderer.compatible_image_from_text(
                 text,
                 font,
@@ -225,10 +222,7 @@ class Drawing(object):
                     level=Renderer.LEVEL_BACK
                 )
             if not "label_image" in celestial_body.cache:
-                font = self.__resource_loader.load_font(
-                    "res/fonts/xolonium/Xolonium-Regular.ttf", #  Fix
-                    14
-                )
+                font = self.__resource_loader.load_font("xolonium", 14)
                 celestial_body.cache["label_image"] = self.__renderer.compatible_image_from_text(
                   celestial_body.name,
                   font,

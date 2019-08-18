@@ -78,6 +78,8 @@ class FollowsTracked(Component):
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
         self.follow_type = config.get("follow_type", "accelerate")
+        self.desired_distance_to_player = config.get("desired_distance_to_player", 0)
+        self.acceleration = config.get("acceleration", 0)
 
 
 class Weapon(Component):
@@ -88,8 +90,21 @@ class Weapon(Component):
         self.shooting_at = None
         self.shot_timer = 0
         self.weapon_type = self.config.get("type", "projectile_thrower")
+
+        # guns only:
+        self.shots_per_second = self.config.get("shots_per_second", 0)
+        self.bullet_speed = self.config.get("bullet_speed", 0)
+        self.bullet_spread = self.config.get("spread", 0)
+        self.shot_sound = self.config.get("shot_sound", None)
+        self.bullet_template = self.config.get("bullet_template", None)
+
+        # beams only:
         self.impact_point = None
         self.impact_normal = None
+        self.power_usage = self.config.get("power_usage", 0)
+        self.range = self.config.get("range", 0)
+        self.radius = self.config.get("radius", 0)
+        self.damage = self.config.get("damage", 0)
 
 
 class LaunchesFighters(Component):
@@ -98,6 +113,10 @@ class LaunchesFighters(Component):
         Component.__init__(self, entity, game_services, config)
         self.spawn_timer = Timer(config["spawn_period"])
         self.launched = EntityRefList()
+        self.num_fighters = config.get("num_fighters", 0)
+        self.takeoff_spread = config.get("takeoff_spread", 0)
+        self.fighter_template = config.get("fighter_template", None)
+
 
 
 class KillOnTimer(Component):
@@ -109,7 +128,11 @@ class KillOnTimer(Component):
 
 class ExplodesOnDeath(Component):
     """ For objects that spawn an explosion when they die. """
-    pass
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.explosion_template = config.get("explosion_template", None)
+        self.shake_factor = config.get("shake_factor", 1)
+        self.sound = config.get("sound", None)
 
 
 class Hitpoints(Component):
@@ -144,7 +167,10 @@ class Shields(Component):
 
 class DamageOnContact(Component):
     """ The entity damages other entities on contact. """
-    pass
+    def __init__(self, entity, game_services, config):
+        Component.__init__(self, entity, game_services, config)
+        self.destroy_on_hit = config.get("destroy_on_hit", True)
+        self.damage = config.get("damage", 0)
 
 
 class Team(Component):
@@ -180,12 +206,14 @@ class AnimationComponent(Component):
     def __init__(self, entity, game_services, config):
         Component.__init__(self, entity, game_services, config)
         self.level = None
+        self.kill_on_finish = self.config.get("kill_on_finish", False)
+        self.anim_name = self.config.get("anim_name", None)
 
     @property
     def anim(self):
         """ Get the anim, loading it if necessary. """
         if not "anim" in self.cache:
-            self.cache["anim"] = self.entity.game_services.get_resource_loader().load_animation(self.config["anim_name"])
+            self.cache["anim"] = self.entity.game_services.get_resource_loader().load_animation(self.anim_name)
         return self.cache["anim"]
 
 
