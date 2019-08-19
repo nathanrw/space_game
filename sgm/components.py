@@ -32,182 +32,243 @@ from sge.utils import Timer, Vec2d
 class Body(Component):
     """ A physical body. """
 
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.physics_body = None
+    class TemporaryPhysicsBody(object):
+        def __init__(self):
+            self.mass = 0
+            self.size = 0
+            self.is_collideable = False
+            self.position = Vec2d(0, 0)
+            self.velocity = Vec2d(0, 0)
+            self.orientation = 0
+            self.angular_velocity = 0
+
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.physics_body = Body.TemporaryPhysicsBody()
+
+        # todo: add setters
 
     @property
     def mass(self):
-        return self.physics_body.body.mass
+        return self.physics_body.mass
 
     @property
     def size(self):
-        return self.physics_body.shape.radius
+        return self.physics_body.size
 
     @property
     def is_collideable(self):
-        return self.physics_body.shape.collision_type == 1
+        return self.physics_body.is_collideable
 
     @property
     def position(self):
-        return self.physics_body.body.position
+        return self.physics_body.position
 
     @property
     def velocity(self):
-        return self.physics_body.body.velocity
+        return self.physics_body.velocity
 
     @property
     def orientation(self):
-        return math.degrees(self.physics_body.body.angle)
+        return self.physics_body.orientation
 
     @property
     def angular_velocity(self):
-        return math.degrees(self.physics_body.body.angular_velocity)
+        return self.physics_body.angular_velocity
 
 
 class Tracking(Component):
     """ Tracks something on the opposite team. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
         self.tracked = EntityRef(None, Body)
-        self.track_type = config.get("track_type", "team")
+        self.track_type = "team"
 
 
 class FollowsTracked(Component):
     """ Follows the Tracked entity. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.follow_type = config.get("follow_type", "accelerate")
-        self.desired_distance_to_player = config.get("desired_distance_to_player", 0)
-        self.acceleration = config.get("acceleration", 0)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.follow_type = "accelerate"
+        self.desired_distance_to_player = 0
+        self.acceleration = 0
 
 
 class Weapon(Component):
     """ The entity is a weapon that e.g. shoots bullets. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
         self.owner = EntityRef(None)
         self.shooting_at = None
         self.shot_timer = 0
-        self.weapon_type = self.config.get("type", "projectile_thrower")
+        self.weapon_type = "projectile_thrower"
 
         # guns only:
-        self.shots_per_second = self.config.get("shots_per_second", 0)
-        self.bullet_speed = self.config.get("bullet_speed", 0)
-        self.bullet_spread = self.config.get("spread", 0)
-        self.shot_sound = self.config.get("shot_sound", None)
-        self.bullet_template = self.config.get("bullet_template", None)
+        self.shots_per_second = 0
+        self.bullet_speed = 0
+        self.bullet_spread = 0
+        self.shot_sound = None
+        self.bullet_template = None
 
         # beams only:
         self.impact_point = None
         self.impact_normal = None
-        self.power_usage = self.config.get("power_usage", 0)
-        self.range = self.config.get("range", 0)
-        self.radius = self.config.get("radius", 0)
-        self.damage = self.config.get("damage", 0)
+        self.power_usage = 0
+        self.range = 0
+        self.radius = 0
+        self.damage = 0
 
 
 class LaunchesFighters(Component):
     """ Launches fighters periodically. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.spawn_timer = Timer(config["spawn_period"])
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.__spawn_timer = None
         self.launched = EntityRefList()
-        self.num_fighters = config.get("num_fighters", 0)
-        self.takeoff_spread = config.get("takeoff_spread", 0)
-        self.fighter_template = config.get("fighter_template", None)
+        self.__spawn_period = 0
+        self.num_fighters = 0
+        self.takeoff_spread = 0
+        self.fighter_template = None
 
+    @property
+    def spawn_timer(self):
+        return self.__spawn_timer
+
+    @property
+    def spawn_period(self):
+        return self.__spawn_period
+
+    @spawn_period.setter
+    def spawn_period(self, spawn_period):
+        self.__spawn_period = spawn_period
+        self.__spawn_timer = Timer(spawn_period)
 
 
 class KillOnTimer(Component):
     """ For objects that should be destroyed after a limited time. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.lifetime = Timer(config["lifetime"])
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.__lifetimer = Timer(0)
+
+    @property
+    def lifetime(self):
+        return self.__lifetimer.period
+
+    @lifetime.setter
+    def lifetime(self, time):
+        self.__lifetimer = Timer(time)
 
 
 class ExplodesOnDeath(Component):
     """ For objects that spawn an explosion when they die. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.explosion_template = config.get("explosion_template", None)
-        self.shake_factor = config.get("shake_factor", 1)
-        self.sound = config.get("sound", None)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.explosion_template = None
+        self.shake_factor = 1
+        self.sound = None
 
 
 class Hitpoints(Component):
     """ Object with hitpoints, can be damaged. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.hp = self.config["hp"]
-        self.max_hp = self.config["hp"]
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.__hp = 0
+        self.max_hp = 0
+
+    @property
+    def hp(self):
+        return self.__hp
+
+    @hp.setter
+    def hp(self, hp):
+        self.__hp = hp
+        self.max_hp = max(self.max_hp, hp)
 
 
 class Power(Component):
     """ The entity stores / produces power. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.capacity = config["capacity"]
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.capacity = 0
         self.power = self.capacity
-        self.recharge_rate = config["recharge_rate"]
+        self.recharge_rate = 0
         self.overloaded = False
-        self.overload_timer = Timer(config.get("overload_time", 5))
+        self.overload_time = 5
+        self.overload_timer = Timer(self.overload_time)
 
 
 class Shields(Component):
     """ The entity has shields that protect it from damage. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.hp = self.config["hp"]
-        self.max_hp = self.config["hp"] # Rendundant, but code uses this.
-        self.recharge_rate = config["recharge_rate"]
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.__hp = 0
+        self.max_hp = 0
+        self.recharge_rate = 0
         self.overloaded = False
-        self.overload_timer = Timer(config.get("overload_time", 5))
+        self.overload_time = 5
+        self.overload_timer = Timer(self.overload_time)
+
+    @property
+    def hp(self):
+        return self.__hp
+
+    @hp.setter
+    def hp(self, hp):
+        self.__hp = hp
+        self.max_hp = max(self.max_hp, hp)
 
 
 class DamageOnContact(Component):
     """ The entity damages other entities on contact. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.destroy_on_hit = config.get("destroy_on_hit", True)
-        self.damage = config.get("damage", 0)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.destroy_on_hit = True
+        self.damage = 0
 
 
 class Team(Component):
     """ The entity is on a team. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.team = config.get("team")
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.team = None
         self.parent = EntityRef(None, Team)
 
 
 class Text(Component):
     """ The entity contains text. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.text = config.get("text", "Hello, world!")
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.text = "Hello, world!"
         self.visible = True
         self.offset = 0
         self.scroll_speed = 300
         self.padding = 20
         self.colour = (255, 255, 255)
-        self.font_name = self.config["font_name"]
-        self.small_font_size = config.get("small_font_size", 14)
-        self.large_font_size = config.get("font_size", 32)
-        colour = self.config.get("font_colour", {"red":255, "green":255, "blue":255})
-        self.font_colour = (colour["red"], colour["green"], colour["blue"])
-        self.blink = self.config.get("blink", 0)
-        self.blink_period = self.config.get("blink_period", 1)
+        self.font_name = "nasdaqer"
+        self.small_font_size = 14
+        self.large_font_size = 32
+        self.font_colour = (255, 255, 255)
+        self.blink = False
+        self.__blink_period = 1
         self.blink_timer = Timer(self.blink_period)
+
+    @property
+    def blink_period(self):
+        return self.__blink_period
+
+    @blink_period.setter
+    def blink_period(self, period):
+        self.__blink_period = period
+        self.blink_timer = Timer(period)
 
 
 class AnimationComponent(Component):
     """ The entity has an animation. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
         self.level = None
-        self.kill_on_finish = self.config.get("kill_on_finish", False)
-        self.anim_name = self.config.get("anim_name", None)
+        self.kill_on_finish = False
+        self.anim_name = None
 
     @property
     def anim(self):
@@ -219,19 +280,19 @@ class AnimationComponent(Component):
 
 class Thruster(Component):
     """ The logical definition of a thruster on a Body. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.position = Vec2d(config.get("position", (0, 0)))
-        self.direction = Vec2d(config.get("orientation", (0, 1)))
-        self.max_thrust = config.get("max_thrust", 0)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.position = Vec2d(0, 0)
+        self.direction = Vec2d(0, 1)
+        self.max_thrust = 0
         self.thrust = 0
         self.attached_to = EntityRef(None, Thrusters)
 
 
 class Thrusters(Component):
     """ The entity has thrusters & a target direction. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
         self.direction = Vec2d(0, 0)
         self.turn = 0
         self.thrusters = EntityRefList(Thruster)
@@ -240,30 +301,31 @@ class Thrusters(Component):
 
 class Turret(Component):
     """ The entity is a turret affixed to another entity. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
         self.position = Vec2d(0, 0)
         self.attached_to = EntityRef(None, Turrets)
         self.weapon = EntityRef(None, Weapon)
-        self.fire_timer = Timer(config.get("fire_period", 1))
+        self.fire_period = 1
+        self.fire_timer = Timer(self.fire_period)
         self.fire_timer.advance_to_fraction(0.8)
-        self.burst_timer = Timer(config.get("burst_period", 1))
+        self.burst_period = 1
+        self.burst_timer = Timer(self.burst_period)
         self.can_shoot = False
         self.shooting_at = None
 
 
 class Turrets(Component):
     """ The entity has a set of turrets. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
         self.turrets = EntityRefList(Turret)
 
 
 class Camera(Component):
     """ A camera, which drawing is done in relation to. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        renderer = game_services.get_renderer()
+    def __init__(self, entity):
+        Component.__init__(self, entity)
         self.max_shake = 20
         self.damping_factor = 10
         self.shake = 0
@@ -271,38 +333,37 @@ class Camera(Component):
         self.horizontal_shake = 0
         self.tracking = EntityRef(None, Body)
         self.zoom = 0
-        self.screen_diagonal = (Vec2d(renderer.screen_size())/2).length
 
 
 class Player(Component):
     """ An entity with this component is controlled by the player. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
         self.docked_with = EntityRef(None, Dockable)
 
 
 class CelestialBody(Component):
     """ A celestial sphere. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.name = config.get("name", "Unknown Celestial Body")
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.name = "Unknown celestial body"
 
 
 class Star(Component):
     """ A star. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
         
         
 class Planet(Component):
     """ A planet. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
 
 
 class Dockable(Component):
     """ A dockable entity. """
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
-        self.title = config.get("title", "Docked")
-        self.description = config.get("description", "An object in space.")
+    def __init__(self, entity):
+        Component.__init__(self, entity)
+        self.title = "Docked"
+        self.description = "An object in space"

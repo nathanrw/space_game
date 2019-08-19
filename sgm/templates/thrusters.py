@@ -17,11 +17,10 @@ def add_thrusters(entity, thruster_specs):
     for spec in thruster_specs:
         thruster_ent = ecs.create_entity()
         thruster_ent.name = "Thruster"
-        thruster = ecs.create_component(thruster_ent, components.Thruster, {
-            "position": spec.position,
-            "orientation": spec.orientation,
-            "max_thrust": spec.max_thrust
-        })
+        thruster = ecs.create_component(thruster_ent, components.Thruster)
+        thruster.position = spec.position
+        thruster.orientation = spec.orientation
+        thruster.max_thrust = spec.max_thrust
         thruster.attached_to.entity = entity
         thrusters.thrusters.add_ref_to(thruster_ent)
 

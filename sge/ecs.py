@@ -159,8 +159,8 @@ class EntityManager(object):
             if o.is_garbage:
                 self.__entities.remove(o)
 
-    def create_component(self, entity, component_type, data={}):
-        component = component_type(entity, self.__game_services, data)
+    def create_component(self, entity, component_type):
+        component = component_type(entity)
         entity.add_component(component)
         return component
 
@@ -168,7 +168,7 @@ class EntityManager(object):
         """ Create a new entity with a given list of components. """
         entity = self.create_entity()
         for t in types:
-            component = t(entity, self.__game_services, {})
+            component = t(entity)
             entity.add_component(component)
         return entity
 
@@ -369,21 +369,15 @@ class Component(object):
     The initial state of a component is read in from a config object.
     """
 
-    def __init__(self, entity, game_services, config):
+    def __init__(self, entity):
         """ Initialise the component. """
         self.__entity = entity
-        self.__config = config
         self.cache = {}
 
     @property
     def entity(self):
         """ Get the entity containing this component. """
         return self.__entity
-
-    @property
-    def config(self):
-        """ Get the config used to initialise this component. """
-        return self.__config
 
     def is_garbage(self):
         """ Is our entity dead? """

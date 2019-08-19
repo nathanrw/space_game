@@ -37,6 +37,16 @@ def add_ship_components(entity, **kwargs):
     anim.anim_name = kwargs["anim_name"]
 
 
+def add_enemy_ai(entity):
+    ecs = entity.game_services.get_entity_manager()
+    team = ecs.create_component(entity, components.Team)
+    team.team = "enemy"
+    tracking = ecs.create_component(entity, components.Tracking)
+    follows = ecs.create_component(entity, components.FollowsTracked)
+    follows.acceleration = 1000
+    follows.desired_distance_to_player = 500
+
+
 def create_player(game_services):
     ecs = game_services.get_entity_manager()
     entity = ecs.create_entity()
@@ -67,14 +77,7 @@ def create_fighter(game_services):
     ecs = game_services.get_entity_manager()
     entity = ecs.create_entity()
     add_ship_components(mass=100, size=20, hp=1, anim_name="enemy_fighter")
-    team = ecs.create_component(entity, components.Team, {
-        "team": "enemy"
-    })
-    tracking = ecs.create_component(entity, components.Tracking, {})
-    follows = ecs.create_component(entity, components.FollowsTracked, {
-        "acceleration": 1000,
-        "desired_distance_to_player": 500
-    })
+    add_enemy_ai(entity)
     turrets = ecs.create_component(entity, components.Turrets)
     add_turrets(
         entity,
@@ -95,76 +98,37 @@ def create_fighter(game_services):
 def create_carrier(game_services):
     ecs = game_services.get_entity_manager()
     entity = ecs.create_entity()
-    body = ecs.create_component(entity, components.Body, {
-        "mass": 100,
-        "size": 100
-    })
-    team = ecs.create_component(entity, components.Team, {
-        "team": "enemy"
-    })
-    eod = ecs.create_component(entity, components.ExplodesOnDeath, {
-        "explosion_template": create_big_explosion,
-        "sound": "boom1.wav"
-    })
-    tracking = ecs.create_component(entity, components.Tracking, {})
-    follows = ecs.create_component(entity, components.FollowsTracked, {
-        "acceleration": 1000,
-        "desired_distance_to_player": 500
-    })
-    hp = ecs.create_component(entity, components.Hitpoints, {
-        "hp": 100
-    })
-    anim = ecs.create_component(entity, components.AnimationComponent, {
-        "anim_name": "carrier-closed"
-    })
+
+    add_ship_components(mass=100, size=100, hp=100, anim_name="carrier-closed")
+    add_enemy_ai(entity)
+    add_power(entity, capacity=100, recharge_rate=10)
+    add_shields(entity, hp=50, recharge_rate=10)
+
     thrusters = ecs.create_component(entity, components.Thrusters)
     add_thrusters(
         entity,
         standard_thruster_layout(40, 40, 50000)
     )
-    fighters = ecs.create_component(entity, components.LaunchesFighters, {
-        "fighter_template": create_fighter,
-        "num_fighters": 2,
-        "spawn_period": 10,
-        "takeoff_speed": 700,
-        "takeoff_spread": 30
-    })
-    power = ecs.create_component(entity, components.Power, {
-        "capacity": 100,
-        "recharge_rate": 10
-    })
-    shields = ecs.create_component(entity, components.Shields, {
-        "hp": 50,
-        "recharge_rate": 10
-    })
+
+    fighters = ecs.create_component(entity, components.LaunchesFighters)
+    fighters.fighter_template = create_fighter,
+    fighters.num_fighters = 2
+    fighters.spawn_period = 10
+    fighters.takeoff_speed = 700
+    fighters.takeoff_spread = 30
+
     return entity
 
 
 def create_destroyer(game_services):
     ecs = game_services.get_entity_manager()
     entity = ecs.create_entity()
-    body = ecs.create_component(entity, components.Body, {
-        "mass": 100,
-        "size": 40
-    })
-    team = ecs.create_component(entity, components.Team, {
-        "team": "enemy"
-    })
-    eod = ecs.create_component(entity, components.ExplodesOnDeath, {
-        "explosion_template": create_big_explosion,
-        "sound": "boom1.wav"
-    })
-    tracking = ecs.create_component(entity, components.Tracking, {})
-    follows = ecs.create_component(entity, components.FollowsTracked, {
-        "acceleration": 1000,
-        "desired_distance_to_player": 500
-    })
-    hp = ecs.create_component(entity, components.Hitpoints, {
-        "hp": 40
-    })
-    anim = ecs.create_component(entity, components.AnimationComponent, {
-        "anim_name": "enemy_destroyer"
-    })
+
+    add_ship_components(mass=100, size=40, hp=40, anim_name="enemy_destroyer")
+    add_enemy_ai(entity)
+    add_power(entity, capacity=100, recharge_rate=10)
+    add_shields(entity, hp=50, recharge_rate=50)
+
     turrets = ecs.create_component(entity, components.Turrets)
     add_turrets(
         entity,
@@ -177,24 +141,11 @@ def create_destroyer(game_services):
                        position=(15, 0))
         ]
     )
+
     thrusters = ecs.create_component(entity, components.Thrusters)
     add_thrusters(
         entity,
         standard_thruster_layout(40, 40, 50000)
     )
-    fighters = ecs.create_component(entity, components.LaunchesFighters, {
-        "fighter_template": create_fighter,
-        "num_fighters": 2,
-        "spawn_period": 10,
-        "takeoff_speed": 700,
-        "takeoff_spread": 30
-    })
-    power = ecs.create_component(entity, components.Power, {
-        "capacity": 100,
-        "recharge_rate": 10
-    })
-    shields = ecs.create_component(entity, components.Shields, {
-        "hp": 50,
-        "recharge_rate": 50
-    })
+
     return entity

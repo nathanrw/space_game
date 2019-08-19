@@ -21,26 +21,26 @@ class PhysicsBody(object):
     """ The pymunk simulation body / shape that represents a logical (ecs)
     body component. """
 
-    def __init__(self, entity, data):
+    def __init__(self, entity, body_component):
         """ Constructor. """
 
         self.entity = entity
 
         # Moment of inertia.
-        mass = float(data.get("mass", 0))
-        size = float(data.get("size", 0))
+        mass = float(body_component.mass)
+        size = float(body_component.size)
         moment = pymunk.moment_for_circle(mass, 0, size)
 
         # Initialise body and shape.
         body_type = pymunk.Body.DYNAMIC
-        if data.get("kinematic", False):
+        if body_component.kinematic:
             body_type = pymunk.Body.KINEMATIC
         self.body = pymunk.Body(mass, moment, body_type)
         self.shape = pymunk.Circle(self.body, size)
         self.shape.friction = 0.8
 
         # Collision type for non-collidable bodies.
-        if data.get("is_collideable", True):
+        if body_component.is_collideable:
             self.shape.collision_type = 1
         else:
             self.shape.collision_type = 0
@@ -54,6 +54,34 @@ class PhysicsBody(object):
         # pymunk.Shape and extend it, just without all the code...
         self.body.game_body = self
         self.shape.game_body = self
+
+    @property
+    def mass(self):
+        return self.body.mass
+
+    @property
+    def size(self):
+        return self.shape.radius
+
+    @property
+    def is_collideable(self):
+        return self.shape.collision_type == 1
+
+    @property
+    def position(self):
+        return self.body.position
+
+    @property
+    def velocity(self):
+        return self.body.velocity
+
+    @property
+    def orientation(self):
+        return math.degrees(self.body.angle)
+
+    @property
+    def angular_velocity(self):
+        return math.degrees(self.body.angular_velocity)
 
     def apply_impulses(self):
         for (force, local_point) in self.impulses:
@@ -113,7 +141,7 @@ class Physics(ComponentSystem):
         for e in self.entities():
             b = e.get_component(Body)
             if b.physics_body is None:
-                b.physics_body = PhysicsBody(e, b.config)
+                b.physics_body = PhysicsBody(e, b)
                 self.__pymunk_bodies.add(b.physics_body)
             else:
                 to_remove.remove(b.physics_body)
@@ -122,6 +150,7 @@ class Physics(ComponentSystem):
             pb = b.physics_body
             if pb is not None:
                 self.__space.remove(pb.body, pb.shape)
+                b.physics_body = None
 
         # Advance the simulation.
         self.__space.step(dt)

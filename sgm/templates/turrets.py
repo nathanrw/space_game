@@ -68,18 +68,12 @@ def add_turrets(entity, turret_specs):
 def create_turret(game_services):
     ecs = game_services.get_entity_manager()
     entity = ecs.create_entity()
-    anim = ecs.create_component(entity, components.AnimationComponent, {
-        "anim_name": "enemy_turret"
-    })
-    body = ecs.create_component(entity, components.Body, {
-        "mass": 1,
-        "size": 1
-    })
-    turret = ecs.create_component(entity, components.Turret, {})
-    power = ecs.create_component(entity, components.Power, {
-        "capacity": 100,
-        "recharge_rate": 10
-    })
-    team = ecs.create_component(entity, components.Team, {})
-    tracking = ecs.create_component(entity, components.Tracking, {})
+    anim = ecs.create_component(entity, components.AnimationComponent)
+    anim.name = "enemy_turret"
+    body = ecs.create_component(entity, components.Body)
+    body.mass = 1
+    body.size = 1
+    turret = ecs.create_component(entity, components.Turret)
+    team = ecs.create_component(entity, components.Team)
+    tracking = ecs.create_component(entity, components.Tracking)
     return entity

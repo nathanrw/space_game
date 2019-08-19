@@ -266,7 +266,7 @@ class Drawing(object):
             # Ok, draw the laser beam.
             p0 = body.position
             p1 = weapon.impact_point
-            radius = weapon.config.get("radius", 2)
+            radius = weapon.radius
             red = (255,100,100)
             white = (255,255,255)
             self.__renderer.add_job_line(
@@ -318,7 +318,7 @@ class Drawing(object):
             body = entity.get_component(Body)
             animation = entity.get_component(AnimationComponent)
             kwargs = {
-                "brightness": animation.config.get("brightness", 0.0)
+                "brightness": animation.brightness
             }
             if animation.level is not None:
                 kwargs["level"] = animation.level

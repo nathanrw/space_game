@@ -6,6 +6,8 @@ from sge.utils import Vec2d
 from sge.ecs import EntityRef
 from sgm.components import Body
 
+import math
+
 
 class DirectionProvider(object):
     """ An object that defines a direction. """
@@ -70,7 +72,7 @@ class DirectionProviderBody(object):
 class DirectionProviderCoaxial(object):
     """ Shooting in line with a body. """
     def __init__(self, from_body_entity):
-        self.__from_body_entity = EntityRef(from_body, Body)
+        self.__from_body_entity = EntityRef(from_body_entity, Body)
     def direction(self):
         if self.__from_body_entity.entity is None:
             return Vec2d(0, 0)
