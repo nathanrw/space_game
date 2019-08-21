@@ -23,8 +23,6 @@ generally used to initialise the fields of the component.  The fields define the
 current state of the component, and these are updated by processing systems.
 """
 
-import math
-
 from sge.ecs import Component, EntityRef, EntityRefList
 from sge.utils import Timer, Vec2d
 
@@ -44,37 +42,64 @@ class Body(Component):
 
     def __init__(self, entity):
         Component.__init__(self, entity)
-        self.physics_body = Body.TemporaryPhysicsBody()
-
-        # todo: add setters
+        self.definition = Body.TemporaryPhysicsBody()
+        self.physics_body = self.definition
 
     @property
     def mass(self):
         return self.physics_body.mass
 
+    @mass.setter
+    def mass(self, mass):
+        self.physics_body.mass = mass
+
     @property
     def size(self):
         return self.physics_body.size
+
+    @size.setter
+    def size(self, size):
+        self.physics_body.size = size
 
     @property
     def is_collideable(self):
         return self.physics_body.is_collideable
 
+    @is_collideable.setter
+    def is_collideable(self, yes):
+        self.physics_body.is_collideable = yes
+
     @property
     def position(self):
         return self.physics_body.position
+
+    @position.setter
+    def position(self, position):
+        self.physics_body.position = position
 
     @property
     def velocity(self):
         return self.physics_body.velocity
 
+    @velocity.setter
+    def velocity(self, velocity):
+        self.physics_body.velocity = velocity
+
     @property
     def orientation(self):
         return self.physics_body.orientation
 
+    @orientation.setter
+    def orientation(self, orientation):
+        self.physics_body.orientation = orientation
+
     @property
     def angular_velocity(self):
         return self.physics_body.angular_velocity
+
+    @angular_velocity.setter
+    def angular_velocity(self, angular_velocity):
+        self.physics_body.angular_velocity = angular_velocity
 
 
 class Tracking(Component):

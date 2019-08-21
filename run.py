@@ -5,7 +5,7 @@ import sys
 import cProfile
 import logging
 
-import sgm
+import sgm.game
 
 def main():
     """ Run the game! """

@@ -27,8 +27,8 @@ class MockSystemB(ComponentSystem):
 
 
 class MockComponent(Component):
-    def __init__(self, entity, game_services, config):
-        Component.__init__(self, entity, game_services, config)
+    def __init__(self, entity):
+        Component.__init__(self, entity)
         self.last_dt = 0
         self.added = 0
         self.removed = 0

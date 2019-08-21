@@ -16,7 +16,7 @@ import pygame
 import pynk
 import inspect
 
-from sge import Physics
+from sgm.physics import Physics
 from .components import AnimationComponent, Body, Dockable, Thrusters, Player, Camera, Turrets, Turret
 from .direction_providers import DirectionProviderScreen
 from sge.ecs import EntityRef, EntityRefList

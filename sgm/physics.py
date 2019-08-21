@@ -1,11 +1,9 @@
 """
 Physics system & related code.
 
-The Physics system manages Body and Joint components. The system maintains a
+The Physics system manages Body. The system maintains a
 mapping between objects in a pymunk physics simulation and the logical
-components attached to entities (which are what get serialised.) The relevant
-data is copied back and forth between the simulation and the game state
-periodically to keep them in sync.
+components attached to entities.
 """
 
 
@@ -21,31 +19,29 @@ class PhysicsBody(object):
     """ The pymunk simulation body / shape that represents a logical (ecs)
     body component. """
 
-    def __init__(self, entity, body_component):
+    def __init__(self, entity, definition):
         """ Constructor. """
 
         self.entity = entity
 
         # Moment of inertia.
-        mass = float(body_component.mass)
-        size = float(body_component.size)
+        mass = float(definition.mass)
+        size = float(definition.size)
         moment = pymunk.moment_for_circle(mass, 0, size)
 
         # Initialise body and shape.
         body_type = pymunk.Body.DYNAMIC
-        if body_component.kinematic:
+        if definition.kinematic:
             body_type = pymunk.Body.KINEMATIC
         self.body = pymunk.Body(mass, moment, body_type)
         self.shape = pymunk.Circle(self.body, size)
         self.shape.friction = 0.8
 
         # Collision type for non-collidable bodies.
-        if body_component.is_collideable:
+        if definition.is_collideable:
             self.shape.collision_type = 1
         else:
             self.shape.collision_type = 0
-
-        self.impulses = []
 
         # Squirell ourself away inside the shape, so we can map back
         # later. Note that we're modifying the shape with a new field on
@@ -82,11 +78,6 @@ class PhysicsBody(object):
     @property
     def angular_velocity(self):
         return math.degrees(self.body.angular_velocity)
-
-    def apply_impulses(self):
-        for (force, local_point) in self.impulses:
-            self.body.apply_force_at_local_point(force, local_point)
-        self.impulses = []
 
 
 class Physics(ComponentSystem):
@@ -126,34 +117,35 @@ class Physics(ComponentSystem):
         self.__default_handler = self.__space.add_default_collision_handler()
         self.__default_handler.begin = lambda a, s, d: False
 
-        # Map Body components to simulation objects.
-        self.__pymunk_bodies = set()
-
     def add_collision_handler(self, handler):
         """ Add a logical collision handler for the game. """
         self.__collision_handlers.append(handler)
 
+    def __get_physics_body(self, entity):
+        """ Get the physics body from an entity"""
+        body_component = entity.get_component(Body)
+        if not body_component: return None
+        if not isinstance(body_component.physics_body, PhysicsBody):
+            body_component.physics_body = PhysicsBody(entity, body_component.definition)
+        return body_component.physics_body
+
     def update(self, dt):
         """ Advance the simulation. """
 
-        # Create and destroy simulation bodies.
-        to_remove = self.__pymunk_bodies.copy()
+        # Ensure each entity has a physics body associated with it.
+        # Note: we don't do this in on_component_add() to give some time
+        # for the body to be initialised without causing instability.
         for e in self.entities():
-            b = e.get_component(Body)
-            if b.physics_body is None:
-                b.physics_body = PhysicsBody(e, b)
-                self.__pymunk_bodies.add(b.physics_body)
-            else:
-                to_remove.remove(b.physics_body)
-        for e in to_remove:
-            b = e.get_component(Body)
-            pb = b.physics_body
-            if pb is not None:
-                self.__space.remove(pb.body, pb.shape)
-                b.physics_body = None
+            self.__get_physics_body(e)
 
         # Advance the simulation.
         self.__space.step(dt)
+
+    def on_component_remove(self, component):
+        """ Remove physics representation for dead entities. """
+        if isinstance(component.physics_body, PhysicsBody):
+            pb = component.physics_body
+            self.__space.remove(pb.body, pb.shape)
 
     def closest_body_with(self, point, f):
         """ Find the closest body of a given predicate. """
@@ -210,34 +202,33 @@ class Physics(ComponentSystem):
 
     def world_to_local(self, entity, point):
         """ Convert a world point to local coordinates. """
-        b = entity.get_component(Body)
-        if b is not None:
-            return b.physics_body.world_to_local(point)
+        pbody = self.__get_physics_body(entity)
+        if pbody is not None:
+            return pbody.body.world_to_local(point)
         else:
             return point
 
     def local_to_world(self, entity, point):
         """ Convert a local point to world coordinates. """
-        b = entity.get_component(Body)
-        if b is not None:
-            return b.physics_body.body.local_to_world(point)
+        pbody = self.__get_physics_body(entity)
+        if pbody is not None:
+            return pbody.body.local_to_world(point)
         else:
             return point
 
     def local_dir_to_world(self, entity, direction):
         """ Convert a local direction to world coordinates. """
-        b = entity.get_component(Body)
-        if b is not None:
-            pb = b.physics_body
+        pb = self.__get_physics_body(entity)
+        if pb is not None:
             return pb.body.local_to_world(direction) - pb.body.position
         else:
             return direction
 
     def apply_force_at_local_point(self, entity, force, point):
         """ Apply a force to the body."""
-        b = entity.get_component(Body)
-        if b is not None:
-            b.physics_body.impulses.append((force, point))
+        pbody = self.__get_physics_body(entity)
+        if pbody is not None:
+            pbody.body.apply_force_at_local_point(force, point)
 
     def create_joint(self, e0, p0, e1, p1):
         """
@@ -247,8 +238,8 @@ class Physics(ComponentSystem):
         :param e1: The second entity.
         :param p1: Point on the second entity to pin.
         """
-        pb0 = e0.get_component(Body).physics_body
-        pb1 = e1.get_component(Body).physics_body
+        pb0 = self.__get_physics_body(e0)
+        pb1 = self.__get_physics_body(e1)
         joint = pymunk.constraint.PinJoint(pb0.body, pb1.body, p0, p1)
         joint.collide_bodies = False
         self.__space.add(joint)
@@ -299,8 +290,7 @@ class Physics(ComponentSystem):
         # in orientation.
         to_move = self.get_attached_entities(entity) if move_attached else [entity]
         for attached_entity in to_move:
-            b = attached_entity.get_component(Body)
-            pbb = b.physics_body.body
+            pbb = self.__get_physics_body(attached_entity).body
             pbb.position += relative_movement
             if relative_delta_v is not None:
                 pbb.velocity += relative_delta_v
@@ -319,8 +309,7 @@ class Physics(ComponentSystem):
         while len(es) > 0:
             new = []
             for e0 in es:
-                e0_body = e0.get_component(Body)
-                e0_physics_body = e0_body.physics_body
+                e0_physics_body = self.__get_physics_body(e0)
                 e0_pymunk_body = e0_physics_body.body
                 cs = e0_pymunk_body.constraints
                 for c in cs:
@@ -333,6 +322,12 @@ class Physics(ComponentSystem):
             processed.extend(es)
             es = new
         return processed
+
+    def load(self, state):
+        self.__space = state.get("space", self.__space)
+
+    def save(self, state):
+        state["space"] = self.__space
 
 
 class CollisionResult(object):

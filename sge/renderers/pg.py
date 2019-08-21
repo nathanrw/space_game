@@ -1,4 +1,4 @@
-import pygame
+import pg
 
 from sge.renderer import *
 
@@ -18,15 +18,15 @@ class PygameRenderer(Renderer):
 
     def initialise(self):
         """ Initialise the pygame display. """
-        self.__surface = pygame.display.set_mode(self.__screen_size)
+        self.__surface = pg.display.set_mode(self.__screen_size)
 
     def flip_buffers(self):
         """ Update the pygame display. """
-        pygame.display.update()
+        pg.display.update()
 
     def load_compatible_image(self, filename):
         """ Load a pygame image. """
-        return pygame.image.load(filename).convert_alpha()
+        return pg.image.load(filename).convert_alpha()
 
     def load_compatible_anim_frames(self, filename_list):
         """ Load the frames of an animation into a format compatible
@@ -37,7 +37,7 @@ class PygameRenderer(Renderer):
 
     def load_compatible_font(self, filename, size):
         """ Load a pygame font. """
-        return pygame.font.Font(filename, size)
+        return pg.font.Font(filename, size)
 
     def load_compatible_gui_font(self, filename, size):
         """ Load a font for the GUI. """
@@ -74,10 +74,10 @@ class PygameRenderer(Renderer):
         width = self.__get_or_default(kwargs, "width", 0)
         rect = rect.copy()
         def do_it(view):
-            pygame.draw.rect(self.__surface,
-                             colour,
-                             view.rect_to_screen(rect, coords),
-                             int(view.length_to_screen(width, coords)))
+            pg.draw.rect(self.__surface,
+                         colour,
+                         view.rect_to_screen(rect, coords),
+                         int(view.length_to_screen(width, coords)))
         self.__add_job((level, coords), do_it)
 
     def render_line(self, p0, p1, **kwargs):
@@ -86,11 +86,11 @@ class PygameRenderer(Renderer):
         colour = self.__get_or_default(kwargs, "colour", (255, 255, 255))
         width = self.__get_or_default(kwargs, "width", 0)
         def do_it(view):
-            pygame.draw.line(self.__surface,
-                             colour,
-                             view.point_to_screen(p0, coords),
-                             view.point_to_screen(p1, coords),
-                             max(1, int(view.length_to_screen(width, coords))))
+            pg.draw.line(self.__surface,
+                         colour,
+                         view.point_to_screen(p0, coords),
+                         view.point_to_screen(p1, coords),
+                         max(1, int(view.length_to_screen(width, coords))))
         self.__add_job((level, coords), do_it)
 
     def render_lines(self, points, **kwargs):
@@ -99,11 +99,11 @@ class PygameRenderer(Renderer):
         colour = self.__get_or_default(kwargs, "colour", (255, 255, 255))
         width = self.__get_or_default(kwargs, "width", 0)
         def do_it(view):
-            pygame.draw.lines(self.__surface,
-                              colour,
-                              False,
-                              view.points_to_screen(points, coords),
-                              int(view.length_to_screen(width, coords)))
+            pg.draw.lines(self.__surface,
+                          colour,
+                          False,
+                          view.points_to_screen(points, coords),
+                          int(view.length_to_screen(width, coords)))
         self.__add_job((level, coords), do_it)
 
     def render_polygon(self, points, **kwargs):
@@ -111,9 +111,9 @@ class PygameRenderer(Renderer):
         (coords, level) = self.__parse_kwargs(kwargs)
         colour = self.__get_or_default(kwargs, "colour", (255, 255, 255))
         def do_it(view):
-            pygame.draw.polygon(self.__surface,
-                                colour,
-                                view.points_to_screen(points, coords))
+            pg.draw.polygon(self.__surface,
+                            colour,
+                            view.points_to_screen(points, coords))
         self.__add_job((level, coords), do_it)
 
     def render_circle(self, position, radius, **kwargs):
@@ -132,11 +132,11 @@ class PygameRenderer(Renderer):
                 scaled_width = 1
             if scaled_radius <= 0:
                 return
-            pygame.draw.circle(self.__surface,
-                               colour,
-                               (int(pos[0]), int(pos[1])),
-                               scaled_radius,
-                               scaled_width)
+            pg.draw.circle(self.__surface,
+                           colour,
+                           (int(pos[0]), int(pos[1])),
+                           scaled_radius,
+                           scaled_width)
         self.__add_job((level, coords), do_it)
 
     def render_text(self, font, text, position, **kwargs):
@@ -155,10 +155,10 @@ class PygameRenderer(Renderer):
         def do_it(view):
             img = anim.frames[anim.timer.pick_index(len(anim.frames))]
             if (orientation != 0):
-                img = pygame.transform.rotate(img, orientation)
+                img = pg.transform.rotate(img, orientation)
             if (view.zoom != 1):
                 size = view.size_to_screen(img.get_size(), coords)
-                img = pygame.transform.scale(img, (int(size[0]), int(size[1])))
+                img = pg.transform.scale(img, (int(size[0]), int(size[1])))
             screen_pos = view.point_to_screen(position, coords) - Vec2d(img.get_rect().center)
             self.__surface.blit(img, screen_pos)
         self.__add_job((level, coords), do_it)

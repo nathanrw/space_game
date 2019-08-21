@@ -32,10 +32,10 @@ class ResourceLoader(object):
         self.__renderer = None
         self.__minimise_image_loading = True
         self.__images = {}
-        self.__image_aliases = yaml.load("res/images/aliases.yaml")
+        self.__image_aliases = yaml.load(open("res/images/aliases.yaml", "r"))
         self.__animations = {}
         self.__fonts = {}
-        self.__font_aliases = yaml.load("res/fonts/aliases.yaml")
+        self.__font_aliases = yaml.load(open("res/fonts/aliases.yaml", "r"))
         self.__sounds = {}
 
     def set_renderer(self, renderer):

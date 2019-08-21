@@ -11,7 +11,8 @@ import pynk.nkpygame
 import yaml
 
 # Local imports.
-import templates
+import templates.ships
+import templates.misc
 import components
 import drawing
 import input_handling
@@ -96,11 +97,11 @@ class Game(object):
         renderer_name = self.config.get("renderer", "opengl")
         renderer_class = None
         if renderer_name == "pygame":
-            from sge.renderers import pygame
-            renderer_class = pygame.PygameRenderer
+            from sge.renderers import pg
+            renderer_class = pg.PygameRenderer
         elif renderer_name == "opengl":
-            from sge.renderers import opengl
-            renderer_class = opengl.PygameOpenGLRenderer
+            from sge.renderers import ogl
+            renderer_class = ogl.PygameOpenGLRenderer
         else:
             bail()
         screen_size = (self.config.get("screen_width", 1024),
@@ -196,13 +197,13 @@ class Game(object):
         self.resource_loader.preload(LoadingScreen, loading_font, loading_background)
 
         # Make the camera.
-        camera = templates.create_camera(self.game_services)
+        camera = templates.misc.create_camera(self.game_services)
 
         # Draw debug info if requested.
         self.game_services.debug_level = self.config.get("debug", 0)
 
         # Make the player
-        player = templates.create_player(self.game_services)
+        player = templates.ships.create_player(self.game_services)
         player.name = "Player"
         mercury_body = mercury.get_component(components.Body)
         self.entity_manager.get_system(physics.Physics).teleport(

@@ -1,5 +1,6 @@
 import unittest
 from testing import *
+from sge.resource import *
 
 
 class ResourceLoaderTest(unittest.TestCase):
@@ -12,17 +13,17 @@ class ResourceLoaderTest(unittest.TestCase):
     def test_load_font(self):
         def do_test(game_services):
             rl = game_services.get_resource_loader()
-            font = rl.load_font("res/fonts/nasdaqer/NASDAQER.ttf", 10)
-            font2 = rl.load_font("res/fonts/nasdaqer/NASDAQER.ttf", 10)
-            font3 = rl.load_font("res/fonts/nasdaqer/NASDAQER.ttf", 11)
+            font = rl.load_font("nasdaqer", 10)
+            font2 = rl.load_font("nasdaqer", 10)
+            font3 = rl.load_font("nasdaqer", 11)
             assert font == font2
             assert font != font3
         run_pygame_test(do_test)
     def test_load_image(self):
         def do_test(game_services):
             rl = game_services.get_resource_loader()
-            img = rl.load_image("res/images/background.png")
-            img2 = rl.load_image("res/images/background.png")
+            img = rl.load_image("background-6")
+            img2 = rl.load_image("background-6")
             assert img == img2
         run_pygame_test(do_test)
     def test_load_animation(self):

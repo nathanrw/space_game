@@ -1076,7 +1076,7 @@ class PygameOpenGLRenderer(Renderer):
         """ Initialise the pygame display. """
 
         # We want an OpenGL display.
-        self.__surface = pygame.display.set_mode(self.__screen_size, pygame.DOUBLEBUF|pygame.OPENGL)
+        self.__surface = pygame.display.set_mode(self.__screen_size, pygame.DOUBLEBUF | pygame.OPENGL)
 
         # Enable alpha blending.
         GL.glEnable(GL.GL_BLEND)

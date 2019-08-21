@@ -133,9 +133,16 @@ class EntityManager(object):
     def save(self, output_file):
         """ Save the state of the entity manager. """
         self.__garbage_collect()
+        system_state = {}
+        for system in self.__systems:
+            state = {}
+            system.save(state)
+            if len(state) > 0:
+                system_state[system.__class__.__name__] = state
         output = {
             "entities" : self.__entities,
-            "components" : self.__component_store
+            "components" : self.__component_store,
+            "system_state": system_state
         }
         pickle.dump(output, output_file)
 
@@ -143,6 +150,11 @@ class EntityManager(object):
         """ Restore the state of the entity manager. """
         try:
             old_state = pickle.load(input_file)
+            system_state = old_state.get("system_state", {})
+            for system in self.__systems:
+                name = system.__class__.__name__
+                if name in system_state:
+                    system.load(system_state[name])
             entities = old_state["entities"]
             for e in entities:
                 e.just_unpickled(self.__game_services)
@@ -175,7 +187,7 @@ class EntityManager(object):
     def create_entity(self):
         """ Add a new entity. """
         obj = Entity(self.__game_services)
-        obj.id = self.__next_id
+        obj.jim = self.__next_id
         self.__next_id += 1
         self.__entities.append(obj)
         return obj
@@ -357,6 +369,20 @@ class ComponentSystem(object):
         """ Does this system keep going when the game is paused? """
         return False
 
+    def save(self, system_state):
+        """
+        Persist any additional data specific to the system that isn't
+        stored within a component.
+        """
+        pass
+
+    def load(self, system_state):
+        """
+        Unpersist any additional data specific to the system that isn't
+        stored within a component.
+        """
+        pass
+
 
 class Component(object):
     """
@@ -481,8 +507,8 @@ class Entity(object):
         """ Constructor. """
         self.__is_garbage = False
         self.__game_services = game_services
-        self.id = 0
         self.name = ""
+        self.id = 0
 
     @property
     def is_garbage(self):
